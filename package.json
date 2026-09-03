@@ -1,0 +1,12 @@
+{
+  "name": "fantasy-cricket-integrated",
+  "private": true,
+  "scripts": {
+    "dev:api": "npm --prefix API run dev",
+    "build:api": "npm --prefix API run build",
+    "start:api": "npm --prefix API start",
+    "dev:ui": "npm --prefix UI run dev",
+    "build:ui": "npm --prefix UI run build",
+    "preview:ui": "npm --prefix UI run preview"
+  }
+}
