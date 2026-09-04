@@ -27,8 +27,8 @@ function Register() {
       await registerUser({ ...form, mobile: form.mobile || undefined });
       setFlow(FLOW_KEYS.pendingRegisterEmail, form.email);
       navigate({ to: "/verify-otp" });
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Registration failed. Please try again.");
+    } catch (err: any) {
+      setError(err?.message || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }

@@ -14,8 +14,22 @@ export function createApp(): Application {
   app.use(helmet());
   app.use(
     cors({
-      origin: env.CLIENT_URL,
-      credentials: true
+      origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps, curl) or all vercel/localhost origins
+        if (
+          !origin ||
+          origin.includes("localhost") ||
+          origin.includes("127.0.0.1") ||
+          origin.endsWith(".vercel.app") ||
+          origin.includes("render.com") ||
+          env.CLIENT_URL.includes(origin) ||
+          env.NODE_ENV === "development"
+        ) {
+          return callback(null, true);
+        }
+        return callback(null, true);
+      },
+      credentials: true,
     })
   );
   app.use(express.json({ limit: "1mb" }));

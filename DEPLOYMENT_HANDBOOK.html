@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fullstack Deployment Guide - Fantasy Cricket Platform</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap');
+
+    :root {
+      --primary: #10b981;
+      --primary-dark: #059669;
+      --secondary: #3b82f6;
+      --dark: #0f172a;
+      --card-bg: #1e293b;
+      --text: #334155;
+      --text-light: #64748b;
+      --bg: #ffffff;
+      --code-bg: #0f172a;
+      --border: #e2e8f0;
+      --accent-error: #ef4444;
+      --accent-success: #10b981;
+      --accent-warn: #f59e0b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background-color: #f8fafc;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      background: var(--bg);
+      padding: 48px;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      border: 1px solid var(--border);
+    }
+
+    .header {
+      text-align: center;
+      padding-bottom: 32px;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 40px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 6px 16px;
+      background: #ecfdf5;
+      color: var(--primary-dark);
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      border-radius: 9999px;
+      border: 1px solid #a7f3d0;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--dark);
+      margin-bottom: 12px;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: var(--text-light);
+    }
+
+    .platform-pills {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pill-vercel { background: #000; color: #fff; }
+    .pill-render { background: #46e3b7; color: #000; }
+    .pill-atlas { background: #00ed64; color: #001e2b; }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--dark);
+      margin-top: 36px;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--dark);
+      margin-top: 24px;
+      margin-bottom: 12px;
+    }
+
+    p { margin-bottom: 14px; font-size: 14px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 13px;
+    }
+
+    th, td {
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      text-align: left;
+    }
+
+    th {
+      background-color: #f1f5f9;
+      color: var(--dark);
+      font-weight: 600;
+    }
+
+    tr:nth-child(even) { background-color: #f8fafc; }
+
+    pre {
+      background-color: var(--code-bg);
+      color: #f8fafc;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: 'Fira Code', monospace;
+      font-size: 12px;
+      margin: 14px 0 20px;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: 'Fira Code', monospace;
+      background: #f1f5f9;
+      color: #0f172a;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+    }
+
+    .alert {
+      padding: 14px 18px;
+      border-radius: 8px;
+      margin: 16px 0 20px;
+      font-size: 13px;
+    }
+
+    .alert-success {
+      background: #ecfdf5;
+      border-left: 4px solid var(--accent-success);
+      color: #065f46;
+    }
+
+    .alert-warning {
+      background: #fffbeb;
+      border-left: 4px solid var(--accent-warn);
+      color: #92400e;
+    }
+
+    .alert-error {
+      background: #fef2f2;
+      border-left: 4px solid var(--accent-error);
+      color: #991b1b;
+    }
+
+    .issue-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+      margin-bottom: 16px;
+      background: #ffffff;
+    }
+
+    .issue-title {
+      font-weight: 700;
+      color: var(--accent-error);
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    .issue-cause {
+      color: var(--text-light);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .issue-solution {
+      background: #f0fdf4;
+      border-left: 3px solid var(--accent-success);
+      padding: 8px 12px;
+      font-size: 13px;
+      color: #166534;
+      border-radius: 4px;
+    }
+
+    .btn-print {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-weight: 600;
+      font-size: 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 1000;
+    }
+
+    .btn-print:hover { background: var(--primary-dark); }
+
+    @media print {
+      body { background: #fff; padding: 0; }
+      .container { box-shadow: none; border: none; padding: 20px; max-width: 100%; }
+      .btn-print { display: none; }
+      pre { white-space: pre-wrap; word-wrap: break-word; }
+      .issue-card { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <button class="btn-print" onclick="window.print()">🖨️ Save as PDF / Print</button>
+
+  <div class="container">
+    <div class="header">
+      <div class="badge">Official Deployment Guide</div>
+      <h1>Fantasy Cricket Fullstack Deployment</h1>
+      <p class="subtitle">Complete Step-by-Step Production Guide: Localhost &bull; Git &bull; MongoDB Atlas &bull; Render &bull; Vercel</p>
+      
+      <div class="platform-pills">
+        <div class="pill pill-vercel">▲ Vercel (Frontend)</div>
+        <div class="pill pill-render">⚙️ Render (Backend)</div>
+        <div class="pill pill-atlas">🍃 MongoDB Atlas (Cloud DB)</div>
+      </div>
+    </div>
+
+    <h2>1. Monorepo Architecture Overview</h2>
+    <p>The platform is organized into two independent sub-projects managed within a single repository:</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Component</th>
+          <th>Technology Stack</th>
+          <th>Hosting Platform</th>
+          <th>Live Production URL</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Frontend (UI)</strong></td>
+          <td>React 19, TanStack Start, Vite, Tailwind CSS</td>
+          <td>Vercel</td>
+          <td><code>https://fantasy-cricket-integrated-qr4b.vercel.app</code></td>
+        </tr>
+        <tr>
+          <td><strong>Backend (API)</strong></td>
+          <td>Node.js, Express, TypeScript, Mongoose</td>
+          <td>Render</td>
+          <td><code>https://fantasy-cricket-api-ro18.onrender.com</code></td>
+        </tr>
+        <tr>
+          <td><strong>Database</strong></td>
+          <td>MongoDB Atlas (M0 Shared Cloud Cluster)</td>
+          <td>MongoDB Cloud</td>
+          <td><code>mongodb+srv://.../fantasy_cricket</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>2. Localhost Setup & Running Locally</h2>
+    <p>Before deploying to cloud servers, run the platform locally:</p>
+    <pre><code># 1. Install dependencies
+cd API && npm install
+cd ../UI && npm install
+cd ..
+
+# 2. Start Backend (Runs on http://localhost:5000)
+npm run dev:api
+
+# 3. Start Frontend (Runs on http://localhost:8080)
+npm run dev:ui</code></pre>
+
+    <h2>3. Git Version Control & Deployment Workflow</h2>
+    <h3>3.1 Initial Setup</h3>
+    <pre><code>git init
+git add .
+git commit -m "feat: initial commit"
+git branch -M main
+git remote add origin https://github.com/Vikas-Sharma-25/Fantasy-Cricket-Integrated.git
+git push -u origin main</code></pre>
+
+    <h3>3.2 Continuous Deployment Workflow</h3>
+    <p>Whenever you make any changes locally, run:</p>
+    <pre><code>git add .
+git commit -m "fix: updated features"
+git push origin main</code></pre>
+    <div class="alert alert-success">
+      💡 <strong>Automated Cloud Triggers:</strong> Running <code>git push origin main</code> automatically informs both <strong>Render</strong> and <strong>Vercel</strong> to pull latest code and trigger zero-downtime production deployments!
+    </div>
+
+    <h2>4. MongoDB Atlas Setup & Local DB Migration</h2>
+    <h3>4.1 Setting up Atlas (Free Cloud Database)</h3>
+    <ol style="padding-left: 20px; font-size: 13px; line-height: 1.8;">
+      <li>Sign in at <strong><a href="https://cloud.mongodb.com/">cloud.mongodb.com</a></strong>.</li>
+      <li>Create an <strong>M0 Free Cluster</strong> in AWS Mumbai / Singapore.</li>
+      <li>Under <strong>Database Access</strong>, create user <code>vikass78901_db_user</code> with password <code>VikasCricket2026</code>.</li>
+      <li>Under <strong>Network Access</strong>, add IP: <code>0.0.0.0/0</code> (Allow access from anywhere).</li>
+      <li>Copy connection string: <code>mongodb+srv://vikass78901_db_user:VikasCricket2026@cluster0.oh8z9di.mongodb.net/fantasy_cricket?retryWrites=true&w=majority</code>.</li>
+    </ol>
+
+    <h3>4.2 Migrating Local Data to Atlas</h3>
+    <p>Run the 1-click migration script to copy all existing local collections (Matches, Players, Users, Contests, Teams) to Atlas:</p>
+    <pre><code>cd API
+node src/scripts/migrate.js "mongodb+srv://vikass78901_db_user:VikasCricket2026@cluster0.oh8z9di.mongodb.net/fantasy_cricket?retryWrites=true&w=majority"</code></pre>
+
+    <h3>4.3 MongoDB Issues Encountered & Solutions</h3>
+    <div class="issue-card">
+      <div class="issue-title">❌ Issue 1: "The limit for free tier clusters in this project has been reached"</div>
+      <div class="issue-cause"><strong>Cause:</strong> MongoDB allows 1 free cluster per project.</div>
+      <div class="issue-solution"><strong>Fix:</strong> Used the existing active cluster in Project 0 instead of creating duplicates.</div>
+    </div>
+
+    <div class="issue-card">
+      <div class="issue-title">❌ Issue 2: "bad auth : authentication failed" during migration</div>
+      <div class="issue-cause"><strong>Cause:</strong> The placeholder <code>&lt;db_password&gt;</code> was passed literally in the URL.</div>
+      <div class="issue-solution"><strong>Fix:</strong> Replaced with the real user password <code>VikasCricket2026</code> without brackets.</div>
+    </div>
+
+    <h2>5. Backend Deployment on Render</h2>
+    <h3>5.1 Service Configuration Table</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Setting</th>
+          <th>Value</th>
+          <th>Explanation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Name</strong></td>
+          <td><code>Fantasy-Cricket-API</code></td>
+          <td>Unique name of the web service</td>
+        </tr>
+        <tr>
+          <td><strong>Language</strong></td>
+          <td><code>Node</code></td>
+          <td>Runtime environment</td>
+        </tr>
+        <tr>
+          <td><strong>Root Directory</strong></td>
+          <td><code>API</code></td>
+          <td>Points directly to the backend subdirectory</td>
+        </tr>
+        <tr>
+          <td><strong>Build Command</strong></td>
+          <td><code>npm install && npm run build</code></td>
+          <td>Installs packages and compiles TypeScript into <code>dist/</code></td>
+        </tr>
+        <tr>
+          <td><strong>Start Command</strong></td>
+          <td><code>npm start</code></td>
+          <td>Executes <code>node dist/server.js</code></td>
+        </tr>
+        <tr>
+          <td><strong>Instance Plan</strong></td>
+          <td><code>Free</code> ($0/month)</td>
+          <td>512 MB RAM, 0.1 CPU</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>5.2 Render Environment Variables</h3>
+    <pre><code>NODE_ENV=production
+PORT=5000
+CLIENT_URL=https://fantasy-cricket-integrated-qr4b.vercel.app,http://localhost:8080
+MONGO_URI=mongodb+srv://vikass78901_db_user:VikasCricket2026@cluster0.oh8z9di.mongodb.net/fantasy_cricket?retryWrites=true&w=majority
+JWT_ACCESS_SECRET=fantasy_access_secret_super_secure_key_2026
+JWT_REFRESH_SECRET=fantasy_refresh_secret_super_secure_key_2026
+JWT_ACCESS_EXPIRES_IN=2d
+JWT_REFRESH_EXPIRES_IN=7d
+OTP_LENGTH=6
+OTP_EXPIRES_IN_MINUTES=5
+OTP_RESEND_COOLDOWN_SECONDS=30
+OTP_MAX_ATTEMPTS=5
+OTP_MAX_RESEND_PER_WINDOW=5
+MAIL_FROM=vikass78901@gmail.com
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=vikass78901@gmail.com
+SMTP_PASS=lwvrqtwrvxczfnvh
+SMTP_SECURE=false
+RATE_LIMIT_WINDOW_MINUTES=15
+RATE_LIMIT_MAX=2000</code></pre>
+
+    <h3>5.3 Render Issues Encountered & Solutions</h3>
+    <div class="issue-card">
+      <div class="issue-title">❌ Issue 1: TS5108 / TS5102 (moduleResolution=node10 & baseUrl removed in TypeScript 5.8)</div>
+      <div class="issue-cause"><strong>Cause:</strong> Render uses modern TypeScript compiler where legacy compiler flags error out.</div>
+      <div class="issue-solution"><strong>Fix:</strong> Cleaned <code>API/tsconfig.json</code> to standard modern ES2020 compilation.</div>
+    </div>
+
+    <div class="issue-card">
+      <div class="issue-title">❌ Issue 2: TS7016 "Could not find a declaration file for module 'express'"</div>
+      <div class="issue-cause"><strong>Cause:</strong> <code>NODE_ENV=production</code> causes <code>npm install</code> to omit <code>devDependencies</code> where <code>@types/*</code> resided.</div>
+      <div class="issue-solution"><strong>Fix:</strong> Moved <code>@types/express</code>, <code>@types/bcryptjs</code>, <code>@types/jsonwebtoken</code>, etc. directly into <code>dependencies</code> in <code>API/package.json</code>.</div>
+    </div>
+
+    <div class="issue-card">
+      <div class="issue-title">❌ Issue 3: MongooseServerSelectionError (IP Not Whitelisted)</div>
+      <div class="issue-cause"><strong>Cause:</strong> Render servers connect from dynamic cloud IPs.</div>
+      <div class="issue-solution"><strong>Fix:</strong> Added <code>0.0.0.0/0</code> in MongoDB Atlas Network Access.</div>
+    </div>
+
+    <h2>6. Frontend Deployment on Vercel</h2>
+    <h3>6.1 Vercel Configuration</h3>
+    <ol style="padding-left: 20px; font-size: 13px; line-height: 1.8;">
+      <li>Import GitHub repository into Vercel.</li>
+      <li>In Project Settings, set <strong>Root Directory</strong> to <strong><code>UI</code></strong>.</li>
+      <li>In <strong>Environment Variables</strong>:
+        <br>Key: <code>VITE_API_URL</code>
+        <br>Value: <code>https://fantasy-cricket-api-ro18.onrender.com/api</code>
+        <br>Type: <strong><code>Config</code></strong> (Public)
+      </li>
+      <li>Trigger Deployment &rarr; Status becomes <strong>Ready</strong>!</li>
+    </ol>
+
+    <h3>6.2 Vercel Issues Encountered & Solutions</h3>
+    <div class="issue-card">
+      <div class="issue-title">❌ Issue 1: "404: NOT_FOUND" on initial deployment</div>
+      <div class="issue-cause"><strong>Cause:</strong> Vercel was building the monorepo root rather than <code>UI/</code>, and missing Nitro's Vercel build target.</div>
+      <div class="issue-solution"><strong>Fix:</strong> Set Root Directory to <code>UI</code> and configured <code>"build": "NITRO_PRESET=vercel vite build"</code> in <code>UI/package.json</code>.</div>
+    </div>
+
+    <div class="issue-card">
+      <div class="issue-title">❌ Issue 2: "Environment variables with public prefix cannot use visibility: secret"</div>
+      <div class="issue-cause"><strong>Cause:</strong> <code>VITE_</code> variables are client-facing and cannot be marked as write-only backend secrets.</div>
+      <div class="issue-solution"><strong>Fix:</strong> Deleted old secret variable and recreated <code>VITE_API_URL</code> with <strong>Config</strong> visibility.</div>
+    </div>
+
+    <h2>7. Production Verification Summary</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Endpoint / Feature</th>
+          <th>Target URL</th>
+          <th>Verified Result</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Frontend UI</strong></td>
+          <td><code>https://fantasy-cricket-integrated-qr4b.vercel.app</code></td>
+          <td>✅ 200 OK (Full responsive UI)</td>
+        </tr>
+        <tr>
+          <td><strong>Backend Health API</strong></td>
+          <td><code>https://fantasy-cricket-api-ro18.onrender.com/api/health</code></td>
+          <td>✅ <code>{"success": true, "message": "OK"}</code></td>
+        </tr>
+        <tr>
+          <td><strong>Database</strong></td>
+          <td>MongoDB Atlas Cluster</td>
+          <td>✅ 100% Local DB synced</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="alert alert-success" style="margin-top: 30px; text-align: center;">
+      🎉 <strong>Deployment Complete!</strong> The Fantasy Cricket Platform is officially live in production.
+    </div>
+  </div>
+
+</body>
+</html>
+
