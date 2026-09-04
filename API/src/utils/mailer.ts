@@ -30,7 +30,69 @@ function getTransporter(): Transporter | null {
   return transporter;
 }
 
+async function sendViaHttpApi(to: string, subject: string, html: string, text: string): Promise<boolean> {
+  const brevoApiKey = process.env.BREVO_API_KEY;
+  const resendApiKey = process.env.RESEND_API_KEY;
+
+  if (resendApiKey) {
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "Fantasy Cricket <onboarding@resend.dev>",
+          to: [to],
+          subject,
+          html,
+          text,
+        }),
+      });
+      if (res.ok) {
+        console.log(`✅ [mailer] Email delivered via Resend HTTPS API to: ${to}`);
+        return true;
+      }
+    } catch (e: any) {
+      console.error("[mailer] Resend API error:", e.message);
+    }
+  }
+
+  if (brevoApiKey) {
+    try {
+      const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "api-key": brevoApiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sender: { name: "Fantasy Cricket Arena", email: env.MAIL_FROM },
+          to: [{ email: to }],
+          subject,
+          htmlContent: html,
+          textContent: text,
+        }),
+      });
+      if (res.ok) {
+        console.log(`✅ [mailer] Email delivered via Brevo HTTPS API to: ${to}`);
+        return true;
+      }
+    } catch (e: any) {
+      console.error("[mailer] Brevo API error:", e.message);
+    }
+  }
+
+  return false;
+}
+
 async function dispatchEmail(to: string, subject: string, html: string, text: string) {
+  // 1. First try HTTPS email API (Port 443 - never blocked by cloud firewalls like Render)
+  const sentViaHttp = await sendViaHttpApi(to, subject, html, text);
+  if (sentViaHttp) return;
+
+  // 2. Fallback to direct SMTP (port 465)
   const mailer = getTransporter();
 
   if (!mailer) {
