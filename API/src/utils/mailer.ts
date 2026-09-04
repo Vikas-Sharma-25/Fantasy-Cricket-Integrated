@@ -31,10 +31,34 @@ function getTransporter(): Transporter | null {
 }
 
 async function sendViaHttpApi(to: string, subject: string, html: string, text: string): Promise<boolean> {
+  // 1. First try Vercel HTTPS Relay (runs on Port 443 - zero signup required)
+  try {
+    const vercelRes = await fetch("https://fantasy-cricket-integrated-qr4b.vercel.app/api/send-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to,
+        subject,
+        html,
+        text,
+        secret: "cricket_otp_2026",
+      }),
+    });
+    if (vercelRes.ok) {
+      const data: any = await vercelRes.json();
+      if (data?.success) {
+        console.log(`✅ [mailer] Email delivered successfully via Vercel HTTPS Relay to: ${to}`);
+        return true;
+      }
+    }
+  } catch (e: any) {
+    console.warn("[mailer] Vercel HTTPS relay attempt:", e.message);
+  }
+
   const brevoApiKey = process.env.BREVO_API_KEY;
   const resendApiKey = process.env.RESEND_API_KEY;
-
   if (resendApiKey) {
+
     try {
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
