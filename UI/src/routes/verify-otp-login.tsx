@@ -26,10 +26,11 @@ function VerifyOtpLogin() {
     setError("");
     setLoading(true);
     try {
-      await verifyLoginOtp(otp);
+      const otpToken = getFlow<string | undefined>(FLOW_KEYS.otpToken, undefined);
+      await verifyLoginOtp(otp, otpToken);
       navigate({ to: "/matches" });
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Invalid OTP code");
+    } catch (err: any) {
+      setError(err?.message || (err instanceof ApiClientError ? err.message : "Invalid OTP code"));
     } finally {
       setLoading(false);
     }
@@ -37,10 +38,14 @@ function VerifyOtpLogin() {
 
   async function resend() {
     try {
-      await resendOtp();
+      const currentToken = getFlow<string | undefined>(FLOW_KEYS.otpToken, undefined);
+      const res = await resendOtp(currentToken);
+      if (res?.otpToken) {
+        setFlow(FLOW_KEYS.otpToken, res.otpToken);
+      }
       setError("A fresh 6-digit OTP has been sent to your email.");
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Unable to resend OTP");
+    } catch (err: any) {
+      setError(err?.message || (err instanceof ApiClientError ? err.message : "Unable to resend OTP"));
     }
   }
 

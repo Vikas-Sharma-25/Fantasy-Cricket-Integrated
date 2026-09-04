@@ -22,8 +22,11 @@ function Login() {
     setError("");
     setLoading(true);
     try {
-      await loginUser({ email, password });
+      const res = await loginUser({ email, password });
       setFlow(FLOW_KEYS.pendingRegisterEmail, email);
+      if (res?.otpToken) {
+        setFlow(FLOW_KEYS.otpToken, res.otpToken);
+      }
       navigate({ to: "/verify-otp-login" });
     } catch (err: any) {
       setError(err?.message || "Login failed. Please try again.");

@@ -17,27 +17,32 @@ interface OtpSessionPayload extends Record<string, unknown> {
 function setRefreshCookie(res: Response, token: string) {
   res.cookie(REFRESH_COOKIE, token, {
     httpOnly: true,
-    secure: env.NODE_ENV === "production",    
-    sameSite: "lax",
+    secure: true,
+    sameSite: "none",
     maxAge: 7 * 24 * 60 * 60 * 1000
   });
 }
 
 /** Stores which user + purpose an OTP belongs to, so the client never sends userId. */
-function setOtpSessionCookie(res: Response, userId: string, purpose: OtpSessionPayload["purpose"]) {
+function setOtpSessionCookie(res: Response, userId: string, purpose: OtpSessionPayload["purpose"]): string {
   const expiresIn = `${env.OTP_EXPIRES_IN_MINUTES}m`;
   const token = signOneTimeToken({ userId, purpose } as OtpSessionPayload, expiresIn);
   res.cookie(OTP_SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: true,
+    sameSite: "none",
     maxAge: env.OTP_EXPIRES_IN_MINUTES * 60 * 1000
   });
+  return token;
 }
 
-/** Reads back {userId, purpose} from the otpSession cookie. Throws if missing/invalid/expired. */
+/** Reads back {userId, purpose} from body.otpToken, headers, or cookies. Throws if missing/invalid/expired. */
 function readOtpSession(req: Request, expectedPurpose: OtpSessionPayload["purpose"]): OtpSessionPayload {
-  const token = req.cookies?.[OTP_SESSION_COOKIE];
+  const token =
+    req.body?.otpToken ||
+    (req.headers["x-otp-session"] as string) ||
+    req.cookies?.[OTP_SESSION_COOKIE];
+
   if (!token) {
     throw ApiError.badRequest("OTP session expired or missing. Please register/login again to receive a new OTP.");
   }
@@ -55,10 +60,10 @@ function readOtpSession(req: Request, expectedPurpose: OtpSessionPayload["purpos
 
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const result = await authService.registerUser(req.body);
-  setOtpSessionCookie(res, result.userId, "verify_account");
+  const otpToken = setOtpSessionCookie(res, result.userId, "verify_account");
   return sendSuccess(
     res,
-    { email: result.email },
+    { email: result.email, otpToken },
     "Registration successful. Please enter the OTP sent to your email.",
     201
   );
@@ -76,10 +81,10 @@ export const verifyAccount = asyncHandler(async (req: Request, res: Response) =>
 export const login = asyncHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body;
   const result = await authService.loginStep1(email, password);
-  setOtpSessionCookie(res, result.userId, "login");
+  const otpToken = setOtpSessionCookie(res, result.userId, "login");
   return sendSuccess(
     res,
-    { message: result.message },
+    { message: result.message, otpToken, email },
     "OTP sent. Please verify to complete login."
   );
 });
@@ -98,9 +103,13 @@ export const verifyLoginOtp = asyncHandler(async (req: Request, res: Response) =
   return sendSuccess(res, { accessToken: result.accessToken, user: result.user }, "Login successful");
 });
 
-/** Resend: no payload needed - userId + purpose both come from the otpSession cookie. */
+/** Resend: no payload needed - userId + purpose both come from otpToken / cookie. */
 export const resendOtp = asyncHandler(async (req: Request, res: Response) => {
-  const token = req.cookies?.[OTP_SESSION_COOKIE];
+  const token =
+    req.body?.otpToken ||
+    (req.headers["x-otp-session"] as string) ||
+    req.cookies?.[OTP_SESSION_COOKIE];
+
   if (!token) {
     throw ApiError.badRequest("OTP session expired or missing. Please register/login again.");
   }
@@ -111,17 +120,18 @@ export const resendOtp = asyncHandler(async (req: Request, res: Response) => {
     throw ApiError.badRequest("OTP session expired. Please register/login again.");
   }
   const result = await authService.resendUserOtp(payload.userId, payload.purpose);
-  setOtpSessionCookie(res, payload.userId, payload.purpose); // refresh cookie with new expiry
-  return sendSuccess(res, { otpExpiresAt: result.otpExpiresAt }, "OTP resent successfully");
+  const newOtpToken = setOtpSessionCookie(res, payload.userId, payload.purpose); // refresh cookie with new expiry
+  return sendSuccess(res, { otpExpiresAt: result.otpExpiresAt, otpToken: newOtpToken }, "OTP resent successfully");
 });
 
 export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
   const { email } = req.body;
   const result = await authService.forgotPassword(email);
+  let otpToken: string | undefined;
   if (result.userId) {
-    setOtpSessionCookie(res, result.userId, "reset_password");
+    otpToken = setOtpSessionCookie(res, result.userId, "reset_password");
   }
-  return sendSuccess(res, { message: result.message }, result.message);
+  return sendSuccess(res, { message: result.message, otpToken }, result.message);
 });
 
 export const resetPassword = asyncHandler(async (req: Request, res: Response) => {

@@ -2,25 +2,25 @@ import { api } from "./api";
 import type { Contest, FantasyTeam, Match, MatchPlayer, User } from "./api-types";
 
 export async function registerUser(input: { name: string; email: string; mobile?: string; password: string }) {
-  return api.post<{ email: string }>("/auth/register", input);
+  return api.post<{ email: string; otpToken?: string }>("/auth/register", input);
 }
 
-export async function verifyAccount(otp: string) {
-  return api.post<{ message?: string }>("/auth/verify-account", { otp });
+export async function verifyAccount(otp: string, otpToken?: string) {
+  return api.post<{ message?: string }>("/auth/verify-account", { otp, otpToken });
 }
 
 export async function loginUser(input: { email: string; password: string }) {
-  return api.post<{ message?: string }>("/auth/login", input);
+  return api.post<{ message?: string; otpToken?: string; email?: string }>("/auth/login", input);
 }
 
-export async function verifyLoginOtp(otp: string) {
-  const result = await api.post<{ accessToken: string; user: User }>("/auth/verify-otp", { otp });
+export async function verifyLoginOtp(otp: string, otpToken?: string) {
+  const result = await api.post<{ accessToken: string; user: User }>("/auth/verify-otp", { otp, otpToken });
   if (typeof window !== "undefined") localStorage.setItem("accessToken", result.accessToken);
   return result;
 }
 
-export async function resendOtp() {
-  return api.post<{ otpExpiresAt: string }>("/auth/resend-otp", {});
+export async function resendOtp(otpToken?: string) {
+  return api.post<{ otpExpiresAt: string; otpToken?: string }>("/auth/resend-otp", { otpToken });
 }
 
 export async function logoutUser() {

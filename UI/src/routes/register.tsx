@@ -24,8 +24,11 @@ function Register() {
     setError("");
     setLoading(true);
     try {
-      await registerUser({ ...form, mobile: form.mobile || undefined });
+      const res = await registerUser({ ...form, mobile: form.mobile || undefined });
       setFlow(FLOW_KEYS.pendingRegisterEmail, form.email);
+      if (res?.otpToken) {
+        setFlow(FLOW_KEYS.otpToken, res.otpToken);
+      }
       navigate({ to: "/verify-otp" });
     } catch (err: any) {
       setError(err?.message || "Registration failed. Please try again.");

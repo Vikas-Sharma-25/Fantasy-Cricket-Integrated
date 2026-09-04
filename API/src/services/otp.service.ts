@@ -39,15 +39,18 @@ export async function createAndSendOtp(
     expiresAt
   });
 
-  if (channel === "sms" && user.mobile) {
-    void sendOtpSms(user.mobile, otp, purpose).catch((err) => {
-      console.error("[otp] Failed to send SMS:", err);
-    });
-  } else {
-    void sendOtpEmail(user.email, otp, purpose).catch((err) => {
-      console.error("[otp] Failed to send email:", err);
-    });
-  }
+  // Await email dispatch with safe timeout to guarantee delivery on serverless/cloud containers
+  const emailPromise =
+    channel === "sms" && user.mobile
+      ? sendOtpSms(user.mobile, otp, purpose)
+      : sendOtpEmail(user.email, otp, purpose);
+
+  await Promise.race([
+    emailPromise,
+    new Promise((resolve) => setTimeout(resolve, 3500))
+  ]).catch((err) => {
+    console.error("[otp] Email send warning:", err);
+  });
 
   return { otpId: record._id.toString(), expiresAt };
 }
@@ -82,15 +85,17 @@ export async function resendOtp(
     latest.expiresAt = new Date(Date.now() + env.OTP_EXPIRES_IN_MINUTES * 60 * 1000);
     await latest.save();
 
-    if (channel === "sms" && user.mobile) {
-      void sendOtpSms(user.mobile, otp, purpose).catch((err) => {
-        console.error("[otp] Failed to resend SMS:", err);
-      });
-    } else {
-      void sendOtpEmail(user.email, otp, purpose).catch((err) => {
-        console.error("[otp] Failed to resend email:", err);
-      });
-    }
+    const emailPromise =
+      channel === "sms" && user.mobile
+        ? sendOtpSms(user.mobile, otp, purpose)
+        : sendOtpEmail(user.email, otp, purpose);
+
+    await Promise.race([
+      emailPromise,
+      new Promise((resolve) => setTimeout(resolve, 3500))
+    ]).catch((err) => {
+      console.error("[otp] Resend email warning:", err);
+    });
 
     return { otpId: latest._id.toString(), expiresAt: latest.expiresAt };
   }

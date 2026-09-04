@@ -1,5 +1,6 @@
 export const FLOW_KEYS = {
   pendingRegisterEmail: "pendingRegisterEmail",
+  otpToken: "otpToken",
   selectedMatchId: "selectedMatchId",
   selectedContestId: "selectedContestId",
   selectedPlayerIds: "selectedPlayerIds",
