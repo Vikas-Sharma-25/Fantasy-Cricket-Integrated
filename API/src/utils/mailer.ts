@@ -15,10 +15,15 @@ function getTransporter(): Transporter | null {
   }
   if (!transporter) {
     transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
       auth: {
         user: env.SMTP_USER,
         pass: env.SMTP_PASS.replace(/\s+/g, ""),
+      },
+      tls: {
+        rejectUnauthorized: false,
       },
     });
   }
@@ -35,7 +40,7 @@ async function dispatchEmail(to: string, subject: string, html: string, text: st
 
   try {
     await mailer.sendMail({
-      from: env.MAIL_FROM,
+      from: `"Fantasy Cricket Arena" <${env.MAIL_FROM}>`,
       to,
       subject,
       html,

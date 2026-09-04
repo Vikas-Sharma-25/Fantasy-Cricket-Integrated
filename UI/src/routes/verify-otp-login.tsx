@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Loader2 } from "lucide-react";
 import { AuthLayout } from "@/components/fc/AuthLayout";
 import { OtpInput } from "@/components/fc/OtpInput";
 import { Button } from "@/components/ui/button";
@@ -75,9 +76,10 @@ function VerifyOtpLogin() {
           type="submit"
           variant="hero"
           size="xl"
-          className="w-full font-bold tracking-wide"
+          className="w-full font-bold tracking-wide flex items-center justify-center gap-2"
         >
-          {loading ? "VERIFYING..." : "VERIFY OTP"}
+          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          VERIFY OTP
         </Button>
 
         <div className="text-center">
