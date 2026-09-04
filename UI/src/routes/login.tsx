@@ -24,8 +24,8 @@ function Login() {
       await loginUser({ email, password });
       setFlow(FLOW_KEYS.pendingRegisterEmail, email);
       navigate({ to: "/verify-otp-login" });
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Login failed. Please try again.");
+    } catch (err: any) {
+      setError(err?.message || "Login failed. Please try again.");
     } finally { setLoading(false); }
   }
 
