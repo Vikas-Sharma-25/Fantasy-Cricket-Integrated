@@ -1,0 +1,6 @@
+{
+  "": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "cd UI && npm install && npm run build",
+  "outputDirectory": "UI/dist"
+}
