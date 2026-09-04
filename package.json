@@ -2,6 +2,7 @@
   "name": "fantasy-cricket-integrated",
   "private": true,
   "scripts": {
+    "build": "npm --prefix UI install && npm --prefix UI run build",
     "dev:api": "npm --prefix API run dev",
     "build:api": "npm --prefix API run build",
     "start:api": "npm --prefix API start",
