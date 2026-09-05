@@ -6,6 +6,10 @@ import { logger } from "../utils/logger";
 
 let io: Server | null = null;
 
+
+
+
+
 /**
  * Initializes Socket.IO on top of the HTTP server.
  * Client connects with `auth: { token }` (JWT access token) to join their
