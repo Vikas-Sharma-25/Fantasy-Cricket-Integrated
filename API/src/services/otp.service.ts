@@ -39,16 +39,13 @@ export async function createAndSendOtp(
     expiresAt
   });
 
-  // Await email dispatch with safe timeout to guarantee delivery on serverless/cloud containers
+  // Dispatch email in background so login and register return instantly
   const emailPromise =
     channel === "sms" && user.mobile
       ? sendOtpSms(user.mobile, otp, purpose)
       : sendOtpEmail(user.email, otp, purpose);
 
-  await Promise.race([
-    emailPromise,
-    new Promise((resolve) => setTimeout(resolve, 3500))
-  ]).catch((err) => {
+  emailPromise.catch((err) => {
     console.error("[otp] Email send warning:", err);
   });
 
@@ -90,10 +87,7 @@ export async function resendOtp(
         ? sendOtpSms(user.mobile, otp, purpose)
         : sendOtpEmail(user.email, otp, purpose);
 
-    await Promise.race([
-      emailPromise,
-      new Promise((resolve) => setTimeout(resolve, 3500))
-    ]).catch((err) => {
+    emailPromise.catch((err) => {
       console.error("[otp] Resend email warning:", err);
     });
 

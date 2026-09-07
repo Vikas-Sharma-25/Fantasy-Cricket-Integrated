@@ -1,6 +1,4 @@
-import { useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { cn } from "@/lib/utils";
 import {
   ShieldCheck,
   Trophy,
@@ -270,28 +268,8 @@ const faqs = [
   },
 ];
 
-type SectionKey = "all" | "matches" | "how-to-play" | "contests" | "why-us" | "winners" | "faq";
-
-const SECTION_LABELS: Record<SectionKey, string> = {
-  all: "Overview (All)",
-  matches: "Featured Matches",
-  "how-to-play": "How To Play",
-  contests: "Contests & Formats",
-  "why-us": "Platform Advantages",
-  winners: "Champions Hall of Fame",
-  faq: "Frequently Asked Questions",
-};
-
 function Landing() {
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState<SectionKey>("all");
-
-  function selectSection(sec: SectionKey) {
-    setActiveSection(sec);
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  }
 
   function handleAction(msg: string) {
     setFlow(FLOW_KEYS.authPromptMsg, msg);
@@ -315,52 +293,26 @@ function Landing() {
         {/* ==================== 1. TOP NAVIGATION ==================== */}
         <header className="flex items-center justify-between border-b border-border/50 py-5">
           <div className="flex items-center gap-8">
-            <button type="button" onClick={() => selectSection("all")} className="text-left">
-              <Logo size="md" />
-            </button>
+            <Logo size="md" />
             <nav className="hidden items-center gap-6 text-sm font-semibold text-muted-foreground lg:flex">
-              <button
-                type="button"
-                onClick={() => selectSection("matches")}
-                className={cn("transition-colors hover:text-primary", activeSection === "matches" && "text-primary font-bold")}
-              >
+              <a href="#matches" className="transition-colors hover:text-primary">
                 Featured Matches
-              </button>
-              <button
-                type="button"
-                onClick={() => selectSection("how-to-play")}
-                className={cn("transition-colors hover:text-primary", activeSection === "how-to-play" && "text-primary font-bold")}
-              >
+              </a>
+              <a href="#how-to-play" className="transition-colors hover:text-primary">
                 How To Play
-              </button>
-              <button
-                type="button"
-                onClick={() => selectSection("contests")}
-                className={cn("transition-colors hover:text-primary", activeSection === "contests" && "text-primary font-bold")}
-              >
+              </a>
+              <a href="#contests" className="transition-colors hover:text-primary">
                 Contests
-              </button>
-              <button
-                type="button"
-                onClick={() => selectSection("why-us")}
-                className={cn("transition-colors hover:text-primary", activeSection === "why-us" && "text-primary font-bold")}
-              >
+              </a>
+              <a href="#why-us" className="transition-colors hover:text-primary">
                 Why Us
-              </button>
-              <button
-                type="button"
-                onClick={() => selectSection("winners")}
-                className={cn("transition-colors hover:text-primary", activeSection === "winners" && "text-primary font-bold")}
-              >
+              </a>
+              <a href="#winners" className="transition-colors hover:text-primary">
                 Winners
-              </button>
-              <button
-                type="button"
-                onClick={() => selectSection("faq")}
-                className={cn("transition-colors hover:text-primary", activeSection === "faq" && "text-primary font-bold")}
-              >
+              </a>
+              <a href="#faq" className="transition-colors hover:text-primary">
                 FAQ
-              </button>
+              </a>
             </nav>
           </div>
 
@@ -378,479 +330,426 @@ function Landing() {
           </div>
         </header>
 
-        {/* ==================== CATEGORY PILL SELECTOR ==================== */}
-        <div className="flex items-center gap-2 overflow-x-auto py-3 border-b border-border/40 scrollbar-none">
-          {(["all", "matches", "how-to-play", "contests", "why-us", "winners", "faq"] as SectionKey[]).map((sec) => (
-            <button
-              key={sec}
-              type="button"
-              onClick={() => selectSection(sec)}
-              className={cn(
-                "shrink-0 rounded-full px-4 py-1.5 text-xs font-bold transition-all",
-                activeSection === sec
-                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
-                  : "bg-surface text-muted-foreground hover:bg-surface-2 hover:text-foreground border border-border/80"
-              )}
-            >
-              {SECTION_LABELS[sec]}
-            </button>
-          ))}
-        </div>
+        {/* ==================== 2. HERO SECTION ==================== */}
+        <section className="max-w-2xl pb-16 pt-10 lg:pt-16">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-2">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
+            </span>
+            <span className="text-xs font-bold uppercase tracking-wider text-primary">
+              ₹10+ Crore Daily Prize Pool Live
+            </span>
+          </div>
 
-        {/* ==================== FOCUSED SECTION BANNER ==================== */}
-        {activeSection !== "all" && (
-          <div className="my-6 flex items-center justify-between rounded-2xl border border-primary/40 bg-primary/10 px-5 py-4 shadow-lg backdrop-blur">
+          <h1 className="mt-7 font-display text-5xl font-black uppercase leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
+            Play Cricket.
+            <br />
+            <span className="text-primary">Predict Winners.</span>
+            <br />
+            Win Real Cash.
+          </h1>
+
+          <p className="mt-6 max-w-lg text-lg leading-relaxed text-foreground/80 sm:text-xl font-medium">
+            Build your dream XI, join high-stakes mega contests, and withdraw real cash winnings instantly into your bank
+            account.
+          </p>
+
+          <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-4">
+            {trust.map(({ icon: Icon, title, sub }, i) => (
+              <div key={title} className="flex items-center gap-3">
+                {i > 0 && <span className="-ml-4 mr-1 hidden h-8 w-px bg-border sm:block" />}
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-display text-xs font-bold uppercase tracking-wide">{title}</p>
+                  <p className="text-[11px] text-muted-foreground">{sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-9 flex flex-wrap gap-4">
+            <Button
+              type="button"
+              onClick={() =>
+                handleAction("🏏 Register now to join Mega Contests and compete for multi-crore cash prizes!")
+              }
+              variant="hero"
+              size="xl"
+              className="gap-3 font-bold shadow-xl shadow-primary/25"
+            >
+              <Trophy className="h-5 w-5" /> PLAY NOW & WIN CASH <ArrowRight className="h-4 w-4" />
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="xl"
+              className="gap-2 border-border/80 bg-surface/80 font-bold hover:bg-surface-2"
+            >
+              <a href="#how-to-play">
+                <Play className="h-4 w-4 text-primary" /> HOW TO PLAY
+              </a>
+            </Button>
+          </div>
+        </section>
+
+        {/* ==================== 3. STATS STRIP ==================== */}
+        <section className="mb-20 grid grid-cols-2 gap-y-6 rounded-2xl border border-border/80 bg-surface/80 px-6 py-6 backdrop-blur sm:grid-cols-3 lg:grid-cols-5 shadow-xl">
+          {stats.map(({ icon: Icon, value, label }, i) => (
+            <div key={label} className="relative flex items-center justify-center gap-3 px-3">
+              {i > 0 && <span className="absolute -left-0.5 hidden h-10 w-px bg-border/60 lg:block" />}
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Icon className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="font-display text-lg font-black tracking-tight">{value}</p>
+                <p className="text-xs text-muted-foreground font-medium">{label}</p>
+              </div>
+            </div>
+          ))}
+        </section>
+
+        {/* ==================== 4. FEATURED MATCHES ==================== */}
+        <section id="matches" className="mb-24 scroll-mt-24">
+          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Focused View Active</span>
-              <h2 className="text-xl font-black font-display text-foreground">{SECTION_LABELS[activeSection]}</h2>
+              <div className="inline-flex items-center gap-2 rounded-md bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-400">
+                <Flame className="h-3.5 w-3.5" /> MEGA CONTESTS LIVE
+              </div>
+              <h2 className="mt-3 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
+                Featured Upcoming Matches
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Pick an active fixture, build your fantasy team, and grab your share of the prize pool.
+              </p>
             </div>
             <Button
               type="button"
+              onClick={() => handleAction("🏏 Login or register to browse all domestic & international matches!")}
               variant="outlineGreen"
               size="sm"
-              onClick={() => selectSection("all")}
-              className="font-bold text-xs gap-1.5"
+              className="w-fit gap-2 font-bold"
             >
-              Show All Sections
+              VIEW ALL MATCHES <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
-        )}
 
-        {/* ==================== 2. HERO SECTION ==================== */}
-        {activeSection === "all" && (
-          <>
-            <section className="max-w-2xl pb-16 pt-10 lg:pt-16">
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
-                </span>
-                <span className="text-xs font-bold uppercase tracking-wider text-primary">
-                  ₹10+ Crore Daily Prize Pool Live
-                </span>
-              </div>
+          <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
+            {featuredMatches.map((m) => (
+              <div
+                key={m.id}
+                className="group relative overflow-hidden rounded-2xl border border-border/80 bg-surface/90 p-6 transition-all duration-300 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/10"
+              >
+                {/* Header tag & countdown */}
+                <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    {m.tournament}
+                  </span>
+                  <div className="flex items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1 text-xs font-semibold text-amber-400">
+                    <Clock className="h-3 w-3" /> {m.timeLeft}
+                  </div>
+                </div>
 
-              <h1 className="mt-7 font-display text-5xl font-black uppercase leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
-                Play Cricket.
-                <br />
-                <span className="text-primary">Predict Winners.</span>
-                <br />
-                Win Real Cash.
-              </h1>
-
-              <p className="mt-6 max-w-lg text-lg leading-relaxed text-foreground/80 sm:text-xl font-medium">
-                Build your dream XI, join high-stakes mega contests, and withdraw real cash winnings instantly into your bank
-                account.
-              </p>
-
-              <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-4">
-                {trust.map(({ icon: Icon, title, sub }, i) => (
-                  <div key={title} className="flex items-center gap-3">
-                    {i > 0 && <span className="-ml-4 mr-1 hidden h-8 w-px bg-border sm:block" />}
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Icon className="h-5 w-5" />
+                {/* Team Vs Team visual */}
+                <div className="my-6 flex items-center justify-between px-2">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-2 text-2xl shadow-inner border border-border/60">
+                      {m.team1.flag}
                     </div>
                     <div>
-                      <p className="font-display text-xs font-bold uppercase tracking-wide">{title}</p>
-                      <p className="text-[11px] text-muted-foreground">{sub}</p>
+                      <p className="font-display text-xl font-black tracking-tight">{m.team1.code}</p>
+                      <p className="text-xs text-muted-foreground">{m.team1.name}</p>
                     </div>
                   </div>
-                ))}
-              </div>
 
-              <div className="mt-9 flex flex-wrap gap-4">
-                <Button
-                  type="button"
-                  onClick={() =>
-                    handleAction("🏏 Register now to join Mega Contests and compete for multi-crore cash prizes!")
-                  }
-                  variant="hero"
-                  size="xl"
-                  className="gap-3 font-bold shadow-xl shadow-primary/25"
-                >
-                  <Trophy className="h-5 w-5" /> PLAY NOW & WIN CASH <ArrowRight className="h-4 w-4" />
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => selectSection("how-to-play")}
-                  variant="outline"
-                  size="xl"
-                  className="gap-2 border-border/80 bg-surface/80 font-bold hover:bg-surface-2"
-                >
-                  <Play className="h-4 w-4 text-primary" /> HOW TO PLAY
-                </Button>
-              </div>
-            </section>
-
-            {/* ==================== 3. STATS STRIP ==================== */}
-            <section className="mb-20 grid grid-cols-2 gap-y-6 rounded-2xl border border-border/80 bg-surface/80 px-6 py-6 backdrop-blur sm:grid-cols-3 lg:grid-cols-5 shadow-xl">
-              {stats.map(({ icon: Icon, value, label }, i) => (
-                <div key={label} className="relative flex items-center justify-center gap-3 px-3">
-                  {i > 0 && <span className="absolute -left-0.5 hidden h-10 w-px bg-border/60 lg:block" />}
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <Icon className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="font-display text-lg font-black tracking-tight">{value}</p>
-                    <p className="text-xs text-muted-foreground font-medium">{label}</p>
-                  </div>
-                </div>
-              ))}
-            </section>
-          </>
-        )}
-
-        {/* ==================== 4. FEATURED MATCHES ==================== */}
-        {(activeSection === "all" || activeSection === "matches") && (
-          <section id="matches" className="mb-24 scroll-mt-24">
-            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-              <div>
-                <div className="inline-flex items-center gap-2 rounded-md bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-400">
-                  <Flame className="h-3.5 w-3.5" /> MEGA CONTESTS LIVE
-                </div>
-                <h2 className="mt-3 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
-                  Featured Upcoming Matches
-                </h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Pick an active fixture, build your fantasy team, and grab your share of the prize pool.
-                </p>
-              </div>
-              <Button
-                type="button"
-                onClick={() => handleAction("🏏 Login or register to browse all domestic & international matches!")}
-                variant="outlineGreen"
-                size="sm"
-                className="w-fit gap-2 font-bold"
-              >
-                VIEW ALL MATCHES <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
-              {featuredMatches.map((m) => (
-                <div
-                  key={m.id}
-                  className="group relative overflow-hidden rounded-2xl border border-border/80 bg-surface/90 p-6 transition-all duration-300 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/10"
-                >
-                  {/* Header tag & countdown */}
-                  <div className="flex items-center justify-between border-b border-border/60 pb-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      {m.tournament}
+                  <div className="flex flex-col items-center">
+                    <span className="rounded-full bg-primary/10 px-2.5 py-0.5 font-display text-xs font-black text-primary">
+                      VS
                     </span>
-                    <div className="flex items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1 text-xs font-semibold text-amber-400">
-                      <Clock className="h-3 w-3" /> {m.timeLeft}
+                  </div>
+
+                  <div className="flex items-center gap-3 text-right">
+                    <div>
+                      <p className="font-display text-xl font-black tracking-tight">{m.team2.code}</p>
+                      <p className="text-xs text-muted-foreground">{m.team2.name}</p>
+                    </div>
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-2 text-2xl shadow-inner border border-border/60">
+                      {m.team2.flag}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Prize Pool stats */}
+                <div className="rounded-xl border border-border/60 bg-surface-2/60 p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground font-semibold">Total Prize Pool</p>
+                      <p className="font-display text-2xl font-black text-primary">{m.prizePool}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground font-semibold">1st Prize</p>
+                      <p className="font-display text-lg font-bold text-amber-400">{m.firstPrize}</p>
                     </div>
                   </div>
 
-                  {/* Team Vs Team visual */}
-                  <div className="my-6 flex items-center justify-between px-2">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-2 text-2xl shadow-inner border border-border/60">
-                        {m.team1.flag}
-                      </div>
-                      <div>
-                        <p className="font-display text-xl font-black tracking-tight">{m.team1.code}</p>
-                        <p className="text-xs text-muted-foreground">{m.team1.name}</p>
-                      </div>
+                  {/* Progress bar */}
+                  <div className="mt-3">
+                    <div className="flex justify-between text-[11px] text-muted-foreground">
+                      <span>{m.spotsFilled} spots filled</span>
+                      <span>{m.totalSpots}</span>
                     </div>
+                    <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-surface">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-primary to-amber-500"
+                        style={{ width: m.spotsFilled }}
+                      />
+                    </div>
+                  </div>
+                </div>
 
-                    <div className="flex flex-col items-center">
-                      <span className="rounded-full bg-primary/10 px-2.5 py-0.5 font-display text-xs font-black text-primary">
-                        VS
+                {/* Card CTA */}
+                <div className="mt-5 flex items-center justify-between">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-xs text-muted-foreground font-medium">Entry:</span>
+                    <span className="font-display text-lg font-bold text-foreground">{m.entryFee}</span>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() =>
+                      handleAction(`🏏 Join the ${m.team1.code} vs ${m.team2.code} Mega Contest! Register to play.`)
+                    }
+                    variant="hero"
+                    size="sm"
+                    className="gap-1.5 font-bold shadow-md shadow-primary/20"
+                  >
+                    JOIN CONTEST <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ==================== 5. HOW TO PLAY ==================== */}
+        <section id="how-to-play" className="mb-24 scroll-mt-24 rounded-3xl border border-border/80 bg-surface/50 p-8 lg:p-12">
+          <div className="text-center max-w-2xl mx-auto">
+            <div className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+              <Play className="h-3.5 w-3.5" /> 4 SIMPLE STEPS
+            </div>
+            <h2 className="mt-3 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
+              How To Play & Win Cash
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Turn your cricket insight into real cash earnings in just four simple moves.
+            </p>
+          </div>
+
+          <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {howToPlaySteps.map((s, idx) => (
+              <div
+                key={s.step}
+                className="relative flex flex-col justify-between rounded-2xl border border-border/80 bg-surface p-6 shadow-lg transition-transform hover:-translate-y-1"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-display text-4xl font-black text-primary/40">{s.step}</span>
+                    <Badge variant="secondary" className="text-[10px] font-bold">
+                      {s.badge}
+                    </Badge>
+                  </div>
+                  <h3 className="mt-4 font-display text-xl font-bold tracking-tight">{s.title}</h3>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{s.desc}</p>
+                </div>
+                <div className="mt-6 flex items-center gap-2 text-xs font-semibold text-primary">
+                  <Check className="h-4 w-4" /> Step {idx + 1} of 4
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-10 flex justify-center">
+            <Button
+              type="button"
+              onClick={() => handleAction("🏏 Ready to create your Dream XI? Register now to get started!")}
+              variant="hero"
+              size="lg"
+              className="gap-2 font-bold shadow-lg shadow-primary/20"
+            >
+              CREATE YOUR TEAM NOW <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </section>
+
+        {/* ==================== 6. CONTEST TYPES ==================== */}
+        <section id="contests" className="mb-24 scroll-mt-24">
+          <div className="text-center max-w-2xl mx-auto">
+            <div className="inline-flex items-center gap-2 rounded-md bg-purple-500/10 px-3 py-1 text-xs font-bold text-purple-400">
+              <Trophy className="h-3.5 w-3.5" /> GAME FORMATS
+            </div>
+            <h2 className="mt-3 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
+              A Contest For Every Strategy
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Whether you prefer massive multi-crore tournaments or high-odds head-to-head duels, we have it all.
+            </p>
+          </div>
+
+          <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {contestTypes.map((c) => {
+              const Icon = c.icon;
+              return (
+                <div
+                  key={c.title}
+                  className="flex flex-col justify-between rounded-2xl border border-border/80 bg-surface/90 p-6 transition-all hover:border-primary/50 hover:shadow-xl"
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <Icon className="h-6 w-6" />
+                      </div>
+                      <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${c.tagColor}`}>
+                        {c.tag}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-3 text-right">
-                      <div>
-                        <p className="font-display text-xl font-black tracking-tight">{m.team2.code}</p>
-                        <p className="text-xs text-muted-foreground">{m.team2.name}</p>
-                      </div>
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-2 text-2xl shadow-inner border border-border/60">
-                        {m.team2.flag}
-                      </div>
-                    </div>
+                    <h3 className="mt-5 font-display text-xl font-bold tracking-tight">{c.title}</h3>
+                    <p className="text-xs font-semibold text-primary mt-0.5">{c.subtitle}</p>
+                    <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{c.desc}</p>
                   </div>
 
-                  {/* Prize Pool stats */}
-                  <div className="rounded-xl border border-border/60 bg-surface-2/60 p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-muted-foreground font-semibold">Total Prize Pool</p>
-                        <p className="font-display text-2xl font-black text-primary">{m.prizePool}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-muted-foreground font-semibold">1st Prize</p>
-                        <p className="font-display text-lg font-bold text-amber-400">{m.firstPrize}</p>
-                      </div>
-                    </div>
-
-                    {/* Progress bar */}
-                    <div className="mt-3">
-                      <div className="flex justify-between text-[11px] text-muted-foreground">
-                        <span>{m.spotsFilled} spots filled</span>
-                        <span>{m.totalSpots}</span>
-                      </div>
-                      <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-surface">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-primary to-amber-500"
-                          style={{ width: m.spotsFilled }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card CTA */}
-                  <div className="mt-5 flex items-center justify-between">
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-xs text-muted-foreground font-medium">Entry:</span>
-                      <span className="font-display text-lg font-bold text-foreground">{m.entryFee}</span>
-                    </div>
-                    <Button
-                      type="button"
-                      onClick={() =>
-                        handleAction(`🏏 Join the ${m.team1.code} vs ${m.team2.code} Mega Contest! Register to play.`)
-                      }
-                      variant="hero"
-                      size="sm"
-                      className="gap-1.5 font-bold shadow-md shadow-primary/20"
-                    >
-                      JOIN CONTEST <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ==================== 5. HOW TO PLAY ==================== */}
-        {(activeSection === "all" || activeSection === "how-to-play") && (
-          <section id="how-to-play" className="mb-24 scroll-mt-24 rounded-3xl border border-border/80 bg-surface/50 p-8 lg:p-12">
-            <div className="text-center max-w-2xl mx-auto">
-              <div className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-                <Play className="h-3.5 w-3.5" /> 4 SIMPLE STEPS
-              </div>
-              <h2 className="mt-3 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
-                How To Play & Win Cash
-              </h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Turn your cricket insight into real cash earnings in just four simple moves.
-              </p>
-            </div>
-
-            <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {howToPlaySteps.map((s, idx) => (
-                <div
-                  key={s.step}
-                  className="relative flex flex-col justify-between rounded-2xl border border-border/80 bg-surface p-6 shadow-lg transition-transform hover:-translate-y-1"
-                >
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-display text-4xl font-black text-primary/40">{s.step}</span>
-                      <Badge variant="secondary" className="text-[10px] font-bold">
-                        {s.badge}
-                      </Badge>
-                    </div>
-                    <h3 className="mt-4 font-display text-xl font-bold tracking-tight">{s.title}</h3>
-                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{s.desc}</p>
-                  </div>
-                  <div className="mt-6 flex items-center gap-2 text-xs font-semibold text-primary">
-                    <Check className="h-4 w-4" /> Step {idx + 1} of 4
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-10 flex justify-center">
-              <Button
-                type="button"
-                onClick={() => handleAction("🏏 Ready to create your Dream XI? Register now to get started!")}
-                variant="hero"
-                size="lg"
-                className="gap-2 font-bold shadow-lg shadow-primary/20"
-              >
-                CREATE YOUR TEAM NOW <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </section>
-        )}
-
-        {/* ==================== 6. CONTEST TYPES ==================== */}
-        {(activeSection === "all" || activeSection === "contests") && (
-          <section id="contests" className="mb-24 scroll-mt-24">
-            <div className="text-center max-w-2xl mx-auto">
-              <div className="inline-flex items-center gap-2 rounded-md bg-purple-500/10 px-3 py-1 text-xs font-bold text-purple-400">
-                <Trophy className="h-3.5 w-3.5" /> GAME FORMATS
-              </div>
-              <h2 className="mt-3 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
-                A Contest For Every Strategy
-              </h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Whether you prefer massive multi-crore tournaments or high-odds head-to-head duels, we have it all.
-              </p>
-            </div>
-
-            <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {contestTypes.map((c) => {
-                const Icon = c.icon;
-                return (
-                  <div
-                    key={c.title}
-                    className="flex flex-col justify-between rounded-2xl border border-border/80 bg-surface/90 p-6 transition-all hover:border-primary/50 hover:shadow-xl"
+                  <Button
+                    type="button"
+                    onClick={() => handleAction(`🏏 Register to play in ${c.title}!`)}
+                    variant="outline"
+                    size="sm"
+                    className="mt-6 w-full font-bold border-border/80 hover:border-primary"
                   >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                          <Icon className="h-6 w-6" />
-                        </div>
-                        <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${c.tagColor}`}>
-                          {c.tag}
-                        </span>
-                      </div>
-
-                      <h3 className="mt-5 font-display text-xl font-bold tracking-tight">{c.title}</h3>
-                      <p className="text-xs font-semibold text-primary mt-0.5">{c.subtitle}</p>
-                      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{c.desc}</p>
-                    </div>
-
-                    <Button
-                      type="button"
-                      onClick={() => handleAction(`🏏 Register to play in ${c.title}!`)}
-                      variant="outline"
-                      size="sm"
-                      className="mt-6 w-full font-bold border-border/80 hover:border-primary"
-                    >
-                      ENTER CONTEST
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
+                    ENTER CONTEST
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
 
         {/* ==================== 7. WHY CHOOSE US ==================== */}
-        {(activeSection === "all" || activeSection === "why-us") && (
-          <section id="why-us" className="mb-24 scroll-mt-24">
-            <div className="text-center max-w-2xl mx-auto">
-              <div className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-                <ShieldCheck className="h-3.5 w-3.5" /> THE PLATFORM ADVANTAGE
-              </div>
-              <h2 className="mt-3 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
-                Why 4 Crore+ Players Trust Us
-              </h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Built with bank-grade security, instantaneous payouts, and unmatched cricket gameplay.
-              </p>
+        <section id="why-us" className="mb-24 scroll-mt-24">
+          <div className="text-center max-w-2xl mx-auto">
+            <div className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+              <ShieldCheck className="h-3.5 w-3.5" /> THE PLATFORM ADVANTAGE
             </div>
+            <h2 className="mt-3 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
+              Why 4 Crore+ Players Trust Us
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Built with bank-grade security, instantaneous payouts, and unmatched cricket gameplay.
+            </p>
+          </div>
 
-            <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {advantages.map((adv) => {
-                const Icon = adv.icon;
-                return (
-                  <div
-                    key={adv.title}
-                    className="rounded-2xl border border-border/80 bg-surface/80 p-6 transition-all hover:border-primary/40 hover:bg-surface"
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                      <Icon className="h-6 w-6" />
-                    </div>
-                    <h3 className="mt-5 font-display text-lg font-bold">{adv.title}</h3>
-                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{adv.desc}</p>
+          <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {advantages.map((adv) => {
+              const Icon = adv.icon;
+              return (
+                <div
+                  key={adv.title}
+                  className="rounded-2xl border border-border/80 bg-surface/80 p-6 transition-all hover:border-primary/40 hover:bg-surface"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Icon className="h-6 w-6" />
                   </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
+                  <h3 className="mt-5 font-display text-lg font-bold">{adv.title}</h3>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{adv.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
 
         {/* ==================== 8. CHAMPIONS WALL ==================== */}
-        {(activeSection === "all" || activeSection === "winners") && (
-          <section id="winners" className="mb-24 scroll-mt-24 rounded-3xl border border-border/80 bg-surface/60 p-8 lg:p-12">
-            <div className="text-center max-w-2xl mx-auto">
-              <div className="inline-flex items-center gap-2 rounded-md bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-400">
-                <Award className="h-3.5 w-3.5" /> HALL OF FAME
-              </div>
-              <h2 className="mt-3 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
-                Real Players. Real Winnings.
-              </h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                See what our recent champions have to say about their tournament triumphs.
-              </p>
+        <section id="winners" className="mb-24 scroll-mt-24 rounded-3xl border border-border/80 bg-surface/60 p-8 lg:p-12">
+          <div className="text-center max-w-2xl mx-auto">
+            <div className="inline-flex items-center gap-2 rounded-md bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-400">
+              <Award className="h-3.5 w-3.5" /> HALL OF FAME
             </div>
+            <h2 className="mt-3 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
+              Real Players. Real Winnings.
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              See what our recent champions have to say about their tournament triumphs.
+            </p>
+          </div>
 
-            <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
-              {winners.map((w) => (
-                <div
-                  key={w.name}
-                  className="flex flex-col justify-between rounded-2xl border border-border/80 bg-surface p-6 shadow-lg"
-                >
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary font-display font-bold text-primary-foreground">
-                          {w.avatar}
-                        </div>
-                        <div>
-                          <p className="font-display text-sm font-bold">{w.name}</p>
-                          <p className="text-[11px] text-muted-foreground">{w.location}</p>
-                        </div>
+          <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
+            {winners.map((w) => (
+              <div
+                key={w.name}
+                className="flex flex-col justify-between rounded-2xl border border-border/80 bg-surface p-6 shadow-lg"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary font-display font-bold text-primary-foreground">
+                        {w.avatar}
                       </div>
-                      <div className="flex text-amber-400">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} className="h-3.5 w-3.5 fill-current" />
-                        ))}
+                      <div>
+                        <p className="font-display text-sm font-bold">{w.name}</p>
+                        <p className="text-[11px] text-muted-foreground">{w.location}</p>
                       </div>
                     </div>
-
-                    <div className="my-4 rounded-lg bg-surface-2 p-3">
-                      <p className="text-[11px] text-muted-foreground font-medium">Won in {w.contest}</p>
-                      <p className="font-display text-2xl font-black text-primary">{w.won}</p>
+                    <div className="flex text-amber-400">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="h-3.5 w-3.5 fill-current" />
+                      ))}
                     </div>
-
-                    <p className="text-xs italic leading-relaxed text-muted-foreground">"{w.quote}"</p>
                   </div>
 
-                  <div className="mt-5 flex items-center gap-1.5 text-[11px] font-semibold text-primary">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Verified Winner
+                  <div className="my-4 rounded-lg bg-surface-2 p-3">
+                    <p className="text-[11px] text-muted-foreground font-medium">Won in {w.contest}</p>
+                    <p className="font-display text-2xl font-black text-primary">{w.won}</p>
                   </div>
+
+                  <p className="text-xs italic leading-relaxed text-muted-foreground">"{w.quote}"</p>
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
+
+                <div className="mt-5 flex items-center gap-1.5 text-[11px] font-semibold text-primary">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Verified Winner
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* ==================== 9. FAQ ACCORDION ==================== */}
-        {(activeSection === "all" || activeSection === "faq") && (
-          <section id="faq" className="mb-24 scroll-mt-24 max-w-3xl mx-auto">
-            <div className="text-center">
-              <div className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-                <HelpCircle className="h-3.5 w-3.5" /> FREQUENTLY ASKED QUESTIONS
-              </div>
-              <h2 className="mt-3 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
-                Got Questions? We Have Answers.
-              </h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Everything you need to know about deposits, legality, withdrawals, and scoring rules.
-              </p>
+        <section id="faq" className="mb-24 scroll-mt-24 max-w-3xl mx-auto">
+          <div className="text-center">
+            <div className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+              <HelpCircle className="h-3.5 w-3.5" /> FREQUENTLY ASKED QUESTIONS
             </div>
+            <h2 className="mt-3 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
+              Got Questions? We Have Answers.
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Everything you need to know about deposits, legality, withdrawals, and scoring rules.
+            </p>
+          </div>
 
-            <div className="mt-10 rounded-2xl border border-border/80 bg-surface/80 p-6 backdrop-blur shadow-xl">
-              <Accordion type="single" collapsible className="w-full space-y-2">
-                {faqs.map((faq, index) => (
-                  <AccordionItem key={index} value={`item-${index}`} className="border-b border-border/60 last:border-none">
-                    <AccordionTrigger className="text-left font-display text-sm font-bold sm:text-base hover:text-primary">
-                      {faq.q}
-                    </AccordionTrigger>
-                    <AccordionContent className="text-xs sm:text-sm leading-relaxed text-muted-foreground">
-                      {faq.a}
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            </div>
-          </section>
-        )}
+          <div className="mt-10 rounded-2xl border border-border/80 bg-surface/80 p-6 backdrop-blur shadow-xl">
+            <Accordion type="single" collapsible className="w-full space-y-2">
+              {faqs.map((faq, index) => (
+                <AccordionItem key={index} value={`item-${index}`} className="border-b border-border/60 last:border-none">
+                  <AccordionTrigger className="text-left font-display text-sm font-bold sm:text-base hover:text-primary">
+                    {faq.q}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-xs sm:text-sm leading-relaxed text-muted-foreground">
+                    {faq.a}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+        </section>
 
         {/* ==================== 10. RESPONSIBLE PLAY & 18+ ADVISORY ==================== */}
         <section className="mb-20 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-6 sm:p-8">

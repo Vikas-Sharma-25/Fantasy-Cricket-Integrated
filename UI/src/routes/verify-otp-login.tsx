@@ -1,11 +1,11 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { AuthLayout } from "@/components/fc/AuthLayout";
 import { OtpInput } from "@/components/fc/OtpInput";
 import { Button } from "@/components/ui/button";
 import { verifyLoginOtp, resendOtp } from "@/lib/api-services";
-import { getFlow, FLOW_KEYS } from "@/lib/flow";
+import { getFlow, setFlow, FLOW_KEYS } from "@/lib/flow";
 import { ApiClientError } from "@/lib/api";
 
 export const Route = createFileRoute("/verify-otp-login")({ component: VerifyOtpLogin });
@@ -58,6 +58,7 @@ function VerifyOtpLogin() {
       if (res?.otpToken) {
         setFlow(FLOW_KEYS.otpToken, res.otpToken);
       }
+      setError("A fresh 6-digit OTP has been sent to your email.");
       setSuccessMsg("A fresh 6-digit OTP has been sent to your registered email.");
       setCountdown(60);
     } catch (err: any) {
@@ -97,6 +98,7 @@ function VerifyOtpLogin() {
             onClick={resend}
             className="font-bold text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
           >
+            Resend OTP
             {resending ? (
               <>
                 <Loader2 className="h-3 w-3 animate-spin" /> Sending...
