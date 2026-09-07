@@ -15,7 +15,18 @@ function VerifyOtpLogin() {
   const email = getFlow(FLOW_KEYS.pendingRegisterEmail, "your email");
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [countdown, setCountdown] = useState(60);
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => {
+      setCountdown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -37,15 +48,22 @@ function VerifyOtpLogin() {
   }
 
   async function resend() {
+    if (countdown > 0 || resending) return;
+    setError("");
+    setSuccessMsg("");
+    setResending(true);
     try {
       const currentToken = getFlow<string | undefined>(FLOW_KEYS.otpToken, undefined);
       const res = await resendOtp(currentToken);
       if (res?.otpToken) {
         setFlow(FLOW_KEYS.otpToken, res.otpToken);
       }
-      setError("A fresh 6-digit OTP has been sent to your email.");
+      setSuccessMsg("A fresh 6-digit OTP has been sent to your registered email.");
+      setCountdown(60);
     } catch (err: any) {
       setError(err?.message || (err instanceof ApiClientError ? err.message : "Unable to resend OTP"));
+    } finally {
+      setResending(false);
     }
   }
 
@@ -65,14 +83,29 @@ function VerifyOtpLogin() {
           </p>
         )}
 
+        {successMsg && (
+          <p className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary text-center">
+            {successMsg}
+          </p>
+        )}
+
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>Didn't receive code?</span>
           <button
             type="button"
+            disabled={countdown > 0 || resending}
             onClick={resend}
-            className="font-bold text-primary hover:underline"
+            className="font-bold text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
           >
-            Resend OTP
+            {resending ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin" /> Sending...
+              </>
+            ) : countdown > 0 ? (
+              `Resend OTP in ${countdown}s`
+            ) : (
+              "Resend OTP"
+            )}
           </button>
         </div>
 

@@ -129,9 +129,13 @@ export const getMatchLive = async (matchId: string) => {
   const match = await Match.findById(matchId);
   if (!match) throw new ApiError(404, "Match not found");
 
-  // Hook this up to your live-scoring provider later
   return {
     matchId: match._id,
+    teamA: match.teamA,
+    teamB: match.teamB,
+    venue: match.venue,
+    startTime: match.startTime,
+    fantasyDeadline: match.fantasyDeadline,
     status: match.status,
     providerData: match.providerData ?? {},
   };

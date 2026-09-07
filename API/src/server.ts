@@ -4,6 +4,7 @@ import { connectDB } from "./config/db";
 import { initSockets } from "./sockets";
 import { env } from "./config/env";
 import { logger } from "./utils/logger";
+import { seedLiveAndWorldMatches, startLiveMatchSimulator } from "./services/matchSimulation.service";
 
 async function bootstrap() {
   await connectDB();
@@ -12,6 +13,12 @@ async function bootstrap() {
   const httpServer = http.createServer(app);
 
   initSockets(httpServer);
+
+  // Seed live world cricket matches & start real-time ball simulator
+  void seedLiveAndWorldMatches().catch((err) =>
+    logger.error("[simulator] Failed to seed matches", { err })
+  );
+  startLiveMatchSimulator();
 
   httpServer.listen(env.PORT, () => {
     logger.info(`[server] Fantasy Cricket API listening on port ${env.PORT} (${env.NODE_ENV})`);

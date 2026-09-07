@@ -12,13 +12,16 @@ import {
   FileBarChart,
   Settings,
   LogOut,
+  ShieldAlert,
 } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { Logo } from "@/components/fc/Logo";
 import { Card } from "@/components/fc/bits";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { apiFetchEnvelope } from "@/lib/api";
-import type { Contest } from "@/lib/api-types";
+import { getMe } from "@/lib/api-services";
+import type { Contest, User } from "@/lib/api-types";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -60,6 +63,8 @@ function Admin() {
   const [active, setActive] = useState("Dashboard");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [dashboard, setDashboard] = useState<DashboardData>({ userCount: 0, liveMatches: 0, openContests: 0 });
   const [totalContests, setTotalContests] = useState(0);
   const [contestBreakdown, setContestBreakdown] = useState<{ name: string; value: number; color: string }[]>([]);
@@ -68,33 +73,70 @@ function Admin() {
   useEffect(() => {
     setLoading(true);
     setError("");
-    Promise.all([
-      apiFetchEnvelope<DashboardData>("/admin/dashboard"),
-      apiFetchEnvelope<Contest[]>("/admin/contests?page=1&limit=100"),
-      apiFetchEnvelope<AuditLog[]>("/admin/audit-logs?page=1&limit=6"),
-    ])
-      .then(([dash, contests, logs]) => {
-        setDashboard(dash.data);
-        setTotalContests(contests.pagination?.total ?? contests.data.length);
 
-        const counts: Record<string, number> = {};
-        for (const c of contests.data) {
-          const key = (c.status || "OPEN").toUpperCase();
-          counts[key] = (counts[key] || 0) + 1;
+    getMe()
+      .then((user) => {
+        setCurrentUser(user);
+        setAuthChecked(true);
+
+        if (user.role !== "admin" && user.role !== "super_admin") {
+          setLoading(false);
+          return;
         }
-        setContestBreakdown(
-          Object.entries(counts).map(([name, value]) => ({
-            name,
-            value,
-            color: PIE_COLORS[name] ?? "oklch(0.5 0.02 264)",
-          })),
-        );
 
-        setRecentActivity(logs.data);
+        return Promise.all([
+          apiFetchEnvelope<DashboardData>("/admin/dashboard"),
+          apiFetchEnvelope<Contest[]>("/admin/contests?page=1&limit=100"),
+          apiFetchEnvelope<AuditLog[]>("/admin/audit-logs?page=1&limit=6"),
+        ]).then(([dash, contests, logs]) => {
+          setDashboard(dash.data);
+          setTotalContests(contests.pagination?.total ?? contests.data.length);
+
+          const counts: Record<string, number> = {};
+          for (const c of contests.data) {
+            const key = (c.status || "OPEN").toUpperCase();
+            counts[key] = (counts[key] || 0) + 1;
+          }
+          setContestBreakdown(
+            Object.entries(counts).map(([name, value]) => ({
+              name,
+              value,
+              color: PIE_COLORS[name] ?? "oklch(0.5 0.02 264)",
+            })),
+          );
+
+          setRecentActivity(logs.data);
+        });
       })
-      .catch((e) => setError(e instanceof Error ? e.message : "Unable to load dashboard data."))
+      .catch((e) => {
+        setAuthChecked(true);
+        setError(e instanceof Error ? e.message : "Unable to load dashboard data.");
+      })
       .finally(() => setLoading(false));
   }, []);
+
+  if (authChecked && (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "super_admin"))) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="max-w-md w-full rounded-2xl border border-destructive/40 bg-surface p-8 text-center shadow-2xl">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
+            <ShieldAlert className="h-7 w-7" />
+          </div>
+          <h1 className="mt-5 font-display text-2xl font-black tracking-tight text-foreground">
+            Access Restricted
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+            You do not have administrator permissions to access this management dashboard. Only authorized administrators can view platform operations.
+          </p>
+          <div className="mt-6 flex justify-center gap-3">
+            <Button asChild variant="hero" size="lg" className="font-bold">
+              <Link to="/matches">Return to Matches</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const stats = [
     { label: "Total Users", value: dashboard.userCount.toLocaleString() },
