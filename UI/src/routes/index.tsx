@@ -21,6 +21,7 @@ import {
   Star,
   Lock,
   Check,
+  TrendingUp,
 } from "lucide-react";
 import hero from "@/assets/hero-cricket.jpg";
 import { Logo } from "@/components/fc/Logo";
