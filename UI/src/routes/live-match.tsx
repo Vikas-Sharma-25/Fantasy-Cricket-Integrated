@@ -322,23 +322,23 @@ function LiveMatch() {
               <div className="font-bold mb-1 text-muted-foreground uppercase text-xs">Key Stats</div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Partnership:</span>
-                <span className="font-medium">{pd.partnership || "2(14)"}</span>
+                <span className="font-medium">{pd.keyStats?.partnership || pd.partnership || "38 (24)"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Last Wkt:</span>
-                <span className="font-medium truncate ml-2 text-right">{pd.lastWicket || "Rohit Sharma c Kohli b Shami 45(30)"}</span>
+                <span className="font-medium truncate ml-2 text-right">{pd.keyStats?.lastWkt || pd.lastWicket || "Rohit Sharma c Kohli b Shami 45(30)"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Ovs Left:</span>
-                <span className="font-medium">{ovsLeft}</span>
+                <span className="font-medium">{pd.keyStats?.ovsLeft || ovsLeft}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Last 10 ovs:</span>
-                <span className="font-medium">{pd.last10Overs || "68/2"}</span>
+                <span className="font-medium">{pd.keyStats?.last10Ovs || pd.last10Overs || "76/2"}</span>
               </div>
               <div className="flex justify-between mt-auto pt-2 border-t border-border/60">
                 <span className="text-muted-foreground">Toss:</span>
-                <span className="font-medium truncate ml-2 text-right">{pd.toss || "East Zone"}</span>
+                <span className="font-medium truncate ml-2 text-right">{pd.keyStats?.toss || pd.toss || "Elected to bat first"}</span>
               </div>
             </div>
           </div>
