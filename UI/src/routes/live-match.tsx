@@ -5,13 +5,13 @@ import {
   RefreshCw,
   Plus,
   Play,
-  CheckCircle2,
-  Clock,
   Video,
   Newspaper,
   ChevronRight,
   Shield,
   UserCheck,
+  Building2,
+  Tv,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/fc/AppShell";
 import { Card } from "@/components/fc/bits";
@@ -79,35 +79,54 @@ function getFlag(name?: string): string {
 
 const SIDEBAR_NEWS = [
   { id: "1", title: "Afghanistan to host Zimbabwe, Bangladesh in ODI tri-series", timeAgo: "3h ago" },
-  { id: "2", title: "Nahid Rana unlikely to get NOC for Big Bash League", timeAgo: "4h ago" },
+  { id: "2", title: "Nahid Rana unlikely to get NOC for Big Bash League", timeAgo: "5h ago" },
   { id: "3", title: "Rohit Yadav withdrawn from India U-19 squads due to age discrepancy", timeAgo: "6h ago" },
-  { id: "4", title: "Cricket Australia officially opens door to private investment in Big Bash", timeAgo: "6h ago" },
-  { id: "5", title: "Chapman shifts to casual contract with New Zealand", timeAgo: "8h ago" },
+  { id: "4", title: "Cricket Australia officially opens door to private investment in Big Bash", timeAgo: "7h ago" },
+  { id: "5", title: "Chapman shifts to casual contract with New Zealand", timeAgo: "9h ago" },
 ];
 
 const SIDEBAR_VIDEOS = [
   {
     id: "vid-1",
-    title: "Injuries hit India's squad! Bumrah returns... Where's Hardik?",
-    duration: "02:56",
-    thumbnail: "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=400&q=80",
+    title: "Pakistan hit new low! 7 players sent home & new coach in",
+    duration: "3:27",
+    thumbnail: "https://images.unsplash.com/photo-1531415074868-036b1c57e329?auto=format&fit=crop&w=400&q=80",
   },
   {
     id: "vid-2",
-    title: "Pakistan hit new low! 7 players sent home & new coach in",
-    duration: "03:27",
-    thumbnail: "https://images.unsplash.com/photo-1531415074868-036b1c57e329?auto=format&fit=crop&w=400&q=80",
+    title: "Impact Player Rule Debate: Stay or Go?",
+    duration: "3:22",
+    thumbnail: "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=400&q=80",
   },
 ];
+
+async function fetchLiveOnlyMatches() {
+  try {
+    const res = await fetch("/api/v1/cricket/live");
+    const json = await res.json();
+    const list = json.data || [];
+    return list.filter((m: any) => m.status === "LIVE");
+  } catch {
+    try {
+      const res2 = await fetch("/api/cricket/live");
+      const json2 = await res2.json();
+      const list2 = json2.data || [];
+      return list2.filter((m: any) => m.status === "LIVE");
+    } catch {
+      return [];
+    }
+  }
+}
 
 function LiveMatch() {
   const navigate = useNavigate();
 
-  // Read matchId from URL query param if present, or from TanStack flow state
   const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const urlMatchId = urlParams?.get("matchId");
-  const matchId = urlMatchId || getFlow<string | null>(FLOW_KEYS.selectedMatchId, null);
+  const storedMatchId = getFlow<string | null>(FLOW_KEYS.selectedMatchId, null);
 
+  const [liveMatches, setLiveMatches] = useState<any[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(urlMatchId || storedMatchId);
   const [tab, setTab] = useState<string>("Live");
   const [live, setLive] = useState<any>(null);
   const [contests, setContests] = useState<Contest[]>([]);
@@ -117,6 +136,28 @@ function LiveMatch() {
   const [joinSuccess, setJoinSuccess] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
 
+  // 1. Fetch only live matches for the Live Match Center selector
+  useEffect(() => {
+    fetchLiveOnlyMatches().then((activeLive) => {
+      setLiveMatches(activeLive);
+      // If user came to /live-match directly with no match selected, auto-select the first live match!
+      if (!selectedId && activeLive.length > 0) {
+        const firstId = activeLive[0].id || activeLive[0].dbId;
+        setSelectedId(firstId);
+        setFlow(FLOW_KEYS.selectedMatchId, firstId);
+      }
+    });
+  }, []);
+
+  // 2. Keep URL param and flow state synchronized
+  useEffect(() => {
+    if (urlMatchId && urlMatchId !== selectedId) {
+      setSelectedId(urlMatchId);
+      setFlow(FLOW_KEYS.selectedMatchId, urlMatchId);
+    }
+  }, [urlMatchId]);
+
+  // 3. Load active match data
   async function loadData(id: string) {
     try {
       const [liveData, contestList, teamList] = await Promise.all([
@@ -128,33 +169,28 @@ function LiveMatch() {
       setContests(contestList);
       setMyTeams(teamList);
     } catch {
-      // Graceful fallback
+      // Fallback gracefully
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    if (urlMatchId && urlMatchId !== getFlow<string | null>(FLOW_KEYS.selectedMatchId, null)) {
-      setFlow(FLOW_KEYS.selectedMatchId, urlMatchId);
-    }
-  }, [urlMatchId]);
-
-  useEffect(() => {
-    if (!matchId) {
+    if (!selectedId) {
       setLoading(false);
       return;
     }
-    void loadData(matchId);
-  }, [matchId]);
+    void loadData(selectedId);
+  }, [selectedId]);
 
+  // 4. Socket.IO live updates
   useEffect(() => {
-    if (!matchId) return;
+    if (!selectedId) return;
     const socket = getSocket();
-    socket.emit("match:subscribe", matchId);
+    socket.emit("match:subscribe", selectedId);
 
     const handleMatchUpdate = (data: any) => {
-      if (data?.matchId === matchId || data?.providerMatchId === matchId) {
+      if (data?.matchId === selectedId || data?.providerMatchId === selectedId) {
         setLive((prev: any) => ({
           ...prev,
           ...data,
@@ -169,9 +205,16 @@ function LiveMatch() {
     socket.on("match:update", handleMatchUpdate);
     return () => {
       socket.off("match:update", handleMatchUpdate);
-      socket.emit("match:unsubscribe", matchId);
+      socket.emit("match:unsubscribe", selectedId);
     };
-  }, [matchId]);
+  }, [selectedId]);
+
+  function handleSelectLiveMatch(m: any) {
+    const id = m.id || m.dbId;
+    setSelectedId(id);
+    setFlow(FLOW_KEYS.selectedMatchId, id);
+    navigate({ to: "/live-match", search: { matchId: id } as any });
+  }
 
   async function handleJoin(contestId: string) {
     if (!myTeams.length) {
@@ -184,7 +227,7 @@ function LiveMatch() {
     try {
       await joinContest(contestId, myTeams[0]._id);
       setJoinSuccess("Joined contest successfully!");
-      void loadData(matchId!);
+      if (selectedId) void loadData(selectedId);
     } catch (err: any) {
       setJoinError(err?.message || "Unable to join contest");
     } finally {
@@ -193,33 +236,14 @@ function LiveMatch() {
   }
 
   function handleCreateTeam() {
-    if (!matchId) return;
+    if (!selectedId) return;
     removeFlow(FLOW_KEYS.editingTeamId);
     removeFlow(FLOW_KEYS.selectedPlayerIds);
     removeFlow(FLOW_KEYS.captainId);
     removeFlow(FLOW_KEYS.viceCaptainId);
-    setFlow(FLOW_KEYS.selectedMatchId, matchId);
+    setFlow(FLOW_KEYS.selectedMatchId, selectedId);
     setFlow(FLOW_KEYS.selectedTeamName, `Team ${myTeams.length + 1}`);
     navigate({ to: "/players" });
-  }
-
-  if (!matchId) {
-    return (
-      <AppShell>
-        <Card className="text-center py-12">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-            <Radio className="h-7 w-7" />
-          </div>
-          <h2 className="mt-4 font-display text-xl font-bold">No Match Selected</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Please pick a match from the Arena to open its match center.
-          </p>
-          <Button asChild variant="hero" size="lg" className="mt-6 font-bold">
-            <Link to="/matches">Browse All Matches</Link>
-          </Button>
-        </Card>
-      </AppShell>
-    );
   }
 
   const pd = (live?.providerData || {}) as any;
@@ -235,19 +259,19 @@ function LiveMatch() {
     "Live",
     "Scorecard",
     "Squads",
-    "Contests",
-    "Teams",
     "Points Table",
     "Overs",
     "Graphs",
     "Highlights",
     "Full Commentary",
     "News",
+    "Contests",
+    "Teams",
   ];
 
-  // Match Info facts
+  // Match Info facts (Pics 2 & 3)
   const infoObj = pd.info || {
-    match: `${pd.teamACode || teamA} vs ${pd.teamBCode || teamB} • Final • ${tournament}`,
+    match: `${pd.teamACode || "EZONE"} vs ${pd.teamBCode || "SZONE"} • Final • ${tournament}`,
     series: tournament,
     date: dateStr,
     time: pd.time || "9:30 AM LOCAL, 4:00 AM GMT, 9:30 AM IST",
@@ -270,77 +294,91 @@ function LiveMatch() {
       team: teamB,
       players: [
         "Ricky Bhui", "Narayan Jagadeesan (wk)", "Devdutt Padikkal",
-        "Tilak Varma", "Shreyas Gopal", "Smaran Ravichandran",
-        "Washington Sundar", "Sai Kishore", "Prasidh Krishna",
-        "Vijaykumar Vyshak", "Vidwath Kaverappa"
+        "Shaik Rasheed", "Tilak Varma (c)", "Smaran Ravichandran",
+        "Shreyas Gopal", "Tripurana Vijay", "Mohammed Siraj",
+        "Chama V Milind", "MD Nidheesh"
       ],
-      bench: ["Mayank Agarwal", "Baba Indrajith", "Tanmay Agarwal", "Rohit Rayudu"]
+      bench: [
+        "Kodimela Himateja", "Tanay Thyagarajan", "Vidwath Kaverappa",
+        "Kavuri Saiteja", "Karun Nair", "Aman Khan", "Abhinav Tejrana"
+      ]
     }
   };
 
   const squadA = infoObj.eastZoneSquad || infoObj.squadA || {
     team: teamA,
-    players: ["Abhimanyu Easwaran", "Vaibhav Sooryavanshi", "Kumar Kushagra (wk)", "Sudip Kumar Gharami", "Shikhar Mohan", "Ishan Kishan (c)", "Md Kounain Quraishi", "Anukul Roy", "Mohammed Shami", "Abhijit K Sarkar", "Mukesh Kumar"],
+    players: [
+      "Abhimanyu Easwaran", "Vaibhav Sooryavanshi", "Kumar Kushagra (wk)",
+      "Sudip Kumar Gharami", "Shikhar Mohan", "Ishan Kishan (c)",
+      "Md Kounain Quraishi", "Anukul Roy", "Mohammed Shami",
+      "Abhijit K Sarkar", "Mukesh Kumar"
+    ],
     bench: ["Virat Singh", "Subhranshu Senapati", "Shahbaz Ahmed", "Denish Das", "Suraj Sindhu Jaiswal"]
   };
 
   const squadB = infoObj.southZoneSquad || infoObj.squadB || {
     team: teamB,
-    players: ["Ricky Bhui", "Narayan Jagadeesan (wk)", "Devdutt Padikkal", "Tilak Varma", "Shreyas Gopal", "Smaran Ravichandran", "Washington Sundar", "Sai Kishore", "Prasidh Krishna", "Vijaykumar Vyshak", "Vidwath Kaverappa"],
-    bench: ["Mayank Agarwal", "Baba Indrajith", "Tanmay Agarwal", "Rohit Rayudu"]
+    players: [
+      "Ricky Bhui", "Narayan Jagadeesan (wk)", "Devdutt Padikkal",
+      "Shaik Rasheed", "Tilak Varma (c)", "Smaran Ravichandran",
+      "Shreyas Gopal", "Tripurana Vijay", "Mohammed Siraj",
+      "Chama V Milind", "MD Nidheesh"
+    ],
+    bench: [
+      "Kodimela Himateja", "Tanay Thyagarajan", "Vidwath Kaverappa",
+      "Kavuri Saiteja", "Karun Nair", "Aman Khan", "Abhinav Tejrana"
+    ]
   };
 
-  const scorecardData = pd.scorecard || {
-    firstInnings: {
-      team: teamA,
-      score: pd.scoreA || "708",
-      overs: "165.3 ov",
-      batting: [
-        { name: "Abhimanyu Easwaran", dismissal: "c Jagadeesan b Krishna", runs: 85, balls: 142, fours: 9, sixes: 0, sr: "59.85" },
-        { name: "Vaibhav Sooryavanshi", dismissal: "b Sundar", runs: 42, balls: 68, fours: 5, sixes: 1, sr: "61.76" },
-        { name: "Kumar Kushagra (wk)", dismissal: "c Bhui b Kaverappa", runs: 164, balls: 230, fours: 18, sixes: 3, sr: "71.30" },
-        { name: "Sudip Kumar Gharami", dismissal: "c & b Sai Kishore", runs: 49, balls: 96, fours: 6, sixes: 0, sr: "51.04" },
-        { name: "Ishan Kishan (c)", dismissal: "lbw b Sai Kishore", runs: 112, balls: 160, fours: 12, sixes: 2, sr: "70.00" },
-        { name: "Shahbaz Ahmed", dismissal: "not out", runs: 124, balls: 175, fours: 14, sixes: 2, sr: "70.85" },
-        { name: "Anukul Roy", dismissal: "c Padikkal b Vyshak", runs: 58, balls: 84, fours: 7, sixes: 1, sr: "69.04" }
-      ],
-      bowling: [
-        { name: "Prasidh Krishna", overs: "32.0", maidens: 6, runs: 138, wickets: 3, economy: "4.31" },
-        { name: "Washington Sundar", overs: "38.0", maidens: 5, runs: 145, wickets: 1, economy: "3.81" },
-        { name: "Sai Kishore", overs: "41.0", maidens: 7, runs: 162, wickets: 3, economy: "3.95" }
-      ]
-    },
-    secondInnings: {
-      team: teamB,
-      score: pd.scoreB || "217/5",
-      overs: "71.5 ov",
-      batting: [
-        { name: "Ricky Bhui", dismissal: "c Kishan b Shami", runs: 38, balls: 72, fours: 5, sixes: 0, sr: "52.77" },
-        { name: "Narayan Jagadeesan (wk)", dismissal: "b Sarkar", runs: 24, balls: 55, fours: 3, sixes: 0, sr: "43.63" },
-        { name: "Devdutt Padikkal", dismissal: "c Roy b Shami", runs: 48, balls: 92, fours: 6, sixes: 1, sr: "52.17" },
-        { name: "Smaran Ravichandran", dismissal: "c Kushagra b Shami", runs: 23, balls: 55, fours: 3, sixes: 0, sr: "41.81" },
-        { name: "Tilak Varma", dismissal: "batting", runs: 44, balls: 111, fours: 4, sixes: 0, sr: "39.64", isStriker: true },
-        { name: "Shreyas Gopal", dismissal: "batting", runs: 15, balls: 56, fours: 0, sixes: 0, sr: "26.79" }
-      ],
-      bowling: [
-        { name: "Mohammed Shami", overs: "18.0", maidens: 6, runs: 42, wickets: 3, economy: "2.33" },
-        { name: "Abhijit K Sarkar", overs: "7.5", maidens: 0, runs: 33, wickets: 0, economy: "4.21" },
-        { name: "Md Kounain Quraishi", overs: "27.0", maidens: 5, runs: 73, wickets: 0, economy: "2.70" }
-      ]
-    }
+  // Detailed Scorecard Data (Pics 4 & 5)
+  const scorecardData = {
+    batting: [
+      { name: "Devdutt Padikkal", dismissal: "c (sub)Denish Das b Mukesh Kumar", runs: 62, balls: 104, fours: 4, sixes: 0, sr: "59.62" },
+      { name: "Shaik Rasheed", dismissal: "lbw b Mohammed Shami", runs: 27, balls: 48, fours: 5, sixes: 0, sr: "56.25" },
+      { name: "Tilak Varma (c)", dismissal: "batting", runs: 53, balls: 128, fours: 5, sixes: 0, sr: "41.41", isStriker: true },
+      { name: "Smaran Ravichandran", dismissal: "c Kumar Kushagra b Mohammed Shami", runs: 23, balls: 55, fours: 1, sixes: 0, sr: "41.82" },
+      { name: "Shreyas Gopal", dismissal: "batting", runs: 24, balls: 73, fours: 1, sixes: 0, sr: "32.88" },
+    ],
+    extras: "13 (b 8, lb 0, w 2, nb 3, p 0)",
+    total: "235-5 (77.3 Overs, RR: 3.03)",
+    yetToBat: "Tripurana Vijay, Mohammed Siraj, Milind, Nidheesh",
+    bowling: [
+      { name: "Mohammed Shami", overs: "11", maidens: 4, runs: 17, wickets: 2, nb: 0, wd: 0, economy: "1.50" },
+      { name: "Mukesh Kumar", overs: "12", maidens: 1, runs: 36, wickets: 2, nb: 1, wd: 2, economy: "3.00" },
+      { name: "Md Kounain Quraishi", overs: "29.3", maidens: 6, runs: 75, wickets: 0, nb: 1, wd: 0, economy: "2.50" },
+      { name: "Abhijit K Sarkar", overs: "8", maidens: 0, runs: 34, wickets: 0, nb: 0, wd: 0, economy: "4.20" },
+      { name: "Shikhar Mohan", overs: "12", maidens: 0, runs: 47, wickets: 1, nb: 1, wd: 0, economy: "3.90" },
+      { name: "Vaibhav Sooryavanshi", overs: "4", maidens: 0, runs: 10, wickets: 0, nb: 0, wd: 0, economy: "2.50" },
+      { name: "Ishan Kishan (c)", overs: "1", maidens: 0, runs: 8, wickets: 0, nb: 0, wd: 0, economy: "8.00" },
+    ],
+    fallOfWickets: [
+      { batter: "Ricky Bhui", score: "10-1", over: "5.2" },
+      { batter: "Narayan Jagadeesan", score: "70-2", over: "18.4" },
+      { batter: "Shaik Rasheed", score: "126-3", over: "33.5" },
+      { batter: "Devdutt Padikkal", score: "129-4", over: "35.3" },
+      { batter: "Smaran Ravichandran", score: "174-5", over: "53.4" },
+    ],
+    partnerships: [
+      { b1: "Ricky Bhui 1", r: "10 (32)", b2: "Narayan Jagadeesan 8" },
+      { b1: "Devdutt Padikkal 36", r: "60 (80)", b2: "Narayan Jagadeesan 24" },
+      { b1: "Devdutt Padikkal 24", r: "56 (91)", b2: "Shaik Rasheed 27" },
+      { b1: "Devdutt Padikkal 2", r: "3 (10)", b2: "Tilak Varma 1" },
+      { b1: "Smaran Ravichandran 23", r: "45 (109)", b2: "Tilak Varma 17" },
+      { b1: "Shreyas Gopal 24", r: "61 (143)", b2: "Tilak Varma 35" },
+    ],
   };
 
   return (
     <AppShell maxWidth="max-w-6xl">
       <PageHeader
         back="/matches"
-        title="MATCH CENTER"
+        title="LIVE MATCH CENTER"
         right={
           <button
-            onClick={() => void loadData(matchId)}
+            onClick={() => selectedId && void loadData(selectedId)}
             type="button"
             title="Refresh scorecard"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
           >
             <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin text-primary" : ""}`} />
             <span>Refresh</span>
@@ -348,10 +386,64 @@ function LiveMatch() {
         }
       />
 
-      {/* Match Title & Series Subtitle (Cricbuzz Header) */}
+      {/* ============================================================= */}
+      {/* ONLY LIVE MATCHES SELECTOR STRIP                               */}
+      {/* ============================================================= */}
+      <div className="mb-5 -mt-2">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5 text-xs font-black uppercase text-red-400 tracking-wider">
+            <Radio className="h-3.5 w-3.5 animate-pulse text-red-500" />
+            <span>CURRENTLY RUNNING LIVE MATCHES ({liveMatches.length})</span>
+          </div>
+          <span className="text-[10px] text-muted-foreground font-semibold">
+            Click any match to view live score
+          </span>
+        </div>
+
+        <div className="flex overflow-x-auto gap-3 pb-2 scrollbar-none">
+          {liveMatches.map((lm) => {
+            const isSelected = (lm.id || lm.dbId) === selectedId;
+            return (
+              <div
+                key={lm.id}
+                onClick={() => handleSelectLiveMatch(lm)}
+                className={cn(
+                  "shrink-0 min-w-[240px] max-w-[280px] p-3 rounded-xl border transition-all cursor-pointer shadow-sm",
+                  isSelected
+                    ? "bg-emerald-950/60 border-emerald-500 text-white shadow-emerald-500/10"
+                    : "bg-surface/80 border-border/80 hover:border-emerald-500/50 hover:bg-surface text-foreground"
+                )}
+              >
+                <div className="flex justify-between items-center text-[10px] text-muted-foreground font-bold uppercase mb-1.5">
+                  <span className="truncate max-w-[160px] text-emerald-300">{lm.series}</span>
+                  <span className="flex items-center gap-1 text-[9px] text-red-400 font-black">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" /> LIVE
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs font-bold">
+                  <span className="flex items-center gap-1 truncate max-w-[140px]">
+                    <span>{getFlag(lm.teamA)}</span>
+                    <span className="truncate">{lm.teamACode || lm.teamA}</span>
+                  </span>
+                  <span className="font-mono text-[11px] text-emerald-300">{lm.scoreA || ""}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs font-bold mt-1">
+                  <span className="flex items-center gap-1 truncate max-w-[140px]">
+                    <span>{getFlag(lm.teamB)}</span>
+                    <span className="truncate">{lm.teamBCode || lm.teamB}</span>
+                  </span>
+                  <span className="font-mono text-[11px] text-emerald-300">{lm.scoreB || ""}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Match Title & Series Subtitle (Exact Cricbuzz Header) */}
       <div className="mb-4">
         <h1 className="text-xl sm:text-2xl font-bold text-foreground">
-          {teamA} vs {teamB}, Final, {tournament} - Commentary
+          {teamA} vs {teamB}, Final, {tournament} - {tab === "Info" ? "Match Info" : "Scorecard"}
         </h1>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground mt-1 font-medium">
           <span><strong>Series:</strong> {tournament}</span>
@@ -362,7 +454,7 @@ function LiveMatch() {
         </div>
       </div>
 
-      {/* Tab Navigation Strip (All Cricbuzz Tabs) */}
+      {/* Cricbuzz Subtabs */}
       <div className="flex overflow-x-auto gap-4 sm:gap-6 border-b border-border/80 mb-6 pb-2 scrollbar-none text-sm font-semibold">
         {allTabs.map((t) => (
           <button
@@ -394,12 +486,13 @@ function LiveMatch() {
       )}
 
       {/* ============================================================= */}
-      {/* 1. INFO TAB (MATCHES CRICBUZZ SCREENSHOT 5)                    */}
+      {/* 1. INFO TAB (MATCHING USER PICS 2 & 3)                        */}
       {/* ============================================================= */}
       {tab === "Info" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Main Info Facts (8 cols) */}
+          {/* Main Info Facts + Venue Guide (8 cols) */}
           <div className="lg:col-span-8 space-y-6">
+            {/* Match Facts */}
             <div className="rounded-xl border border-border/80 bg-surface/90 overflow-hidden shadow-sm">
               <div className="bg-emerald-950/40 border-b border-border/80 px-4 py-2.5">
                 <h2 className="text-xs font-black uppercase tracking-wider text-emerald-400">
@@ -462,7 +555,7 @@ function LiveMatch() {
                 {/* Team A Squad */}
                 <div className="flex flex-col px-4 py-3.5 gap-2">
                   <span className="text-muted-foreground font-bold text-xs uppercase tracking-wider text-emerald-400">
-                    {squadA.team} Squad
+                    {squadA.team} squad
                   </span>
                   <div className="text-xs leading-relaxed space-y-1.5">
                     <p>
@@ -481,7 +574,7 @@ function LiveMatch() {
                 {/* Team B Squad */}
                 <div className="flex flex-col px-4 py-3.5 gap-2">
                   <span className="text-muted-foreground font-bold text-xs uppercase tracking-wider text-emerald-400">
-                    {squadB.team} Squad
+                    {squadB.team} squad
                   </span>
                   <div className="text-xs leading-relaxed space-y-1.5">
                     <p>
@@ -498,9 +591,61 @@ function LiveMatch() {
                 </div>
               </div>
             </div>
+
+            {/* VENUE GUIDE (Pic 3) */}
+            <div className="rounded-xl border border-border/80 bg-surface/90 overflow-hidden shadow-sm">
+              <div className="bg-emerald-950/40 border-b border-border/80 px-4 py-2.5 flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-emerald-400" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400">
+                  VENUE GUIDE
+                </h3>
+              </div>
+              <div className="divide-y divide-border/60 text-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center px-4 py-3 gap-2 sm:gap-8">
+                  <span className="w-36 text-muted-foreground font-bold shrink-0">Stadium</span>
+                  <span className="font-semibold text-foreground">MA Chidambaram Stadium</span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center px-4 py-3 gap-2 sm:gap-8">
+                  <span className="w-36 text-muted-foreground font-bold shrink-0">City</span>
+                  <span className="font-medium text-foreground">Chennai, India</span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center px-4 py-3 gap-2 sm:gap-8">
+                  <span className="w-36 text-muted-foreground font-bold shrink-0">Capacity</span>
+                  <span className="font-mono text-foreground">50000</span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center px-4 py-3 gap-2 sm:gap-8">
+                  <span className="w-36 text-muted-foreground font-bold shrink-0">Ends</span>
+                  <span className="font-medium text-foreground">Anna Pavilion End, V Pattabhiraman Gate End</span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center px-4 py-3 gap-2 sm:gap-8">
+                  <span className="w-36 text-muted-foreground font-bold shrink-0">Hosts To</span>
+                  <span className="font-medium text-foreground">Tamil Nadu, Chennai Super Kings</span>
+                </div>
+              </div>
+            </div>
+
+            {/* BROADCAST GUIDE (Pic 3) */}
+            <div className="rounded-xl border border-border/80 bg-surface/90 overflow-hidden shadow-sm">
+              <div className="bg-emerald-950/40 border-b border-border/80 px-4 py-2.5 flex items-center gap-2">
+                <Tv className="h-4 w-4 text-emerald-400" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400">
+                  BROADCAST GUIDE - IN
+                </h3>
+              </div>
+              <div className="divide-y divide-border/60 text-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center px-4 py-3 gap-2 sm:gap-8">
+                  <span className="w-36 text-muted-foreground font-bold shrink-0">Streaming</span>
+                  <span className="font-semibold text-emerald-400">JioHotstar</span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center px-4 py-3 gap-2 sm:gap-8">
+                  <span className="w-36 text-muted-foreground font-bold shrink-0">TV</span>
+                  <span className="font-semibold text-foreground">Star Sports Network</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Right Sidebar: Latest News (Screenshot 5) */}
+          {/* Right Sidebar: Latest News & More News (Pics 2 & 3) */}
           <div className="lg:col-span-4 space-y-4">
             <div className="flex items-center justify-between border-b border-border/80 pb-2">
               <h3 className="text-red-500 font-display text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
@@ -527,9 +672,9 @@ function LiveMatch() {
                   asChild
                   variant="hero"
                   size="sm"
-                  className="w-full text-xs font-bold"
+                  className="w-full text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white"
                 >
-                  <Link to="/matches">More News &gt;</Link>
+                  <Link to="/matches">More News</Link>
                 </Button>
               </div>
             </div>
@@ -538,21 +683,19 @@ function LiveMatch() {
       )}
 
       {/* ============================================================= */}
-      {/* 2. LIVE TAB (MATCHES CRICBUZZ SCREENSHOT 4)                    */}
+      {/* 2. LIVE TAB (CRICBUZZ LIVE SCORECARD & STATS)                  */}
       {/* ============================================================= */}
       {tab === "Live" && (
         <div className="space-y-6">
-          {/* Cricbuzz Big Scorecard Banner */}
+          {/* Big Scorecard Banner */}
           <Card className="p-5 border-border/80 bg-surface/90 shadow-md">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="space-y-1">
-                {/* 1st Innings Score */}
                 <div className="flex items-center gap-4 text-sm font-semibold text-muted-foreground">
                   <span className="text-foreground font-bold">{pd.teamACode || teamA}</span>
                   <span className="font-mono text-base">{pd.scoreA || "708"}</span>
                 </div>
 
-                {/* 2nd Innings Score (Current) */}
                 <div className="flex items-baseline gap-3 pt-1">
                   <span className="text-xl sm:text-2xl font-black text-emerald-400">
                     {pd.teamBCode || teamB}
@@ -561,7 +704,7 @@ function LiveMatch() {
                     {pd.currentScore || 217}/{pd.currentWickets || 5}
                   </span>
                   <span className="text-sm font-mono text-muted-foreground">
-                    ({pd.currentOvers || "71.5"})
+                    ({pd.currentOvers || "72.1"})
                   </span>
                   <span className="text-xs font-mono font-bold text-emerald-300 ml-2">
                     CRR: {pd.crr || "3.02"}
@@ -569,16 +712,14 @@ function LiveMatch() {
                 </div>
               </div>
 
-              {/* Status Trail / Requirement */}
               <div className="text-sm font-bold text-red-400 bg-red-950/30 border border-red-800/40 px-3.5 py-2 rounded-lg">
                 {pd.statusText || "Day 3: 3rd Session - South Zone trail by 491 runs"}
               </div>
             </div>
           </Card>
 
-          {/* Batters, Bowlers & Key Stats Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Left 8 cols: Batter & Bowler Tables */}
+            {/* Left 8 cols: Batters, Bowlers, Commentary */}
             <div className="lg:col-span-8 space-y-4">
               {/* Batter Table */}
               <div className="rounded-xl border border-border/80 bg-surface/90 overflow-hidden shadow-sm">
@@ -658,7 +799,7 @@ function LiveMatch() {
                 </table>
               </div>
 
-              {/* Recent Balls Strip (Have Your Say | Recent: 0 0 0 0 0) */}
+              {/* Recent Balls Strip */}
               <div className="flex items-center gap-3 p-3 bg-surface/70 border border-border/80 rounded-xl text-xs font-medium">
                 <span className="text-muted-foreground font-bold">Have Your Say</span>
                 <span className="text-border">|</span>
@@ -688,12 +829,11 @@ function LiveMatch() {
                   LIVE COMMENTARY
                 </div>
                 {((pd.commentary || [
+                  { over: "72.1", text: "Abhijit K Sarkar to Tilak Varma: Defended back cleanly towards mid-off. No run." },
                   { over: "71.5", text: "Abhijit K Sarkar to Tilak Varma, no run, length ball outside off, left alone safely through to the keeper" },
                   { over: "71.4", text: "Abhijit K Sarkar to Tilak Varma, no run, defended solidly from the crease toward mid-wicket" },
                   { over: "71.3", text: "Abhijit K Sarkar to Tilak Varma, no run, back of a length outside off, steered gently to point" },
-                  { over: "71.2", text: "Abhijit K Sarkar to Tilak Varma, no run, good length on the stumps, pushed with soft hands to mid-on" },
-                  { over: "71.1", text: "Abhijit K Sarkar to Tilak Varma, no run, full and swinging in, blocked resolutely to silly mid-off" },
-                  { over: "70.6", text: "Md Kounain Quraishi to Shreyas Gopal, no run, looped up on middle, defended forward" }
+                  { over: "71.2", text: "Abhijit K Sarkar to Tilak Varma, no run, good length on the stumps, pushed with soft hands to mid-on" }
                 ]) as any[]).map((c, idx) => (
                   <div key={idx} className="flex p-3.5 gap-3 hover:bg-surface-2/30 transition-colors">
                     <span className="w-12 shrink-0 font-mono font-black text-emerald-400 text-xs mt-0.5">
@@ -707,9 +847,8 @@ function LiveMatch() {
               </div>
             </div>
 
-            {/* Right 4 cols: Key Stats Card & Featured Videos (Screenshot 4) */}
+            {/* Right 4 cols: Key Stats Card & Featured Videos */}
             <div className="lg:col-span-4 space-y-4">
-              {/* Key Stats Card */}
               <div className="rounded-xl border border-border/80 bg-surface/90 p-4 text-xs space-y-3 shadow-sm">
                 <div className="font-black text-muted-foreground uppercase text-[11px] tracking-wider border-b border-border/60 pb-2">
                   KEY STATS
@@ -746,7 +885,7 @@ function LiveMatch() {
                 </div>
               </div>
 
-              {/* Featured Videos Sidebar (Screenshot 4) */}
+              {/* Featured Videos Sidebar */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between border-b border-border/80 pb-2">
                   <h3 className="text-red-500 font-display text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
@@ -789,88 +928,264 @@ function LiveMatch() {
       )}
 
       {/* ============================================================= */}
-      {/* 3. SCORECARD TAB (FULL INNINGS 1 & 2 BREAKDOWN)               */}
+      {/* 3. SCORECARD TAB (MATCHING USER PICS 4 & 5)                   */}
       {/* ============================================================= */}
       {tab === "Scorecard" && (
-        <div className="space-y-6">
-          {/* Innings 1 Card */}
-          <div className="rounded-xl border border-border/80 bg-surface/90 overflow-hidden shadow-sm">
-            <div className="bg-emerald-950/40 border-b border-border/80 px-4 py-3 flex items-center justify-between">
-              <span className="font-bold text-emerald-400 text-sm">
-                {scorecardData.firstInnings.team} 1st Innings
-              </span>
-              <span className="font-mono font-black text-white text-base">
-                {scorecardData.firstInnings.score} ({scorecardData.firstInnings.overs})
-              </span>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Main Scorecard Tables: Batting, Bowling, FOW, Partnerships (8 cols) */}
+          <div className="lg:col-span-8 space-y-6">
+            {/* South Zone 2nd Innings Batting Table (Pic 4) */}
+            <div className="rounded-xl border border-border/80 bg-surface/90 overflow-hidden shadow-sm">
+              <div className="bg-emerald-950/40 border-b border-border/80 px-4 py-3 flex items-center justify-between">
+                <span className="font-bold text-emerald-400 text-sm">
+                  {teamB} 2nd Innings
+                </span>
+                <span className="font-mono font-black text-white text-base">
+                  {scorecardData.total}
+                </span>
+              </div>
+
+              <table className="w-full text-xs text-left">
+                <thead className="bg-surface-2/70 text-muted-foreground font-bold border-b border-border/80 uppercase">
+                  <tr>
+                    <th className="py-2.5 px-3">Batter</th>
+                    <th className="py-2.5 px-3">Dismissal</th>
+                    <th className="py-2.5 px-3 text-right">R</th>
+                    <th className="py-2.5 px-3 text-right">B</th>
+                    <th className="py-2.5 px-3 text-right">4s</th>
+                    <th className="py-2.5 px-3 text-right">6s</th>
+                    <th className="py-2.5 px-3 text-right">SR</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {scorecardData.batting.map((b: any, i: number) => (
+                    <tr
+                      key={i}
+                      className={cn(
+                        "hover:bg-surface-2/30 transition-colors",
+                        b.isStriker && "text-emerald-400 font-bold"
+                      )}
+                    >
+                      <td className="py-2.5 px-3 font-semibold text-foreground">
+                        {b.name} {b.isStriker ? "*" : ""}
+                      </td>
+                      <td className="py-2.5 px-3 text-muted-foreground text-[11px]">{b.dismissal}</td>
+                      <td className="py-2.5 px-3 text-right font-bold font-mono text-foreground">{b.runs}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{b.balls}</td>
+                      <td className="py-2.5 px-3 text-right font-mono">{b.fours}</td>
+                      <td className="py-2.5 px-3 text-right font-mono">{b.sixes}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-emerald-300">{b.sr}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Extras, Total, Yet to Bat (Pic 4) */}
+              <div className="border-t border-border/80 divide-y divide-border/40 text-xs px-4 py-2.5 bg-surface-2/30 space-y-2">
+                <div className="flex justify-between items-center pt-1">
+                  <span className="font-bold text-muted-foreground">Extras</span>
+                  <span className="font-medium text-foreground">{scorecardData.extras}</span>
+                </div>
+                <div className="flex justify-between items-center pt-1.5 font-bold">
+                  <span className="text-foreground">Total</span>
+                  <span className="font-mono text-sm text-emerald-400">{scorecardData.total}</span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 pt-1.5 text-muted-foreground">
+                  <span className="font-bold text-foreground shrink-0">Yet to Bat:</span>
+                  <span className="text-emerald-300 font-medium">{scorecardData.yetToBat}</span>
+                </div>
+              </div>
             </div>
 
-            <table className="w-full text-xs text-left">
-              <thead className="bg-surface-2/60 text-muted-foreground font-bold border-b border-border/80 uppercase">
-                <tr>
-                  <th className="py-2.5 px-3">Batter</th>
-                  <th className="py-2.5 px-3">Dismissal</th>
-                  <th className="py-2.5 px-3 text-right">R</th>
-                  <th className="py-2.5 px-3 text-right">B</th>
-                  <th className="py-2.5 px-3 text-right">4s</th>
-                  <th className="py-2.5 px-3 text-right">6s</th>
-                  <th className="py-2.5 px-3 text-right">SR</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {scorecardData.firstInnings.batting.map((b: any, i: number) => (
-                  <tr key={i} className="hover:bg-surface-2/30 transition-colors">
-                    <td className="py-2.5 px-3 font-bold text-foreground">{b.name}</td>
-                    <td className="py-2.5 px-3 text-muted-foreground text-[11px]">{b.dismissal}</td>
-                    <td className="py-2.5 px-3 text-right font-bold font-mono text-foreground">{b.runs}</td>
-                    <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{b.balls}</td>
-                    <td className="py-2.5 px-3 text-right font-mono">{b.fours}</td>
-                    <td className="py-2.5 px-3 text-right font-mono">{b.sixes}</td>
-                    <td className="py-2.5 px-3 text-right font-mono text-emerald-300">{b.sr}</td>
+            {/* Bowling Table with NB, WD, ECO (Pic 4) */}
+            <div className="rounded-xl border border-border/80 bg-surface/90 overflow-hidden shadow-sm">
+              <div className="bg-emerald-950/40 border-b border-border/80 px-4 py-2.5">
+                <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400">
+                  BOWLING
+                </h3>
+              </div>
+              <table className="w-full text-xs text-left">
+                <thead className="bg-surface-2/70 text-muted-foreground font-bold border-b border-border/80 uppercase">
+                  <tr>
+                    <th className="py-2.5 px-3">Bowler</th>
+                    <th className="py-2.5 px-3 text-right">O</th>
+                    <th className="py-2.5 px-3 text-right">M</th>
+                    <th className="py-2.5 px-3 text-right">R</th>
+                    <th className="py-2.5 px-3 text-right">W</th>
+                    <th className="py-2.5 px-3 text-right">NB</th>
+                    <th className="py-2.5 px-3 text-right">WD</th>
+                    <th className="py-2.5 px-3 text-right">ECO</th>
                   </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {scorecardData.bowling.map((bowl: any, i: number) => (
+                    <tr key={i} className="hover:bg-surface-2/30 transition-colors text-foreground">
+                      <td className="py-2.5 px-3 font-semibold">{bowl.name}</td>
+                      <td className="py-2.5 px-3 text-right font-mono">{bowl.overs}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{bowl.maidens}</td>
+                      <td className="py-2.5 px-3 text-right font-bold font-mono">{bowl.runs}</td>
+                      <td className="py-2.5 px-3 text-right font-black font-mono text-red-400">{bowl.wickets}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{bowl.nb}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{bowl.wd}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-emerald-300">{bowl.economy}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Fall of Wickets (Pic 5) */}
+            <div className="rounded-xl border border-border/80 bg-surface/90 overflow-hidden shadow-sm">
+              <div className="bg-emerald-950/40 border-b border-border/80 px-4 py-2.5">
+                <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400">
+                  FALL OF WICKETS
+                </h3>
+              </div>
+              <table className="w-full text-xs text-left">
+                <thead className="bg-surface-2/70 text-muted-foreground font-bold border-b border-border/80 uppercase">
+                  <tr>
+                    <th className="py-2.5 px-4">Batter</th>
+                    <th className="py-2.5 px-4 text-right">Score</th>
+                    <th className="py-2.5 px-4 text-right">Over</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {scorecardData.fallOfWickets.map((f: any, i: number) => (
+                    <tr key={i} className="hover:bg-surface-2/30 transition-colors">
+                      <td className="py-2.5 px-4 font-semibold text-foreground">{f.batter}</td>
+                      <td className="py-2.5 px-4 text-right font-mono font-bold text-red-400">{f.score}</td>
+                      <td className="py-2.5 px-4 text-right font-mono text-muted-foreground">{f.over}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Partnerships (Pic 5) */}
+            <div className="rounded-xl border border-border/80 bg-surface/90 overflow-hidden shadow-sm">
+              <div className="bg-emerald-950/40 border-b border-border/80 px-4 py-2.5">
+                <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400">
+                  PARTNERSHIPS
+                </h3>
+              </div>
+              <div className="divide-y divide-border/60 text-xs">
+                {scorecardData.partnerships.map((p: any, i: number) => (
+                  <div key={i} className="px-4 py-3 flex items-center justify-between hover:bg-surface-2/30 transition-colors">
+                    <span className="font-semibold text-foreground w-[38%] truncate">{p.b1}</span>
+                    <span className="font-mono font-black text-emerald-300 text-center w-[24%] bg-emerald-950/30 py-1 rounded">
+                      {p.r}
+                    </span>
+                    <span className="font-semibold text-foreground w-[38%] text-right truncate">{p.b2}</span>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
+
+            {/* Bottom INFO Bar (Pic 5) */}
+            <div className="rounded-xl border border-border/80 bg-surface/90 overflow-hidden shadow-sm">
+              <div className="bg-emerald-950/40 border-b border-border/80 px-4 py-2.5">
+                <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400">
+                  INFO
+                </h3>
+              </div>
+              <div className="divide-y divide-border/60 text-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center px-4 py-3 gap-2 sm:gap-8">
+                  <span className="w-36 text-muted-foreground font-bold shrink-0">Match</span>
+                  <span className="font-semibold text-foreground">{infoObj.match}</span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center px-4 py-3 gap-2 sm:gap-8 hover:bg-surface-2/40 transition-colors">
+                  <span className="w-36 text-muted-foreground font-bold shrink-0">Series</span>
+                  <span className="font-semibold text-foreground flex items-center justify-between flex-1">
+                    <span>{infoObj.series}</span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Innings 2 Card */}
-          <div className="rounded-xl border border-border/80 bg-surface/90 overflow-hidden shadow-sm">
-            <div className="bg-emerald-950/40 border-b border-border/80 px-4 py-3 flex items-center justify-between">
-              <span className="font-bold text-emerald-400 text-sm">
-                {scorecardData.secondInnings.team} 2nd Innings
-              </span>
-              <span className="font-mono font-black text-white text-base">
-                {scorecardData.secondInnings.score} ({scorecardData.secondInnings.overs})
-              </span>
+          {/* Right Column: Featured Videos + Latest News (Pics 4 & 5) */}
+          <div className="lg:col-span-4 space-y-6">
+            {/* Featured Videos */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between border-b border-border/80 pb-2">
+                <h3 className="text-red-500 font-display text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+                  <Video className="h-4 w-4 text-red-500" />
+                  <span>FEATURED VIDEOS</span>
+                </h3>
+              </div>
+
+              <div className="space-y-3">
+                {SIDEBAR_VIDEOS.map((v) => (
+                  <div
+                    key={v.id}
+                    onClick={() => navigate({ to: "/matches" })}
+                    className="group cursor-pointer rounded-xl overflow-hidden border border-border/80 bg-surface/80 hover:border-primary/60 transition-all p-2.5 shadow-sm"
+                  >
+                    <div className="relative h-28 rounded-lg overflow-hidden bg-surface-2 flex items-center justify-center mb-2">
+                      <img
+                        src={v.thumbnail}
+                        alt={v.title}
+                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors" />
+                      <div className="bg-primary/90 text-primary-foreground rounded-full p-2 z-10 shadow-lg group-hover:scale-110 transition-transform">
+                        <Play className="h-3.5 w-3.5 fill-current" />
+                      </div>
+                      <span className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[9px] font-black px-1.5 py-0.5 rounded">
+                        {v.duration}
+                      </span>
+                    </div>
+                    <h4 className="text-xs font-bold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
+                      {v.title}
+                    </h4>
+                  </div>
+                ))}
+                <Button
+                  asChild
+                  variant="hero"
+                  size="sm"
+                  className="w-full text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white"
+                >
+                  <Link to="/matches">More Videos</Link>
+                </Button>
+              </div>
             </div>
 
-            <table className="w-full text-xs text-left">
-              <thead className="bg-surface-2/60 text-muted-foreground font-bold border-b border-border/80 uppercase">
-                <tr>
-                  <th className="py-2.5 px-3">Batter</th>
-                  <th className="py-2.5 px-3">Dismissal</th>
-                  <th className="py-2.5 px-3 text-right">R</th>
-                  <th className="py-2.5 px-3 text-right">B</th>
-                  <th className="py-2.5 px-3 text-right">4s</th>
-                  <th className="py-2.5 px-3 text-right">6s</th>
-                  <th className="py-2.5 px-3 text-right">SR</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {scorecardData.secondInnings.batting.map((b: any, i: number) => (
-                  <tr key={i} className="hover:bg-surface-2/30 transition-colors">
-                    <td className="py-2.5 px-3 font-bold text-foreground">
-                      {b.name} {b.isStriker ? "*" : ""}
-                    </td>
-                    <td className="py-2.5 px-3 text-muted-foreground text-[11px]">{b.dismissal}</td>
-                    <td className="py-2.5 px-3 text-right font-bold font-mono text-foreground">{b.runs}</td>
-                    <td className="py-2.5 px-3 text-right font-mono text-muted-foreground">{b.balls}</td>
-                    <td className="py-2.5 px-3 text-right font-mono">{b.fours}</td>
-                    <td className="py-2.5 px-3 text-right font-mono">{b.sixes}</td>
-                    <td className="py-2.5 px-3 text-right font-mono text-emerald-300">{b.sr}</td>
-                  </tr>
+            {/* Latest News */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between border-b border-border/80 pb-2">
+                <h3 className="text-red-500 font-display text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+                  <Newspaper className="h-4 w-4 text-red-500" />
+                  <span>LATEST NEWS</span>
+                </h3>
+              </div>
+
+              <div className="divide-y divide-border/60 rounded-xl border border-border/80 bg-surface/80 p-2 shadow-sm">
+                {SIDEBAR_NEWS.map((n) => (
+                  <div
+                    key={n.id}
+                    onClick={() => navigate({ to: "/matches" })}
+                    className="p-3 cursor-pointer hover:bg-surface-2/60 rounded-lg transition-colors group"
+                  >
+                    <h4 className="text-xs font-bold text-foreground group-hover:text-primary transition-colors leading-snug">
+                      {n.title}
+                    </h4>
+                    <p className="text-[10px] text-muted-foreground mt-1">{n.timeAgo}</p>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+                <div className="p-2 pt-3">
+                  <Button
+                    asChild
+                    variant="hero"
+                    size="sm"
+                    className="w-full text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white"
+                  >
+                    <Link to="/matches">More News</Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -911,7 +1226,7 @@ function LiveMatch() {
       )}
 
       {/* ============================================================= */}
-      {/* 5. CONTESTS TAB (FANTASY CONTEST JOINING)                      */}
+      {/* 5. CONTESTS TAB                                               */}
       {/* ============================================================= */}
       {tab === "Contests" && (
         <div className="mt-2 space-y-4">
@@ -1025,7 +1340,7 @@ function LiveMatch() {
         <div className="p-12 text-center text-muted-foreground border border-border/80 rounded-xl bg-surface/40">
           <p className="text-sm font-semibold">{tab} data is updating in real-time...</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Check the <button type="button" onClick={() => setTab("Live")} className="text-primary font-bold underline">Live</button> or <button type="button" onClick={() => setTab("Info")} className="text-primary font-bold underline">Info</button> tabs for complete match coverage.
+            Check the <button type="button" onClick={() => setTab("Live")} className="text-primary font-bold underline">Live</button>, <button type="button" onClick={() => setTab("Scorecard")} className="text-primary font-bold underline">Scorecard</button>, or <button type="button" onClick={() => setTab("Info")} className="text-primary font-bold underline">Info</button> tabs for complete match coverage.
           </p>
         </div>
       )}

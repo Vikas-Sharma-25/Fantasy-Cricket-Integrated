@@ -263,8 +263,20 @@ function Matches() {
     });
   }, []);
 
+  const statusPriority: Record<string, number> = {
+    LIVE: 1,
+    COMPLETED: 2,
+    UPCOMING: 3,
+  };
+
+  const sortedMatches = [...worldMatches].sort((a, b) => {
+    const pA = statusPriority[a.status?.toUpperCase()] || 4;
+    const pB = statusPriority[b.status?.toUpperCase()] || 4;
+    return pA - pB;
+  });
+
   const PAGE_SIZE = 3;
-  const totalMatches = worldMatches.length;
+  const totalMatches = sortedMatches.length;
   const totalPages = Math.ceil(totalMatches / PAGE_SIZE) || 1;
 
   function handleNextTicker() {
@@ -275,7 +287,7 @@ function Matches() {
     setTickerPage((prev) => (prev - 1 + totalPages) % totalPages);
   }
 
-  const currentTickerMatches = worldMatches.slice(
+  const currentTickerMatches = sortedMatches.slice(
     tickerPage * PAGE_SIZE,
     tickerPage * PAGE_SIZE + PAGE_SIZE
   );

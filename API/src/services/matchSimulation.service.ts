@@ -264,61 +264,61 @@ export async function seedLiveAndWorldMatches() {
   }
 }
 
-/** Ticks live matches every 4 seconds, bowling a ball, updating scores, commentary & emitting socket events */
+/** Ticks live matches every 6 minutes (5-10 min pace), respecting format limits (T20: 20 ov, ODI: 50 ov, Test: 90 ov) */
 export function startLiveMatchSimulator() {
+  const SIMULATION_INTERVAL_MS = 6 * 60 * 1000; // 6 minutes (between 5-10 minutes)
+
   setInterval(async () => {
     try {
-      let liveMatches = await Match.find({ status: "LIVE" });
-      if (!liveMatches.length) {
-        // If all live matches completed, revive an international fixture into a live thrilling chase!
-        const matchToRevive = await Match.findOne({ providerMatchId: "INT-LIVE-IND-AUS" });
-        if (matchToRevive) {
-          matchToRevive.status = "LIVE";
-          const pd = (matchToRevive.providerData || {}) as any;
-          pd.currentScore = 152;
-          pd.currentWickets = 3;
-          pd.currentOvers = "15.4";
-          pd.target = 186;
-          pd.crr = "9.70";
-          pd.rrr = "7.85";
-          pd.statusText = "India need 34 runs in 26 balls to win";
-          pd.recentBalls = ["1", "4", "0", "6", "1", "2"];
-          pd.batsmen = [
-            { name: "Virat Kohli", runs: 64, balls: 42, fours: 6, sixes: 2, isStriker: true },
-            { name: "Hardik Pandya", runs: 22, balls: 11, fours: 2, sixes: 1, isStriker: false },
-          ];
-          pd.bowler = { name: "Pat Cummins", overs: "3.2", maidens: 0, runs: 30, wickets: 1, economy: "9.00" };
-          pd.keyStats = {
-            partnership: "42 (23)",
-            lastWkt: "Suryakumar Yadav c Maxwell b Zampa 34 (21) - 110/3",
-            ovsLeft: "4.2",
-            last10Ovs: "88/2",
-            toss: "Australia elected to bat first",
-          };
-          matchToRevive.markModified("providerData");
-          await matchToRevive.save();
-          liveMatches = [matchToRevive];
-        } else {
-          return;
-        }
-      }
+      const liveMatches = await Match.find({ status: "LIVE" });
+      if (!liveMatches.length) return;
 
       for (const match of liveMatches) {
         const pd = (match.providerData || {}) as any;
         if (!pd.currentScore) continue;
 
+        const formatUpper = (pd.format || "T20").toUpperCase();
+        const isT20 = formatUpper.includes("20");
+        const isODI = formatUpper.includes("50") || formatUpper.includes("ODI");
+        const isTest = formatUpper.includes("FC") || formatUpper.includes("TEST");
+
         // Parse current over & ball
         const currentOverFloat = parseFloat(pd.currentOvers || "17.4");
         const fullOvers = Math.floor(currentOverFloat);
         let ballOfOver = Math.round((currentOverFloat - fullOvers) * 10);
-        ballOfOver++;
 
+        // Format-specific stop conditions
+        if (isT20 && fullOvers >= 20) {
+          match.status = "COMPLETED";
+          pd.statusText = pd.target && pd.currentScore >= pd.target
+            ? `${pd.battingTeam} won by ${10 - (pd.currentWickets || 0)} wickets!`
+            : `Match ended • 20 overs completed`;
+          await match.save();
+          continue;
+        }
+
+        if (isODI && fullOvers >= 50) {
+          match.status = "COMPLETED";
+          pd.statusText = pd.target && pd.currentScore >= pd.target
+            ? `${pd.battingTeam} won by ${10 - (pd.currentWickets || 0)} wickets!`
+            : `Match ended • 50 overs completed`;
+          await match.save();
+          continue;
+        }
+
+        if (isTest && fullOvers >= 90) {
+          pd.statusText = `Stumps - Day 3 • 90.0 ov completed`;
+          await match.save();
+          continue;
+        }
+
+        ballOfOver++;
         let newOverStr = `${fullOvers}.${ballOfOver}`;
         if (ballOfOver >= 6) {
           newOverStr = `${fullOvers + 1}.0`;
         }
 
-        // Random cricket ball outcome
+        // Cricket ball outcome
         const rand = Math.random();
         let runsScored = 0;
         let isWicket = false;
@@ -326,17 +326,17 @@ export function startLiveMatchSimulator() {
         let isSix = false;
         let outcomeBadge = "1";
 
-        if (rand < 0.22) {
+        if (rand < 0.35) {
           runsScored = 0;
           outcomeBadge = "0";
-        } else if (rand < 0.58) {
-          runsScored = Math.random() < 0.7 ? 1 : 2;
-          outcomeBadge = String(runsScored);
-        } else if (rand < 0.76) {
+        } else if (rand < 0.70) {
+          runsScored = 1;
+          outcomeBadge = "1";
+        } else if (rand < 0.85) {
           runsScored = 4;
           isFour = true;
           outcomeBadge = "4";
-        } else if (rand < 0.88) {
+        } else if (rand < 0.93) {
           runsScored = 6;
           isSix = true;
           outcomeBadge = "6";
@@ -355,19 +355,19 @@ export function startLiveMatchSimulator() {
 
         // Update CRR and Target status
         const totalBalls = fullOvers * 6 + ballOfOver;
-        const crrCalc = totalBalls > 0 ? ((pd.currentScore / totalBalls) * 6).toFixed(2) : "9.00";
+        const crrCalc = totalBalls > 0 ? ((pd.currentScore / totalBalls) * 6).toFixed(2) : "3.02";
         pd.crr = crrCalc;
 
-        const isFC = (pd.format || "").toUpperCase() === "FC";
-        if (isFC) {
-          const trailRuns = Math.max(0, (pd.firstInnings?.score ? parseInt(pd.firstInnings.score) : 708) - pd.currentScore);
+        if (isTest) {
+          const firstInnScore = pd.firstInnings?.score ? parseInt(pd.firstInnings.score) : 708;
+          const trailRuns = Math.max(0, firstInnScore - pd.currentScore);
           pd.statusText = `Day 3: 3rd Session - ${pd.battingTeam || "South Zone"} trail by ${trailRuns} runs`;
           pd.scoreB = `${pd.currentScore}/${pd.currentWickets || 0} (${newOverStr} ov)`;
         } else if (pd.target) {
           const target = pd.target;
           const runsNeeded = Math.max(0, target - pd.currentScore);
-          const ballsLeft = Math.max(0, 120 - totalBalls);
-          if (runsNeeded <= 0 || fullOvers >= 20 || (pd.currentWickets || 0) >= 10) {
+          const ballsLeft = Math.max(0, (isODI ? 300 : 120) - totalBalls);
+          if (runsNeeded <= 0 || (isT20 && fullOvers >= 20) || (isODI && fullOvers >= 50) || (pd.currentWickets || 0) >= 10) {
             match.status = "COMPLETED";
             pd.statusText = runsNeeded <= 0
               ? `${pd.battingTeam} won by ${10 - (pd.currentWickets || 0)} wickets!`
@@ -376,7 +376,8 @@ export function startLiveMatchSimulator() {
             pd.statusText = `${pd.battingTeam} need ${runsNeeded} run${runsNeeded > 1 ? "s" : ""} in ${ballsLeft} ball${ballsLeft > 1 ? "s" : ""} to win`;
           }
         } else {
-          if (fullOvers >= 20 || (pd.currentWickets || 0) >= 10) {
+          const maxOvs = isODI ? 50 : 20;
+          if (fullOvers >= maxOvs || (pd.currentWickets || 0) >= 10) {
             pd.statusText = `Innings Break • Target: ${pd.currentScore + 1}`;
           } else {
             pd.statusText = `${pd.bowlingTeam || "Opponent"} opt to bowl • ${pd.battingTeam || "Batting team"} cruising`;

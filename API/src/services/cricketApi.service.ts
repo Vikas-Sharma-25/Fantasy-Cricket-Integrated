@@ -61,8 +61,14 @@ export const getWorldLiveMatches = async (): Promise<WorldMatch[]> => {
   }
 
   try {
-    const dbMatches = await Match.find({}).sort({ status: 1, startTime: -1 });
+    const dbMatches = await Match.find({});
     if (dbMatches && dbMatches.length > 0) {
+      const statusPriority: Record<string, number> = {
+        LIVE: 1,
+        COMPLETED: 2,
+        UPCOMING: 3,
+      };
+
       const mapped: WorldMatch[] = dbMatches.map((m: any) => {
         const pd = (m.providerData || {}) as any;
         return {
@@ -83,6 +89,12 @@ export const getWorldLiveMatches = async (): Promise<WorldMatch[]> => {
           venue: m.venue || pd.venue || "Stadium",
           providerData: pd,
         };
+      });
+
+      mapped.sort((a, b) => {
+        const pA = statusPriority[a.status?.toUpperCase()] || 4;
+        const pB = statusPriority[b.status?.toUpperCase()] || 4;
+        return pA - pB;
       });
 
       matchCache = mapped;
