@@ -358,16 +358,29 @@ export function startLiveMatchSimulator() {
         const crrCalc = totalBalls > 0 ? ((pd.currentScore / totalBalls) * 6).toFixed(2) : "9.00";
         pd.crr = crrCalc;
 
-        const target = pd.target || 180;
-        const runsNeeded = Math.max(0, target - pd.currentScore);
-        const ballsLeft = Math.max(0, 120 - totalBalls);
-        if (runsNeeded <= 0 || fullOvers >= 20 || (pd.currentWickets || 0) >= 10) {
-          match.status = "COMPLETED";
-          pd.statusText = runsNeeded <= 0
-            ? `${pd.battingTeam} won by ${10 - (pd.currentWickets || 0)} wickets!`
-            : `${pd.bowlingTeam} won by ${runsNeeded} runs!`;
+        const isFC = (pd.format || "").toUpperCase() === "FC";
+        if (isFC) {
+          const trailRuns = Math.max(0, (pd.firstInnings?.score ? parseInt(pd.firstInnings.score) : 708) - pd.currentScore);
+          pd.statusText = `Day 3: 3rd Session - ${pd.battingTeam || "South Zone"} trail by ${trailRuns} runs`;
+          pd.scoreB = `${pd.currentScore}/${pd.currentWickets || 0} (${newOverStr} ov)`;
+        } else if (pd.target) {
+          const target = pd.target;
+          const runsNeeded = Math.max(0, target - pd.currentScore);
+          const ballsLeft = Math.max(0, 120 - totalBalls);
+          if (runsNeeded <= 0 || fullOvers >= 20 || (pd.currentWickets || 0) >= 10) {
+            match.status = "COMPLETED";
+            pd.statusText = runsNeeded <= 0
+              ? `${pd.battingTeam} won by ${10 - (pd.currentWickets || 0)} wickets!`
+              : `${pd.bowlingTeam} won by ${runsNeeded} runs!`;
+          } else {
+            pd.statusText = `${pd.battingTeam} need ${runsNeeded} run${runsNeeded > 1 ? "s" : ""} in ${ballsLeft} ball${ballsLeft > 1 ? "s" : ""} to win`;
+          }
         } else {
-          pd.statusText = `${pd.battingTeam} need ${runsNeeded} run${runsNeeded > 1 ? "s" : ""} in ${ballsLeft} ball${ballsLeft > 1 ? "s" : ""} to win`;
+          if (fullOvers >= 20 || (pd.currentWickets || 0) >= 10) {
+            pd.statusText = `Innings Break • Target: ${pd.currentScore + 1}`;
+          } else {
+            pd.statusText = `${pd.bowlingTeam || "Opponent"} opt to bowl • ${pd.battingTeam || "Batting team"} cruising`;
+          }
         }
 
         // Update recent balls strip (keep last 8)
