@@ -175,7 +175,18 @@ export async function seedLiveAndWorldMatches() {
 
   for (const m of initialMatches) {
     const existing = await Match.findOne({ providerMatchId: m.providerMatchId });
-    if (!existing) {
+    if (existing) {
+      // If the match got corrupted into absurd numbers like 38000 runs, reset it to clean values!
+      const exPd = (existing.providerData || {}) as any;
+      if (Number(exPd.currentScore) > 300 || parseFloat(exPd.currentOvers || "0") > 25) {
+        existing.providerData = m.providerData;
+        existing.status = m.status;
+        existing.startTime = m.startTime;
+        existing.markModified("providerData");
+        await existing.save();
+        logger.info(`[simulator] Reset runaway match to realistic scores: ${m.teamA} vs ${m.teamB}`);
+      }
+    } else {
       const created = await Match.create(m);
       logger.info(`[simulator] Seeded match: ${m.teamA} vs ${m.teamB} (${m.status})`);
 
@@ -270,8 +281,11 @@ export function startLiveMatchSimulator() {
         const target = pd.target || 180;
         const runsNeeded = Math.max(0, target - pd.currentScore);
         const ballsLeft = Math.max(0, 120 - totalBalls);
-        if (runsNeeded <= 0) {
-          pd.statusText = `${pd.battingTeam} won by ${10 - pd.currentWickets} wickets!`;
+        if (runsNeeded <= 0 || fullOvers >= 20 || (pd.currentWickets || 0) >= 10) {
+          match.status = "COMPLETED";
+          pd.statusText = runsNeeded <= 0
+            ? `${pd.battingTeam} won by ${10 - (pd.currentWickets || 0)} wickets!`
+            : `${pd.bowlingTeam} won by ${runsNeeded} runs!`;
         } else {
           pd.statusText = `${pd.battingTeam} need ${runsNeeded} run${runsNeeded > 1 ? "s" : ""} in ${ballsLeft} ball${ballsLeft > 1 ? "s" : ""} to win`;
         }

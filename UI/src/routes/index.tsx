@@ -1,7 +1,9 @@
+import { useState, useEffect } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import {
   ShieldCheck,
   Trophy,
+  Radio,
   Gift,
   ArrowRight,
   Play,
@@ -270,6 +272,18 @@ const faqs = [
 
 function Landing() {
   const navigate = useNavigate();
+  const [realMatches, setRealMatches] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch("/api/v1/cricket/live")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json?.data && Array.isArray(json.data) && json.data.length > 0) {
+          setRealMatches(json.data.slice(0, 3));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   function handleAction(msg: string) {
     setFlow(FLOW_KEYS.authPromptMsg, msg);
@@ -436,99 +450,111 @@ function Landing() {
             </Button>
           </div>
 
-          <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
-            {featuredMatches.map((m) => (
-              <div
-                key={m.id}
-                className="group relative overflow-hidden rounded-2xl border border-border/80 bg-surface/90 p-6 transition-all duration-300 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/10"
-              >
-                {/* Header tag & countdown */}
-                <div className="flex items-center justify-between border-b border-border/60 pb-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    {m.tournament}
-                  </span>
-                  <div className="flex items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1 text-xs font-semibold text-amber-400">
-                    <Clock className="h-3 w-3" /> {m.timeLeft}
-                  </div>
-                </div>
+          <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {(realMatches.length > 0 ? realMatches.slice(0, 3) : featuredMatches.slice(0, 3)).map((m: any, idx: number) => {
+              const isReal = !!m.series;
+              const title = isReal ? m.series : m.tournament;
+              const team1Flag = isReal ? m.teamAFlag || "🏏" : m.team1.flag;
+              const team1Code = isReal ? m.teamACode : m.team1.code;
+              const team1Name = isReal ? m.teamA : m.team1.name;
+              const team2Flag = isReal ? m.teamBFlag || "🏏" : m.team2.flag;
+              const team2Code = isReal ? m.teamBCode : m.team2.code;
+              const team2Name = isReal ? m.teamB : m.team2.name;
+              const isLive = isReal ? m.status === "LIVE" : idx === 0;
 
-                {/* Team Vs Team visual */}
-                <div className="my-6 flex items-center justify-between px-2">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-2 text-2xl shadow-inner border border-border/60">
-                      {m.team1.flag}
-                    </div>
-                    <div>
-                      <p className="font-display text-xl font-black tracking-tight">{m.team1.code}</p>
-                      <p className="text-xs text-muted-foreground">{m.team1.name}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-center">
-                    <span className="rounded-full bg-primary/10 px-2.5 py-0.5 font-display text-xs font-black text-primary">
-                      VS
+              return (
+                <div
+                  key={m.id || idx}
+                  onClick={() =>
+                    handleAction(`🏏 To enjoy live match score and fantasy betting for ${team1Code} vs ${team2Code}, please register and login yourself!`)
+                  }
+                  className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border/80 bg-surface/90 p-6 transition-all duration-300 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/15"
+                >
+                  {/* Header tag & countdown */}
+                  <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground truncate max-w-[180px]">
+                      {title}
                     </span>
+                    {isLive ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/20 px-2.5 py-1 text-xs font-black text-red-400 border border-red-500/40">
+                        <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" /> LIVE
+                      </span>
+                    ) : (
+                      <div className="flex items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1 text-xs font-semibold text-amber-400">
+                        <Clock className="h-3 w-3" /> {isReal ? (m.statusText || "TODAY") : m.timeLeft}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex items-center gap-3 text-right">
-                    <div>
-                      <p className="font-display text-xl font-black tracking-tight">{m.team2.code}</p>
-                      <p className="text-xs text-muted-foreground">{m.team2.name}</p>
+                  {/* Team Vs Team visual */}
+                  <div className="my-6 flex items-center justify-between px-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-2 text-2xl shadow-inner border border-border/60">
+                        {team1Flag}
+                      </div>
+                      <div>
+                        <p className="font-display text-lg font-black tracking-tight">{team1Code}</p>
+                        <p className="text-[11px] text-muted-foreground truncate max-w-[90px]">{team1Name}</p>
+                      </div>
                     </div>
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-2 text-2xl shadow-inner border border-border/60">
-                      {m.team2.flag}
+
+                    <div className="flex flex-col items-center px-1">
+                      {isReal && isLive && m.scoreA ? (
+                        <div className="text-center">
+                          <p className="font-mono text-xs font-black text-primary">{m.scoreA.split(" ")[0]}</p>
+                          <span className="rounded bg-primary/10 px-1.5 py-0.2 text-[9px] font-bold text-primary">LIVE</span>
+                        </div>
+                      ) : (
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 font-display text-xs font-black text-primary">
+                          VS
+                        </span>
+                      )}
                     </div>
+
+                    <div className="flex items-center gap-2.5 text-right">
+                      <div>
+                        <p className="font-display text-lg font-black tracking-tight">{team2Code}</p>
+                        <p className="text-[11px] text-muted-foreground truncate max-w-[90px]">{team2Name}</p>
+                      </div>
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-2 text-2xl shadow-inner border border-border/60">
+                        {team2Flag}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status / Prize pool banner */}
+                  <div className="rounded-xl border border-border/60 bg-surface-2/60 p-3.5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] uppercase font-bold text-muted-foreground">Prize Pool</p>
+                        <p className="font-display text-lg font-black text-primary">₹50,000 Free Pool</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] uppercase font-bold text-muted-foreground">Match Status</p>
+                        <p className="text-xs font-bold text-amber-400 truncate max-w-[130px]">
+                          {isReal ? (m.statusText || (isLive ? "In Progress" : "Scheduled")) : "Mega League"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card CTA */}
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      Free Entry &bull; Instant UPI
+                    </span>
+                    <Button
+                      type="button"
+                      variant="hero"
+                      size="sm"
+                      className="gap-1.5 font-bold shadow-md shadow-primary/20 text-xs"
+                    >
+                      {isLive ? "VIEW LIVE SCORE" : "JOIN CONTEST"} <ChevronRight className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
-
-                {/* Prize Pool stats */}
-                <div className="rounded-xl border border-border/60 bg-surface-2/60 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-muted-foreground font-semibold">Total Prize Pool</p>
-                      <p className="font-display text-2xl font-black text-primary">{m.prizePool}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground font-semibold">1st Prize</p>
-                      <p className="font-display text-lg font-bold text-amber-400">{m.firstPrize}</p>
-                    </div>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="mt-3">
-                    <div className="flex justify-between text-[11px] text-muted-foreground">
-                      <span>{m.spotsFilled} spots filled</span>
-                      <span>{m.totalSpots}</span>
-                    </div>
-                    <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-surface">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-primary to-amber-500"
-                        style={{ width: m.spotsFilled }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card CTA */}
-                <div className="mt-5 flex items-center justify-between">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-xs text-muted-foreground font-medium">Entry:</span>
-                    <span className="font-display text-lg font-bold text-foreground">{m.entryFee}</span>
-                  </div>
-                  <Button
-                    type="button"
-                    onClick={() =>
-                      handleAction(`🏏 Join the ${m.team1.code} vs ${m.team2.code} Mega Contest! Register to play.`)
-                    }
-                    variant="hero"
-                    size="sm"
-                    className="gap-1.5 font-bold shadow-md shadow-primary/20"
-                  >
-                    JOIN CONTEST <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 

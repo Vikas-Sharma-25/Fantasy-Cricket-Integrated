@@ -1,11 +1,11 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Mail, Phone, Lock, User, Loader2 } from "lucide-react";
+import { Mail, Phone, Lock, User, Loader2, Sparkles } from "lucide-react";
 import { AuthLayout } from "@/components/fc/AuthLayout";
 import { Field } from "@/components/fc/Field";
 import { Button } from "@/components/ui/button";
 import { registerUser } from "@/lib/api-services";
-import { setFlow, FLOW_KEYS } from "@/lib/flow";
+import { setFlow, getFlow, FLOW_KEYS } from "@/lib/flow";
 import { ApiClientError } from "@/lib/api";
 
 export const Route = createFileRoute("/register")({ component: Register });
@@ -49,6 +49,12 @@ function Register() {
         </span>
       }
     >
+      {getFlow<string>(FLOW_KEYS.authPromptMsg, "") && (
+        <div className="mb-4 rounded-xl border border-primary/40 bg-primary/10 p-3.5 text-xs font-semibold text-primary flex items-start gap-2.5">
+          <Sparkles className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>{getFlow<string>(FLOW_KEYS.authPromptMsg, "")}</span>
+        </div>
+      )}
       <form onSubmit={submit} className="space-y-4">
         <Field
           required
