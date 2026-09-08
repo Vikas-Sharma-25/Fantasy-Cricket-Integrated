@@ -62,7 +62,7 @@ function getTeamFlag(name?: string): string {
 
 async function fetchWorldMatches() {
   try {
-    const res = await fetch("/api/v1/cricket/live");
+    const res = await fetch("/api/cricket/live");
     const json = await res.json();
     return json.data || [];
   } catch {
@@ -72,7 +72,7 @@ async function fetchWorldMatches() {
 
 async function fetchCricketNews() {
   try {
-    const res = await fetch("/api/v1/cricket/news");
+    const res = await fetch("/api/cricket/news");
     const json = await res.json();
     return json.data || [];
   } catch {

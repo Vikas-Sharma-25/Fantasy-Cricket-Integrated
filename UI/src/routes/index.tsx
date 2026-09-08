@@ -275,7 +275,7 @@ function Landing() {
   const [realMatches, setRealMatches] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch("/api/v1/cricket/live")
+    fetch("/api/cricket/live")
       .then((res) => res.json())
       .then((json) => {
         if (json?.data && Array.isArray(json.data) && json.data.length > 0) {

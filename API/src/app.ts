@@ -38,6 +38,7 @@ export function createApp(): Application {
   app.use(globalLimiter);
 
   app.use("/api", routes);
+  app.use("/api/v1", routes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
