@@ -45,9 +45,13 @@ export const listMatches = async ({ status, page, limit }: ListMatchesParams) =>
 };
 
 export const getMatchById = async (matchId: string) => {
-  if (!Types.ObjectId.isValid(matchId)) throw new ApiError(400, "Invalid matchId");
-
-  const match = await Match.findById(matchId);
+  let match = null;
+  if (Types.ObjectId.isValid(matchId)) {
+    match = await Match.findById(matchId);
+  }
+  if (!match) {
+    match = await Match.findOne({ providerMatchId: matchId });
+  }
   if (!match) throw new ApiError(404, "Match not found");
   return match;
 };
@@ -124,13 +128,27 @@ export const getMatchPlayers = async (matchId: string) => {
 };
 
 export const getMatchLive = async (matchId: string) => {
-  if (!Types.ObjectId.isValid(matchId)) throw new ApiError(400, "Invalid matchId");
-
-  const match = await Match.findById(matchId);
+  let match = null;
+  if (Types.ObjectId.isValid(matchId)) {
+    match = await Match.findById(matchId);
+  }
+  if (!match) {
+    match = await Match.findOne({
+      $or: [
+        { providerMatchId: matchId },
+        { providerMatchId: `INT-LIVE-${matchId}` },
+        { teamA: new RegExp(matchId, "i") },
+      ],
+    });
+  }
+  if (!match) {
+    match = await Match.findOne({ status: "LIVE" }) || await Match.findOne({});
+  }
   if (!match) throw new ApiError(404, "Match not found");
 
   return {
     matchId: match._id,
+    providerMatchId: match.providerMatchId,
     teamA: match.teamA,
     teamB: match.teamB,
     venue: match.venue,

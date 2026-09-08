@@ -21,6 +21,54 @@ export async function seedLiveAndWorldMatches() {
   const completedTime = new Date(now.getTime() - 12 * 60 * 60 * 1000); // 12 hours ago
 
   const initialMatches = [
+    // 0. DULEEP TROPHY FINAL (LIVE FIRST CLASS)
+    {
+      providerMatchId: "EZONE-SZONE-DULEEP-2026",
+      teamA: "East Zone",
+      teamB: "South Zone",
+      venue: "MA Chidambaram Stadium, Chennai",
+      startTime: new Date("2026-09-06T04:00:00.000Z"),
+      fantasyDeadline: new Date("2026-09-06T04:00:00.000Z"),
+      status: "LIVE" as const,
+      providerData: {
+        category: "DOMESTIC",
+        tournament: "Duleep Trophy 2026",
+        series: "Duleep Trophy 2026",
+        format: "FC",
+        teamACode: "EZONE",
+        teamBCode: "SZONE",
+        teamAFlag: "🏏",
+        teamBFlag: "🏏",
+        battingTeam: "South Zone",
+        bowlingTeam: "East Zone",
+        scoreA: "708",
+        scoreB: "217/5 (71.5 ov)",
+        currentScore: 217,
+        currentWickets: 5,
+        currentOvers: "71.5",
+        crr: "3.02",
+        statusText: "Day 3: 3rd Session - South Zone trail by 491 runs",
+        firstInnings: { team: "East Zone", score: "708", overs: "165.3" },
+        recentBalls: ["0", "0", "0", "0", "0"],
+        batsmen: [
+          { name: "Tilak Varma", runs: 44, balls: 111, fours: 4, sixes: 0, sr: "39.64", isStriker: true },
+          { name: "Shreyas Gopal", runs: 15, balls: 56, fours: 0, sixes: 0, sr: "26.79", isStriker: false },
+        ],
+        bowler: { name: "Abhijit K Sarkar", overs: "7.5", maidens: 0, runs: 33, wickets: 0, economy: "4.21", isCurrent: true },
+        bowlers: [
+          { name: "Abhijit K Sarkar", overs: "7.5", maidens: 0, runs: 33, wickets: 0, economy: "4.21", isCurrent: true },
+          { name: "Md Kounain Quraishi", overs: "27.0", maidens: 5, runs: 73, wickets: 0, economy: "2.70", isCurrent: false },
+        ],
+        keyStats: {
+          partnership: "43 (109)",
+          lastWkt: "Smaran Ravichandran c Kumar Kushagra b Mohammed Shami 23(55) - 174/5 in 53.4 ov.",
+          ovsLeft: "18.1",
+          last10Ovs: "24 runs, 0 wkts",
+          toss: "East Zone won the toss and opt to Bat",
+        },
+      },
+    },
+
     // 1. INTERNATIONAL LIVE MATCH
     {
       providerMatchId: "INT-LIVE-IND-AUS",
@@ -178,7 +226,7 @@ export async function seedLiveAndWorldMatches() {
     if (existing) {
       // If the match got corrupted into absurd numbers like 38000 runs, reset it to clean values!
       const exPd = (existing.providerData || {}) as any;
-      if (Number(exPd.currentScore) > 300 || parseFloat(exPd.currentOvers || "0") > 25) {
+      if (exPd.format !== "FC" && (Number(exPd.currentScore) > 300 || parseFloat(exPd.currentOvers || "0") > 25)) {
         existing.providerData = m.providerData;
         existing.status = m.status;
         existing.startTime = m.startTime;

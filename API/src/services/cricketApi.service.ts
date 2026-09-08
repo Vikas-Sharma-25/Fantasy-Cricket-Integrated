@@ -1,4 +1,5 @@
 import { env } from "../config/env";
+import { Match } from "../models/Match";
 
 interface CricketNewsItem {
   id: string;
@@ -11,6 +12,7 @@ interface CricketNewsItem {
 
 interface WorldMatch {
   id: string;
+  dbId?: string;
   teamA: string;
   teamB: string;
   teamACode: string;
@@ -25,9 +27,10 @@ interface WorldMatch {
   scoreB?: string;
   statusText?: string;
   startTime?: string;
+  providerData?: any;
 }
 
-const CACHE_TTL_MS = 60000;
+const CACHE_TTL_MS = 15000;
 let matchCache: WorldMatch[] | null = null;
 let matchCacheTimestamp = 0;
 
@@ -51,59 +54,46 @@ const SIMULATED_NEWS: CricketNewsItem[] = [
   { id: "17", title: "Women's cricket gets standalone window in ICC FTP cycle", category: "News", timeAgo: "17h ago" }
 ];
 
-const SIMULATED_LIVE_MATCHES: WorldMatch[] = [
-  { id: "m1", teamA: "East Zone", teamB: "South Zone", teamACode: "EZONE", teamBCode: "SZONE", teamAFlag: "", teamBFlag: "", series: "Duleep Trophy 2026", format: "FC", status: 'LIVE', scoreA: "708", scoreB: "176/5 (56 ov)", statusText: "Day 3, Session 2", venue: "Eden Gardens" },
-  { id: "m2", teamA: "Pakistan W", teamB: "Hong Kong W", teamACode: "PAKW", teamBCode: "HKGW", teamAFlag: "", teamBFlag: "", series: "Women's Asia Cup", format: "T20I", status: 'COMPLETED', scoreA: "143/8", scoreB: "71", statusText: "PAKW won by 72 runs", venue: "Sylhet" },
-  { id: "m3", teamA: "Bangladesh W", teamB: "UAE W", teamACode: "BANW", teamBCode: "UAEW", teamAFlag: "", teamBFlag: "", series: "Women's Asia Cup", format: "T20I", status: 'UPCOMING', statusText: "Match starts in 2 hours", venue: "Sylhet" },
-  { id: "m4", teamA: "AMS", teamB: "MHK", teamACode: "AMS", teamBCode: "MHK", teamAFlag: "", teamBFlag: "", series: "Big Bash", format: "T20", status: 'LIVE', scoreA: "89/3 (11.2 ov)", statusText: "Innings Break", venue: "MCG" },
-  { id: "m5", teamA: "GAW", teamB: "ABF", teamACode: "GAW", teamBCode: "ABF", teamAFlag: "", teamBFlag: "", series: "CPL", format: "T20", status: 'UPCOMING', statusText: "Match starts tomorrow", venue: "Providence Stadium" },
-  { id: "m6", teamA: "India", teamB: "Australia", teamACode: "IND", teamBCode: "AUS", teamAFlag: "", teamBFlag: "", series: "ICC T20 Championship", format: "T20I", status: 'LIVE', scoreA: "182/4", scoreB: "65/2 (8 ov)", statusText: "AUS need 118 runs from 72 balls", venue: "Wankhede" },
-  { id: "m7", teamA: "Sri Lanka", teamB: "West Indies", teamACode: "SL", teamBCode: "WI", teamAFlag: "", teamBFlag: "", series: "ODI Series", format: "ODI", status: 'UPCOMING', statusText: "Series tied 1-1", venue: "R. Premadasa" },
-  { id: "m8", teamA: "County Select XI", teamB: "South Africa A", teamACode: "CSXI", teamBCode: "SAA", teamAFlag: "", teamBFlag: "", series: "Tour Match", format: "FC", status: 'LIVE', scoreA: "250", scoreB: "120/1", statusText: "Day 2, Session 1", venue: "Lord's" }
-];
-
 export const getWorldLiveMatches = async (): Promise<WorldMatch[]> => {
   const now = Date.now();
   if (matchCache && now - matchCacheTimestamp < CACHE_TTL_MS) {
     return matchCache;
   }
 
-  const apiKey = (env as any).CRICKET_API_KEY || process.env.CRICKET_API_KEY;
-  if (apiKey) {
-    try {
-      const response = await fetch(`https://api.cricapi.com/v1/currentMatches?apikey=${encodeURIComponent(apiKey)}&offset=0`);
-      if (response.ok) {
-        const resData: any = await response.json();
-        if (resData && Array.isArray(resData.data) && resData.data.length > 0) {
-          const apiMatches: WorldMatch[] = resData.data.map((m: any) => ({
-            id: m.id || String(Math.random()),
-            teamA: m.teamInfo?.[0]?.name || m.teams?.[0] || "Team A",
-            teamB: m.teamInfo?.[1]?.name || m.teams?.[1] || "Team B",
-            teamACode: m.teamInfo?.[0]?.shortname || (m.teams?.[0] || "T1").slice(0, 3).toUpperCase(),
-            teamBCode: m.teamInfo?.[1]?.shortname || (m.teams?.[1] || "T2").slice(0, 3).toUpperCase(),
-            teamAFlag: m.teamInfo?.[0]?.img || "🏏",
-            teamBFlag: m.teamInfo?.[1]?.img || "🏏",
-            series: m.name || m.series_id || "Live Series",
-            format: (m.matchType || "T20").toUpperCase(),
-            status: (m.status || "").toLowerCase().includes("won") ? "COMPLETED" : (m.matchStarted ? "LIVE" : "UPCOMING"),
-            scoreA: m.score?.[0]?.r !== undefined ? `${m.score[0].r}/${m.score[0].w || 0} (${m.score[0].o || 0} ov)` : undefined,
-            scoreB: m.score?.[1]?.r !== undefined ? `${m.score[1].r}/${m.score[1].w || 0} (${m.score[1].o || 0} ov)` : undefined,
-            statusText: m.status || (m.matchStarted ? "Match in progress" : "Scheduled"),
-            venue: m.venue || "Stadium",
-          }));
-          matchCache = apiMatches;
-          matchCacheTimestamp = now;
-          return matchCache;
-        }
-      }
-    } catch (error) {
-      console.error("[cricketApi] Failed to fetch matches from API", error);
+  try {
+    const dbMatches = await Match.find({}).sort({ status: 1, startTime: -1 });
+    if (dbMatches && dbMatches.length > 0) {
+      const mapped: WorldMatch[] = dbMatches.map((m: any) => {
+        const pd = (m.providerData || {}) as any;
+        return {
+          id: m._id.toString(),
+          dbId: m._id.toString(),
+          teamA: m.teamA,
+          teamB: m.teamB,
+          teamACode: pd.teamACode || m.teamA.split(" ")[0].slice(0, 5).toUpperCase(),
+          teamBCode: pd.teamBCode || m.teamB.split(" ")[0].slice(0, 5).toUpperCase(),
+          teamAFlag: pd.teamAFlag || "",
+          teamBFlag: pd.teamBFlag || "",
+          series: pd.tournament || pd.series || "Cricket Series",
+          format: pd.format || "T20",
+          status: m.status,
+          scoreA: pd.scoreA || (pd.firstInnings?.team === m.teamA ? pd.firstInnings.score : (pd.battingTeam === m.teamA ? `${pd.currentScore}/${pd.currentWickets}` : "")),
+          scoreB: pd.scoreB || (pd.firstInnings?.team === m.teamB ? pd.firstInnings.score : (pd.battingTeam === m.teamB ? `${pd.currentScore}/${pd.currentWickets}` : "")),
+          statusText: pd.statusText || m.status,
+          venue: m.venue || pd.venue || "Stadium",
+          providerData: pd,
+        };
+      });
+
+      matchCache = mapped;
+      matchCacheTimestamp = now;
+      return mapped;
     }
+  } catch (err) {
+    console.error("[cricketApi] Could not read db matches, falling back to simulated", err);
   }
 
-  matchCache = SIMULATED_LIVE_MATCHES;
-  matchCacheTimestamp = now;
-  return matchCache;
+  return [];
 };
 
 export const getCricketNews = async (): Promise<CricketNewsItem[]> => {
@@ -112,9 +102,33 @@ export const getCricketNews = async (): Promise<CricketNewsItem[]> => {
 };
 
 export const getMatchScorecard = async (matchId: string): Promise<any> => {
+  try {
+    let match = null;
+    if (matchId.length === 24) {
+      match = await Match.findById(matchId);
+    }
+    if (!match) {
+      match = await Match.findOne({ providerMatchId: matchId });
+    }
+    if (match && match.providerData) {
+      const pd = match.providerData as any;
+      if (pd.scorecard) return pd.scorecard;
+      return {
+        matchId: match._id,
+        firstInnings: pd.firstInnings || null,
+        batsmen: pd.batsmen || [],
+        bowlers: pd.bowlers || (pd.bowler ? [pd.bowler] : []),
+        scoreA: pd.scoreA || "",
+        scoreB: pd.scoreB || "",
+      };
+    }
+  } catch (err) {
+    console.error("[cricketApi] Error fetching scorecard:", err);
+  }
+
   return {
     matchId,
-    details: "Detailed scorecard not fully implemented in simulation",
+    details: "Scorecard details unavailable",
     innings: []
   };
 };
