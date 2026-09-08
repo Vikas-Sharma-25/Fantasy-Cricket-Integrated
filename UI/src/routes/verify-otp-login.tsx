@@ -18,7 +18,7 @@ function VerifyOtpLogin() {
   const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
-  const [countdown, setCountdown] = useState(60);
+  const [countdown, setCountdown] = useState(30);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -58,9 +58,8 @@ function VerifyOtpLogin() {
       if (res?.otpToken) {
         setFlow(FLOW_KEYS.otpToken, res.otpToken);
       }
-      setError("A fresh 6-digit OTP has been sent to your email.");
       setSuccessMsg("A fresh 6-digit OTP has been sent to your registered email.");
-      setCountdown(60);
+      setCountdown(30);
     } catch (err: any) {
       setError(err?.message || (err instanceof ApiClientError ? err.message : "Unable to resend OTP"));
     } finally {
@@ -98,7 +97,6 @@ function VerifyOtpLogin() {
             onClick={resend}
             className="font-bold text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
           >
-            Resend OTP
             {resending ? (
               <>
                 <Loader2 className="h-3 w-3 animate-spin" /> Sending...
