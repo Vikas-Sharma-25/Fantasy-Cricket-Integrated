@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Bell,
@@ -8,30 +8,82 @@ import {
   User as UserIcon,
   Wallet,
   ClipboardList,
-  ShieldAlert,
+  Radio,
+  Award,
+  Gift,
+  CheckCircle2,
+  X,
+  Sparkles,
+  Zap,
+  ArrowRight,
+  ShieldCheck,
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
 import { getMe } from "@/lib/api-services";
 import type { User } from "@/lib/api-types";
 
-const navItems = [
-  { to: "/matches", label: "Home", icon: Home },
-  { to: "/my-matches", label: "My Matches", icon: ClipboardList },
-  { to: "/create-team", label: "My Teams", icon: Users },
-  { to: "/contests", label: "Contests", icon: Trophy },
-  { to: "/profile", label: "Profile", icon: UserIcon },
+interface NotificationItem {
+  id: string;
+  title: string;
+  description: string;
+  time: string;
+  read: boolean;
+  type: "contest" | "wallet" | "live" | "promo";
+}
+
+const initialNotifications: NotificationItem[] = [
+  {
+    id: "1",
+    title: "Mega Contest Alert",
+    description: "IND vs AUS ₹50,000 Mega Contest is filling fast! 85% spots already taken.",
+    time: "5m ago",
+    read: false,
+    type: "contest",
+  },
+  {
+    id: "2",
+    title: "100% Deposit Bonus",
+    description: "₹500 Welcome Bonus has been credited to your fantasy wallet. Start playing now!",
+    time: "45m ago",
+    read: false,
+    type: "wallet",
+  },
+  {
+    id: "3",
+    title: "Live Match Center Active",
+    description: "CSK vs MI is now LIVE with real-time ball-by-ball updates and fantasy points.",
+    time: "2h ago",
+    read: false,
+    type: "live",
+  },
+  {
+    id: "4",
+    title: "Fair Play Verified",
+    description: "Your fantasy account is KYC certified and protected with anti-bot shields.",
+    time: "1d ago",
+    read: true,
+    type: "promo",
+  },
 ];
 
-function getInitials(name?: string) {
-  if (!name) return "U";
-  const trimmed = name.trim();
-  const parts = trimmed.split(/\s+/);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-  return trimmed.slice(0, 2).toUpperCase();
-}
+const sidebarNavItems = [
+  { to: "/matches", label: "Home", icon: Home },
+  { to: "/live-match", label: "Live Match Center", icon: Radio, badge: "LIVE" },
+  { to: "/contests", label: "Mega Contests", icon: Trophy },
+  { to: "/my-matches", label: "My Matches", icon: ClipboardList },
+  { to: "/create-team", label: "My Teams", icon: Users },
+  { to: "/leaderboard", label: "Leaderboard", icon: Award },
+  { to: "/profile", label: "Wallet & Profile", icon: UserIcon },
+];
+
+const mobileNavItems = [
+  { to: "/matches", label: "Home", icon: Home },
+  { to: "/live-match", label: "Live", icon: Radio },
+  { to: "/contests", label: "Contests", icon: Trophy },
+  { to: "/my-matches", label: "My Matches", icon: ClipboardList },
+  { to: "/profile", label: "Profile", icon: UserIcon },
+];
 
 export function AppShell({
   children,
@@ -42,6 +94,9 @@ export function AppShell({
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [user, setUser] = useState<User | null>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
+  const notificationRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     void getMe()
@@ -49,8 +104,30 @@ export function AppShell({
       .catch(() => {});
   }, []);
 
-  const initials = getInitials(user?.name);
-  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  // Close notifications on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+    }
+    if (showNotifications) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showNotifications]);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const markAllAsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
+
+  const clearNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -65,47 +142,69 @@ export function AppShell({
 
         {/* Vertical Navigation Links */}
         <nav className="flex-1 space-y-1.5 p-4 overflow-y-auto">
-          {navItems.map(({ to, label, icon: Icon }) => {
+          {sidebarNavItems.map(({ to, label, icon: Icon, badge }) => {
             const active = pathname === to;
             return (
               <Link
                 key={to}
                 to={to}
                 className={cn(
-                  "flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-semibold transition-all",
+                  "flex items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold transition-all",
                   active
                     ? "bg-primary/15 text-primary border border-primary/30 shadow-sm"
                     : "text-muted-foreground hover:bg-surface-2 hover:text-foreground",
                 )}
               >
-                <Icon className={cn("h-5 w-5", active ? "text-primary" : "text-muted-foreground")} />
-                <span>{label}</span>
+                <div className="flex items-center gap-3.5">
+                  <Icon className={cn("h-5 w-5", active ? "text-primary" : "text-muted-foreground")} />
+                  <span>{label}</span>
+                </div>
+                {badge && (
+                  <span className="flex items-center gap-1 rounded-full bg-destructive/15 border border-destructive/30 px-2 py-0.5 text-[9px] font-black text-destructive animate-pulse">
+                    <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
+                    {badge}
+                  </span>
+                )}
               </Link>
             );
           })}
 
-          {isAdmin && (
-            <div className="pt-3">
-              <Link
-                to="/admin"
-                className={cn(
-                  "flex items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold transition-all border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 shadow-sm",
-                  pathname === "/admin" && "border-amber-400 bg-amber-500/25 shadow-amber-500/10"
-                )}
-              >
-                <div className="flex items-center gap-3.5">
-                  <ShieldAlert className="h-5 w-5 text-amber-400" />
-                  <span>Admin Portal</span>
-                </div>
-                <span className="rounded bg-amber-500/30 px-1.5 py-0.5 text-[10px] font-black uppercase text-amber-300">
-                  ADMIN
-                </span>
-              </Link>
+          {/* Betting Platform Feature Card: 100% Deposit Match */}
+          <div className="mt-4 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-surface to-surface-2 p-3.5 shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/20 text-amber-400">
+                <Gift className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="font-display text-xs font-black text-amber-400 uppercase tracking-tight">100% Bonus</p>
+                <p className="text-[10px] text-muted-foreground">Up to ₹5,000 on 1st Deposit</p>
+              </div>
             </div>
-          )}
+            <Link
+              to="/profile"
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-3 py-1.5 text-xs font-bold text-black shadow hover:brightness-110 transition-all"
+            >
+              <Zap className="h-3.5 w-3.5 fill-current" />
+              Add Cash Now
+            </Link>
+          </div>
+
+          {/* Quick Refer & Earn Card */}
+          <div className="mt-2 rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <div>
+                <p className="font-bold text-foreground text-[11px]">Invite Friends</p>
+                <p className="text-[10px] text-muted-foreground">Earn ₹500 Bonus</p>
+              </div>
+            </div>
+            <Link to="/profile" className="text-[10px] font-bold text-primary hover:underline">
+              Invite →
+            </Link>
+          </div>
         </nav>
 
-        {/* Bottom User Card in Sidebar */}
+        {/* Bottom User Profile Section */}
         <div className="p-4 border-t border-border/80 space-y-3 bg-surface-2/40">
           <Link
             to="/profile"
@@ -113,14 +212,14 @@ export function AppShell({
           >
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary font-display text-xs font-bold text-primary-foreground">
-                {initials}
+                {user?.name ? user.name.slice(0, 2).toUpperCase() : "VK"}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-bold text-foreground">
-                  {user?.name || "My Profile"}
+                  {user?.name || "Vikas Kumar"}
                 </p>
                 <p className="truncate text-[10px] text-muted-foreground">
-                  {user?.email || "Fantasy Player"}
+                  {user?.email || "vikaskumarsharma2106@gmail..."}
                 </p>
               </div>
             </div>
@@ -140,24 +239,25 @@ export function AppShell({
               <Logo size="sm" />
             </div>
 
-            {/* Desktop breadcrumb / placeholder */}
-            <div className="hidden md:block">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Fantasy Cricket Arena
-              </span>
+            {/* Desktop Brand Badge with Logo Icon */}
+            <div className="hidden md:flex items-center gap-3">
+              <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-primary/30 bg-surface/80 backdrop-blur shadow-sm">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-tr from-primary to-emerald-400 text-primary-foreground shadow-sm">
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
+                    <circle cx="16.5" cy="3.6" r="2.1" />
+                    <path d="M14.9 7.2 9.7 9.9l-2.9 4.4-2 5.9 2.1.7 1.8-5.3 2.6-2.2.6 4.3-2.6 5.4 2 1 3.1-6.3-.4-5.1 3.1-1.5 2.9 3.1 1.5-1.4-3.6-4.1z" />
+                    <rect x="2.5" y="1.5" width="1.6" height="9" rx="0.8" transform="rotate(-24 3.3 6)" />
+                  </svg>
+                </div>
+                <span className="font-display text-xs font-black tracking-wider text-foreground">
+                  FANTASY CRICKET <span className="text-primary">ARENA</span>
+                </span>
+                <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
+              </div>
             </div>
 
-            {/* Right Quick Actions */}
-            <div className="flex items-center gap-3">
-              {isAdmin && (
-                <Link
-                  to="/admin"
-                  className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-amber-500/50 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-400 hover:bg-amber-500/20 transition-all"
-                >
-                  <ShieldAlert className="h-3.5 w-3.5" />
-                  <span>Admin Panel</span>
-                </Link>
-              )}
+            {/* Right Quick Actions (Wallet & Interactive Notifications) */}
+            <div className="flex items-center gap-3 relative" ref={notificationRef}>
               <Link
                 to="/profile"
                 className="flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold hover:border-primary/40 transition-colors"
@@ -165,20 +265,106 @@ export function AppShell({
                 <Wallet className="h-3.5 w-3.5 text-primary" />
                 ₹0
               </Link>
+
+              {/* Notification Bell Button */}
               <button
                 type="button"
                 aria-label="Notifications"
-                className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface hover:border-primary/40 transition-colors"
+                onClick={() => setShowNotifications((prev) => !prev)}
+                className={cn(
+                  "relative flex h-9 w-9 items-center justify-center rounded-full border transition-all",
+                  showNotifications
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-surface hover:border-primary/40 text-muted-foreground hover:text-foreground"
+                )}
               >
-                <Bell className="h-4 w-4 text-muted-foreground" />
-                <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary" />
+                <Bell className="h-4 w-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute right-1.5 top-1.5 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                  </span>
+                )}
               </button>
-              <Link
-                to="/profile"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-primary font-display text-xs font-bold text-primary-foreground shadow-sm hover:brightness-110 transition-all"
-              >
-                {initials}
-              </Link>
+
+              {/* Notifications Dropdown Popover */}
+              {showNotifications && (
+                <div className="absolute right-0 top-12 z-50 w-80 sm:w-96 rounded-2xl border border-border bg-surface/98 p-4 shadow-2xl backdrop-blur animate-in fade-in-50 zoom-in-95">
+                  <div className="flex items-center justify-between border-b border-border/80 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Bell className="h-4 w-4 text-primary" />
+                      <span className="font-display text-sm font-bold text-foreground">Notifications</span>
+                      {unreadCount > 0 && (
+                        <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-black text-primary">
+                          {unreadCount} new
+                        </span>
+                      )}
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={markAllAsRead}
+                        className="text-[11px] font-semibold text-primary hover:underline"
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="mt-3 max-h-80 space-y-2.5 overflow-y-auto pr-1">
+                    {notifications.length === 0 ? (
+                      <div className="py-8 text-center text-xs text-muted-foreground">
+                        No notifications at this moment.
+                      </div>
+                    ) : (
+                      notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          className={cn(
+                            "relative rounded-xl border p-3 transition-all",
+                            n.read
+                              ? "border-border/60 bg-surface-2/40 opacity-80"
+                              : "border-primary/30 bg-primary/5"
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              {n.type === "contest" && <Trophy className="h-4 w-4 text-amber-400 shrink-0" />}
+                              {n.type === "wallet" && <Wallet className="h-4 w-4 text-emerald-400 shrink-0" />}
+                              {n.type === "live" && <Radio className="h-4 w-4 text-destructive shrink-0" />}
+                              {n.type === "promo" && <ShieldCheck className="h-4 w-4 text-primary shrink-0" />}
+                              <p className="text-xs font-bold text-foreground">{n.title}</p>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] text-muted-foreground">{n.time}</span>
+                              <button
+                                type="button"
+                                onClick={() => clearNotification(n.id)}
+                                className="text-muted-foreground hover:text-foreground"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground leading-relaxed pl-6">
+                            {n.description}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="mt-3 border-t border-border/80 pt-2 text-center">
+                    <Link
+                      to="/matches"
+                      onClick={() => setShowNotifications(false)}
+                      className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1"
+                    >
+                      View Live Matches <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </header>
@@ -188,101 +374,10 @@ export function AppShell({
           {children}
         </main>
 
-        {/* ------------------------------------------------------------- */}
-        {/* DECENT & PROFESSIONAL FOOTER                                  */}
-        {/* ------------------------------------------------------------- */}
-        <footer className="mt-auto border-t border-border bg-surface/90 pb-20 md:pb-8 pt-10 text-xs text-muted-foreground">
-          <div className="mx-auto max-w-5xl px-6 lg:px-8 space-y-8">
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
-              {/* Col 1: Brand & Bio */}
-              <div className="space-y-3 md:col-span-2">
-                <Logo size="sm" />
-                <p className="max-w-sm text-xs leading-relaxed text-muted-foreground">
-                  India's leading skill-based fantasy cricket platform. Pick your dream team, join mega contests, and compete with cricket fans across the nation.
-                </p>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  <span className="inline-flex items-center rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-                    100% SECURE & VERIFIED
-                  </span>
-                  <span className="inline-flex items-center rounded-md border border-border bg-surface-2 px-2 py-0.5 text-[10px] font-bold text-foreground">
-                    18+ PLAY RESPONSIBLY
-                  </span>
-                </div>
-              </div>
-
-              {/* Col 2: Quick Links */}
-              <div className="space-y-2.5">
-                <p className="font-display text-xs font-bold uppercase tracking-wider text-foreground">
-                  Quick Links
-                </p>
-                <ul className="space-y-1.5 text-xs">
-                  <li>
-                    <Link to="/matches" className="hover:text-primary transition-colors">
-                      Live & Upcoming Matches
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/contests" className="hover:text-primary transition-colors">
-                      Mega Contests & Pools
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/create-team" className="hover:text-primary transition-colors">
-                      My Fantasy Teams
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/profile" className="hover:text-primary transition-colors">
-                      Account & Profile
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Col 3: Fair Play & Support */}
-              <div className="space-y-2.5">
-                <p className="font-display text-xs font-bold uppercase tracking-wider text-foreground">
-                  Fair Play & Trust
-                </p>
-                <ul className="space-y-1.5 text-xs">
-                  <li>
-                    <span className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                      Fair Play Policy
-                    </span>
-                  </li>
-                  <li>
-                    <span className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                      Fantasy Point Scoring
-                    </span>
-                  </li>
-                  <li>
-                    <span className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                      Terms of Service
-                    </span>
-                  </li>
-                  <li>
-                    <span className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                      24x7 Help & Support
-                    </span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Bottom Disclaimer & Copyright */}
-            <div className="border-t border-border/80 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-muted-foreground/80">
-              <p>© 2026 Fantasy Cricket Arena. All rights reserved.</p>
-              <p className="text-center sm:text-right">
-                Game of skill &bull; Strictly for ages 18 and older &bull; Play responsibly
-              </p>
-            </div>
-          </div>
-        </footer>
-
         {/* Bottom Mobile Navigation (on small screens < md) */}
         <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur">
-          <div className={cn("grid px-2", isAdmin ? "grid-cols-6" : "grid-cols-5")}>
-            {navItems.map(({ to, label, icon: Icon }) => {
+          <div className="grid grid-cols-5 px-2">
+            {mobileNavItems.map(({ to, label, icon: Icon }) => {
               const active = pathname === to;
               return (
                 <Link
@@ -298,18 +393,6 @@ export function AppShell({
                 </Link>
               );
             })}
-            {isAdmin && (
-              <Link
-                to="/admin"
-                className={cn(
-                  "flex flex-col items-center gap-1 py-3 text-[10px] font-medium transition-colors text-amber-400",
-                  pathname === "/admin" ? "font-bold text-amber-300" : "opacity-80 hover:text-amber-300",
-                )}
-              >
-                <ShieldAlert className="h-5 w-5 text-amber-400" />
-                Admin
-              </Link>
-            )}
           </div>
         </nav>
       </div>
@@ -342,4 +425,3 @@ export function PageHeader({
     </div>
   );
 }
-
