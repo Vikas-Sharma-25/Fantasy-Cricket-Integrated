@@ -169,39 +169,73 @@ export function AppShell({
             );
           })}
 
-          {/* Betting Platform Feature Card: 100% Deposit Match */}
-          <div className="mt-4 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-surface to-surface-2 p-3.5 shadow-sm">
-            <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/20 text-amber-400">
-                <Gift className="h-4 w-4" />
-              </span>
-              <div>
-                <p className="font-display text-xs font-black text-amber-400 uppercase tracking-tight">100% Bonus</p>
-                <p className="text-[10px] text-muted-foreground">Up to ₹5,000 on 1st Deposit</p>
+          {/* On Matches / Live-Match: Show Live Cricket Pulse instead of Ads */}
+          {pathname === "/matches" || pathname === "/live-match" ? (
+            <div className="mt-4 rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/40 via-surface to-surface-2 p-3.5 shadow-sm space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                  </span>
+                  <p className="font-display text-xs font-black text-emerald-400 uppercase tracking-tight">
+                    Live Cricket Pulse
+                  </p>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                  REAL-TIME
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                World matches, live ball commentary, and expert editorial coverage.
+              </p>
+              <div className="pt-1.5 border-t border-emerald-500/20 flex items-center justify-between text-[10px] text-emerald-300 font-semibold">
+                <span className="flex items-center gap-1">
+                  <Radio className="h-3 w-3 text-red-400 animate-pulse" />
+                  Live Matches Running
+                </span>
+                <Link to="/live-match" className="hover:underline flex items-center gap-0.5">
+                  Match Center →
+                </Link>
               </div>
             </div>
-            <Link
-              to="/profile"
-              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-3 py-1.5 text-xs font-bold text-black shadow hover:brightness-110 transition-all"
-            >
-              <Zap className="h-3.5 w-3.5 fill-current" />
-              Add Cash Now
-            </Link>
-          </div>
+          ) : (
+            <>
+              {/* Betting Platform Feature Card: 100% Deposit Match */}
+              <div className="mt-4 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-surface to-surface-2 p-3.5 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/20 text-amber-400">
+                    <Gift className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="font-display text-xs font-black text-amber-400 uppercase tracking-tight">100% Bonus</p>
+                    <p className="text-[10px] text-muted-foreground">Up to ₹5,000 on 1st Deposit</p>
+                  </div>
+                </div>
+                <Link
+                  to="/profile"
+                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-3 py-1.5 text-xs font-bold text-black shadow hover:brightness-110 transition-all"
+                >
+                  <Zap className="h-3.5 w-3.5 fill-current" />
+                  Add Cash Now
+                </Link>
+              </div>
 
-          {/* Quick Refer & Earn Card */}
-          <div className="mt-2 rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <div>
-                <p className="font-bold text-foreground text-[11px]">Invite Friends</p>
-                <p className="text-[10px] text-muted-foreground">Earn ₹500 Bonus</p>
+              {/* Quick Refer & Earn Card */}
+              <div className="mt-2 rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <div>
+                    <p className="font-bold text-foreground text-[11px]">Invite Friends</p>
+                    <p className="text-[10px] text-muted-foreground">Earn ₹500 Bonus</p>
+                  </div>
+                </div>
+                <Link to="/profile" className="text-[10px] font-bold text-primary hover:underline">
+                  Invite →
+                </Link>
               </div>
-            </div>
-            <Link to="/profile" className="text-[10px] font-bold text-primary hover:underline">
-              Invite →
-            </Link>
-          </div>
+            </>
+          )}
         </nav>
 
         {/* Bottom User Profile Section */}

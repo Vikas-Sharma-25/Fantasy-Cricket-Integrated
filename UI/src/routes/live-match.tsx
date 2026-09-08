@@ -823,27 +823,192 @@ function LiveMatch() {
                 </div>
               </div>
 
-              {/* Commentary Feed */}
+              {/* Commentary Feed with Pic 3 Over Summary Boxes */}
               <div className="divide-y divide-border/60 border border-border/80 rounded-xl bg-surface/80 overflow-hidden">
-                <div className="bg-surface-2/60 px-4 py-2 text-xs font-black uppercase text-muted-foreground tracking-wider">
-                  LIVE COMMENTARY
+                <div className="bg-surface-2/60 px-4 py-2 text-xs font-black uppercase text-muted-foreground tracking-wider flex items-center justify-between">
+                  <span>LIVE COMMENTARY</span>
+                  <span className="text-[10px] text-emerald-400 font-bold">BALL-BY-BALL & OVER SUMMARIES</span>
                 </div>
-                {((pd.commentary || [
-                  { over: "72.1", text: "Abhijit K Sarkar to Tilak Varma: Defended back cleanly towards mid-off. No run." },
-                  { over: "71.5", text: "Abhijit K Sarkar to Tilak Varma, no run, length ball outside off, left alone safely through to the keeper" },
-                  { over: "71.4", text: "Abhijit K Sarkar to Tilak Varma, no run, defended solidly from the crease toward mid-wicket" },
-                  { over: "71.3", text: "Abhijit K Sarkar to Tilak Varma, no run, back of a length outside off, steered gently to point" },
-                  { over: "71.2", text: "Abhijit K Sarkar to Tilak Varma, no run, good length on the stumps, pushed with soft hands to mid-on" }
-                ]) as any[]).map((c, idx) => (
-                  <div key={idx} className="flex p-3.5 gap-3 hover:bg-surface-2/30 transition-colors">
-                    <span className="w-12 shrink-0 font-mono font-black text-emerald-400 text-xs mt-0.5">
-                      {c.over}
-                    </span>
-                    <p className="flex-1 text-xs text-foreground/90 leading-relaxed">
-                      {c.text}
-                    </p>
+
+                {/* Over 80 Balls */}
+                <div className="flex p-3.5 gap-3 hover:bg-surface-2/30 transition-colors">
+                  <span className="w-12 shrink-0 font-mono font-black text-emerald-400 text-xs mt-0.5">80.6</span>
+                  <p className="flex-1 text-xs text-foreground/90 leading-relaxed">
+                    Md Kounain Quraishi to Chama V Milind, no run, tossed up on middle and leg, blocked solidly down onto the pitch.
+                  </p>
+                </div>
+                <div className="flex p-3.5 gap-3 hover:bg-surface-2/30 transition-colors">
+                  <span className="w-12 shrink-0 font-mono font-black text-emerald-400 text-xs mt-0.5">80.5</span>
+                  <p className="flex-1 text-xs text-foreground/90 leading-relaxed">
+                    Md Kounain Quraishi to Chama V Milind, 2 runs, clipped through mid-wicket with soft hands, easy two taken.
+                  </p>
+                </div>
+                <div className="flex p-3.5 gap-3 hover:bg-surface-2/30 transition-colors">
+                  <span className="w-12 shrink-0 font-mono font-black text-emerald-400 text-xs mt-0.5">80.4</span>
+                  <p className="flex-1 text-xs text-foreground/90 leading-relaxed">
+                    Md Kounain Quraishi to Chama V Milind, no run, flighted outside off, left alone safely.
+                  </p>
+                </div>
+                <div className="flex p-3.5 gap-3 hover:bg-surface-2/30 transition-colors">
+                  <span className="w-12 shrink-0 font-mono font-black text-emerald-400 text-xs mt-0.5">80.3</span>
+                  <p className="flex-1 text-xs text-foreground/90 leading-relaxed">
+                    Md Kounain Quraishi to Chama V Milind, no run, defended forward toward short mid-wicket.
+                  </p>
+                </div>
+                <div className="flex p-3.5 gap-3 bg-red-950/20 hover:bg-red-950/30 transition-colors">
+                  <span className="w-12 shrink-0 font-mono font-black text-red-500 text-xs mt-0.5">80.2</span>
+                  <p className="flex-1 text-xs text-red-300 font-medium leading-relaxed">
+                    <strong>WICKET!</strong> Md Kounain Quraishi to Smaran Ravichandran, OUT! Caught behind! Drifting away from round the wicket, feather edge taken cleanly by keeper Kumar Kushagra! <strong>Smaran Ravichandran c Kumar Kushagra b Quraishi 23(55)</strong>.
+                  </p>
+                </div>
+                <div className="flex p-3.5 gap-3 hover:bg-surface-2/30 transition-colors">
+                  <span className="w-12 shrink-0 font-mono font-black text-emerald-400 text-xs mt-0.5">80.1</span>
+                  <p className="flex-1 text-xs text-foreground/90 leading-relaxed">
+                    Md Kounain Quraishi to Tilak Varma, no run, arm ball drifting in on middle, pushed gently to mid-on.
+                  </p>
+                </div>
+
+                {/* OVER 80 SUMMARY BOX (EXACT USER PIC 3 DESIGN) */}
+                <div className="p-3 bg-surface-2/40">
+                  <div className="rounded-xl border border-border/80 bg-surface/95 overflow-hidden shadow-sm">
+                    <div className="px-4 py-2.5 bg-surface-2/60 flex items-center justify-between border-b border-border/70 text-xs">
+                      <div className="flex items-center gap-3">
+                        <span className="font-black text-foreground text-sm">Over 80</span>
+                        <span className="text-muted-foreground font-semibold">|</span>
+                        <span className="font-mono font-bold text-foreground text-sm">242-6</span>
+                      </div>
+                      <div className="flex items-center gap-2 font-mono text-xs">
+                        <div className="flex items-center gap-1.5 tracking-wider font-bold">
+                          <span>0</span>
+                          <span className="text-red-500 font-black">W</span>
+                          <span>0</span>
+                          <span>0</span>
+                          <span>2</span>
+                          <span>0</span>
+                        </div>
+                        <span className="text-muted-foreground text-[11px]">(2 runs)</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs border-b border-border/60">
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-foreground">Chama V Milind</span>
+                          <span className="font-mono text-muted-foreground">2 (4)</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-emerald-400">Tilak Varma *</span>
+                          <span className="font-mono font-bold text-emerald-300">56 (133)</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5 sm:border-l sm:border-border/60 sm:pl-4 flex justify-between items-center">
+                        <span className="font-semibold text-foreground">Md Kounain Quraishi</span>
+                        <span className="font-mono font-bold text-foreground">31-7-77-1</span>
+                      </div>
+                    </div>
+
+                    <div className="px-4 py-2 bg-surface-2/30 flex items-center gap-6 text-xs font-semibold text-primary">
+                      <span className="hover:underline flex items-center gap-1 cursor-pointer">
+                        Over Summary <ChevronRight className="h-3.5 w-3.5" />
+                      </span>
+                      <span className="hover:underline flex items-center gap-1 cursor-pointer">
+                        View all overs <ChevronRight className="h-3.5 w-3.5" />
+                      </span>
+                    </div>
                   </div>
-                ))}
+                </div>
+
+                {/* Over 79 Balls */}
+                <div className="flex p-3.5 gap-3 hover:bg-surface-2/30 transition-colors">
+                  <span className="w-12 shrink-0 font-mono font-black text-emerald-400 text-xs mt-0.5">79.6</span>
+                  <p className="flex-1 text-xs text-foreground/90 leading-relaxed">
+                    Abhijit K Sarkar to Tilak Varma, 1 run, tucks it away to deep square leg to keep the strike.
+                  </p>
+                </div>
+                <div className="flex p-3.5 gap-3 hover:bg-surface-2/30 transition-colors">
+                  <span className="w-12 shrink-0 font-mono font-black text-emerald-400 text-xs mt-0.5">79.5</span>
+                  <p className="flex-1 text-xs text-foreground/90 leading-relaxed">
+                    Abhijit K Sarkar to Tilak Varma, no run, length ball outside off, left alone through to the keeper.
+                  </p>
+                </div>
+                <div className="flex p-3.5 gap-3 hover:bg-surface-2/30 transition-colors">
+                  <span className="w-12 shrink-0 font-mono font-black text-emerald-400 text-xs mt-0.5">79.4</span>
+                  <p className="flex-1 text-xs text-foreground/90 leading-relaxed">
+                    Abhijit K Sarkar to Tilak Varma, 1 run, steered gently past backward point into the deep.
+                  </p>
+                </div>
+                <div className="flex p-3.5 gap-3 hover:bg-surface-2/30 transition-colors">
+                  <span className="w-12 shrink-0 font-mono font-black text-emerald-400 text-xs mt-0.5">79.3</span>
+                  <p className="flex-1 text-xs text-foreground/90 leading-relaxed">
+                    Abhijit K Sarkar to Smaran Ravichandran, 1 run, tapped with soft hands into the covers.
+                  </p>
+                </div>
+
+                {/* OVER 79 SUMMARY BOX */}
+                <div className="p-3 bg-surface-2/40">
+                  <div className="rounded-xl border border-border/80 bg-surface/95 overflow-hidden shadow-sm">
+                    <div className="px-4 py-2.5 bg-surface-2/60 flex items-center justify-between border-b border-border/70 text-xs">
+                      <div className="flex items-center gap-3">
+                        <span className="font-black text-foreground text-sm">Over 79</span>
+                        <span className="text-muted-foreground font-semibold">|</span>
+                        <span className="font-mono font-bold text-foreground text-sm">240-5</span>
+                      </div>
+                      <div className="flex items-center gap-2 font-mono text-xs">
+                        <div className="flex items-center gap-1.5 tracking-wider font-bold">
+                          <span>1</span>
+                          <span>0</span>
+                          <span>1</span>
+                          <span>0</span>
+                          <span>1</span>
+                          <span>1</span>
+                        </div>
+                        <span className="text-muted-foreground text-[11px]">(4 runs)</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs border-b border-border/60">
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-foreground">Smaran Ravichandran</span>
+                          <span className="font-mono text-muted-foreground">23 (53)</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-emerald-400">Tilak Varma *</span>
+                          <span className="font-mono font-bold text-emerald-300">55 (130)</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5 sm:border-l sm:border-border/60 sm:pl-4 flex justify-between items-center">
+                        <span className="font-semibold text-foreground">Abhijit K Sarkar</span>
+                        <span className="font-mono font-bold text-foreground">8-0-35-0</span>
+                      </div>
+                    </div>
+
+                    <div className="px-4 py-2 bg-surface-2/30 flex items-center gap-6 text-xs font-semibold text-primary">
+                      <span className="hover:underline flex items-center gap-1 cursor-pointer">
+                        Over Summary <ChevronRight className="h-3.5 w-3.5" />
+                      </span>
+                      <span className="hover:underline flex items-center gap-1 cursor-pointer">
+                        View all overs <ChevronRight className="h-3.5 w-3.5" />
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dynamic live commentary items if present */}
+                {pd.commentary && pd.commentary.length > 0 && (
+                  pd.commentary.map((c: any, idx: number) => (
+                    <div key={`live-comm-${idx}`} className="flex p-3.5 gap-3 hover:bg-surface-2/30 transition-colors">
+                      <span className="w-12 shrink-0 font-mono font-black text-emerald-400 text-xs mt-0.5">
+                        {c.over}
+                      </span>
+                      <p className="flex-1 text-xs text-foreground/90 leading-relaxed">
+                        {c.text}
+                      </p>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
