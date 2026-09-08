@@ -17,6 +17,9 @@ import {
   Zap,
   ArrowRight,
   ShieldCheck,
+  CalendarDays,
+  BarChart2,
+  HelpCircle,
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
@@ -66,6 +69,12 @@ const sidebarNavItems = [
   { to: "/create-team", label: "My Teams", icon: Users },
   { to: "/leaderboard", label: "Leaderboard", icon: Award },
   { to: "/profile", label: "Wallet & Profile", icon: UserIcon },
+];
+
+const cricketNavItems = [
+  { to: "/matches", label: "Series & Fixtures", icon: CalendarDays },
+  { to: "/matches", label: "Points Table", icon: BarChart2 },
+  { to: "/matches", label: "Fantasy Point Rules", icon: HelpCircle },
 ];
 
 const mobileNavItems = [
@@ -132,6 +141,10 @@ export function AppShell({
 
         {/* Vertical Navigation Links */}
         <nav className="flex-1 space-y-1.5 p-4 overflow-y-auto">
+        <nav className="flex-1 space-y-1 p-3.5 overflow-y-auto scrollbar-none">
+          <p className="px-3 py-1 text-[10px] font-black text-muted-foreground uppercase tracking-wider">
+            Fantasy Arena
+          </p>
           {sidebarNavItems.map(({ to, label, icon: Icon, badge }) => {
             const active = pathname === to;
             return (
@@ -140,6 +153,7 @@ export function AppShell({
                 to={to}
                 className={cn(
                   "flex items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold transition-all",
+                  "flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all",
                   active
                     ? "bg-primary/15 text-primary border border-primary/30 shadow-sm"
                     : "text-muted-foreground hover:bg-surface-2 hover:text-foreground",
@@ -147,6 +161,8 @@ export function AppShell({
               >
                 <div className="flex items-center gap-3.5">
                   <Icon className={cn("h-5 w-5", active ? "text-primary" : "text-muted-foreground")} />
+                <div className="flex items-center gap-3">
+                  <Icon className={cn("h-4.5 w-4.5", active ? "text-primary" : "text-muted-foreground")} />
                   <span>{label}</span>
                 </div>
                 {badge && (
@@ -158,6 +174,39 @@ export function AppShell({
               </Link>
             );
           })}
+
+          <div className="pt-3">
+            <p className="px-3 py-1 text-[10px] font-black text-muted-foreground uppercase tracking-wider">
+              Cricket Desk
+            </p>
+            {cricketNavItems.map(({ to, label, icon: Icon }) => (
+              <Link
+                key={label}
+                to={to}
+                className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-xs font-semibold text-muted-foreground hover:bg-surface-2 hover:text-foreground transition-all"
+              >
+                <Icon className="h-4 w-4 text-muted-foreground" />
+                <span>{label}</span>
+              </Link>
+            ))}
+          </div>
+
+          {/* User Fantasy Account & Wallet Status (Informational only - NO ADS) */}
+          <div className="mt-4 rounded-xl border border-border/80 bg-surface/70 p-3 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1.5">
+                <Wallet className="h-3.5 w-3.5 text-primary" /> Wallet Cash
+              </span>
+              <span className="text-xs font-mono font-bold text-emerald-400">₹{user?.walletBalance ?? 0}</span>
+            </div>
+            <div className="h-px bg-border/60" />
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+              <span className="flex items-center gap-1 text-emerald-400 font-medium">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> KYC Verified
+              </span>
+              <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold">100% Fair Play</span>
+            </div>
+          </div>
         </nav>
 
         {/* Bottom User Profile Section */}
