@@ -127,9 +127,16 @@ export const getMatchScorecard = async (matchId: string): Promise<any> => {
       if (pd.scorecard) return pd.scorecard;
       return {
         matchId: match._id,
+        match: `${match.teamA} vs ${match.teamB}`,
+        series: pd.tournament || pd.series || "Cricket Series",
+        status: match.status,
         firstInnings: pd.firstInnings || null,
         batsmen: pd.batsmen || [],
         bowlers: pd.bowlers || (pd.bowler ? [pd.bowler] : []),
+        fallOfWickets: pd.fallOfWickets || [],
+        partnerships: pd.partnerships || [],
+        venueGuide: pd.venueGuide || null,
+        broadcastGuide: pd.broadcastGuide || null,
         scoreA: pd.scoreA || "",
         scoreB: pd.scoreB || "",
       };
