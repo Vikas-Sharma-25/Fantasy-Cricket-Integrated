@@ -140,7 +140,6 @@ export function AppShell({
         </div>
 
         {/* Vertical Navigation Links */}
-        <nav className="flex-1 space-y-1.5 p-4 overflow-y-auto">
         <nav className="flex-1 space-y-1 p-3.5 overflow-y-auto scrollbar-none">
           <p className="px-3 py-1 text-[10px] font-black text-muted-foreground uppercase tracking-wider">
             Fantasy Arena
@@ -152,15 +151,12 @@ export function AppShell({
                 key={to}
                 to={to}
                 className={cn(
-                  "flex items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold transition-all",
                   "flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all",
                   active
                     ? "bg-primary/15 text-primary border border-primary/30 shadow-sm"
                     : "text-muted-foreground hover:bg-surface-2 hover:text-foreground",
                 )}
               >
-                <div className="flex items-center gap-3.5">
-                  <Icon className={cn("h-5 w-5", active ? "text-primary" : "text-muted-foreground")} />
                 <div className="flex items-center gap-3">
                   <Icon className={cn("h-4.5 w-4.5", active ? "text-primary" : "text-muted-foreground")} />
                   <span>{label}</span>
