@@ -220,8 +220,40 @@ export async function seedLiveAndWorldMatches() {
 export function startLiveMatchSimulator() {
   setInterval(async () => {
     try {
-      const liveMatches = await Match.find({ status: "LIVE" });
-      if (!liveMatches.length) return;
+      let liveMatches = await Match.find({ status: "LIVE" });
+      if (!liveMatches.length) {
+        // If all live matches completed, revive an international fixture into a live thrilling chase!
+        const matchToRevive = await Match.findOne({ providerMatchId: "INT-LIVE-IND-AUS" });
+        if (matchToRevive) {
+          matchToRevive.status = "LIVE";
+          const pd = (matchToRevive.providerData || {}) as any;
+          pd.currentScore = 152;
+          pd.currentWickets = 3;
+          pd.currentOvers = "15.4";
+          pd.target = 186;
+          pd.crr = "9.70";
+          pd.rrr = "7.85";
+          pd.statusText = "India need 34 runs in 26 balls to win";
+          pd.recentBalls = ["1", "4", "0", "6", "1", "2"];
+          pd.batsmen = [
+            { name: "Virat Kohli", runs: 64, balls: 42, fours: 6, sixes: 2, isStriker: true },
+            { name: "Hardik Pandya", runs: 22, balls: 11, fours: 2, sixes: 1, isStriker: false },
+          ];
+          pd.bowler = { name: "Pat Cummins", overs: "3.2", maidens: 0, runs: 30, wickets: 1, economy: "9.00" };
+          pd.keyStats = {
+            partnership: "42 (23)",
+            lastWkt: "Suryakumar Yadav c Maxwell b Zampa 34 (21) - 110/3",
+            ovsLeft: "4.2",
+            last10Ovs: "88/2",
+            toss: "Australia elected to bat first",
+          };
+          matchToRevive.markModified("providerData");
+          await matchToRevive.save();
+          liveMatches = [matchToRevive];
+        } else {
+          return;
+        }
+      }
 
       for (const match of liveMatches) {
         const pd = (match.providerData || {}) as any;
