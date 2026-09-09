@@ -748,6 +748,9 @@ function Contests() {
                     Contest Details
                   </span>
                   <StatusBadge status={viewingContest.status || "OPEN"} />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Max {viewingContest.maxSlots || 5000} spots
+                  </p>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="rounded-lg bg-surface p-2.5 border border-border">
@@ -773,6 +776,7 @@ function Contests() {
                 </div>
               </div>
 
+              {/* Joined Team Details */}
               {/* 3. All Prizes Breakdown Table */}
               <div className="rounded-xl border border-border bg-surface-2/40 p-4 space-y-2.5">
                 <div className="flex items-center justify-between">
@@ -871,6 +875,7 @@ function Contests() {
         </div>
       )}
 
+              {/* Actions: View Leaderboard */}
       {/* ------------------------------------------------------------- */}
       {/* MODAL 3: LEADERBOARD MODAL (SHOWING USER RANK & PARTICIPANTS) */}
       {/* ------------------------------------------------------------- */}
@@ -990,7 +995,7 @@ function Contests() {
               {/* Close Button */}
               <div className="pt-2">
                 <Button
-                  variant="hero"
+                  variant="outlineGreen"
                   size="xl"
                   className="w-full font-bold"
                   onClick={() => setLeaderboardContest(null)}

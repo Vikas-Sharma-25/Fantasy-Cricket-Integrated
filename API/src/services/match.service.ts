@@ -327,13 +327,13 @@ export const getMatchPlayers = async (matchId: string) => {
   }
 
   // Ensure 22 players exist in MatchPlayer for this match
-  const count = await MatchPlayer.countDocuments({ matchId });
+  const count = await MatchPlayer.countDocuments({ matchId: match._id });
   if (count < 22) {
     await ensureMatchSquad(match);
   }
 
-  // Return the players for this match
-  const matchPlayers = await MatchPlayer.find({ matchId }).populate("playerId");
+  // Return the squad players for this match
+  const matchPlayers = await MatchPlayer.find({ matchId: match._id }).populate("playerId");
 
   const merged = matchPlayers.map((mp: any) => {
     const player = mp.playerId;

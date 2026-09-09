@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import {
   ShieldCheck,
@@ -24,6 +24,10 @@ import {
   Lock,
   Check,
   TrendingUp,
+  Volume2,
+  VolumeX,
+  Maximize2,
+  X,
 } from "lucide-react";
 import hero from "@/assets/hero-cricket.jpg";
 import { Logo } from "@/components/fc/Logo";
@@ -273,6 +277,9 @@ const faqs = [
 function Landing() {
   const navigate = useNavigate();
   const [realMatches, setRealMatches] = useState<any[]>([]);
+  const [isMuted, setIsMuted] = useState(true);
+  const [showTheatreModal, setShowTheatreModal] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     fetch("/api/cricket/live")
@@ -285,6 +292,16 @@ function Landing() {
       .catch(() => {});
   }, []);
 
+  function toggleSound() {
+    if (videoRef.current) {
+      const next = !videoRef.current.muted;
+      videoRef.current.muted = next;
+      setIsMuted(next);
+    } else {
+      setIsMuted((prev) => !prev);
+    }
+  }
+
   function handleAction(msg: string) {
     setFlow(FLOW_KEYS.authPromptMsg, msg);
     navigate({ to: "/register" });
@@ -292,15 +309,58 @@ function Landing() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
-      {/* Background Hero Accent Visual */}
-      <div className="pointer-events-none absolute right-0 top-0 h-[880px] w-full max-w-[1100px] overflow-hidden opacity-95 lg:w-[65%]">
-        <img
-          src={hero}
-          alt="Fantasy cricket batsman playing an explosive shot under floodlights"
-          className="h-full w-full object-cover object-center scale-100"
+      {/* Background Hero Accent Visual: 3D High-Octane Motion Video */}
+      <div className="absolute right-0 top-0 h-[880px] w-full max-w-[1100px] overflow-hidden opacity-95 lg:w-[65%] pointer-events-none">
+        <video
+          ref={videoRef}
+          src="/for_this_fantasy_cricket_wbsit.mp4"
+          autoPlay
+          loop
+          muted={isMuted}
+          playsInline
+          className="h-full w-full object-cover object-center scale-105"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,var(--background)_0%,var(--background)_25%,oklch(0.16_0.018_265/0.75)_50%,oklch(0.16_0.018_265/0.15)_100%)]" />
+        {/* Sleek gradient overlays for crystal-clear text readability */}
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,var(--background)_0%,var(--background)_25%,oklch(0.16_0.018_265/0.75)_50%,oklch(0.16_0.018_265/0.25)_100%)]" />
         <div className="absolute inset-x-0 bottom-0 h-64 bg-[linear-gradient(180deg,transparent,var(--background))]" />
+
+        {/* Floating Interactive Video Controls */}
+        <div className="pointer-events-auto absolute bottom-10 right-8 z-20 flex flex-wrap items-center gap-2.5">
+          <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-black/80 px-3 py-1.5 text-[11px] font-mono font-bold text-emerald-400 border border-emerald-500/40 backdrop-blur-md shadow-lg">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+            ARENA 4K MOTION
+          </div>
+          <button
+            type="button"
+            onClick={toggleSound}
+            aria-label={isMuted ? "Turn sound on" : "Mute sound"}
+            className="flex items-center gap-2 rounded-full border border-primary/50 bg-black/85 px-3.5 py-1.5 text-xs font-bold text-white shadow-xl backdrop-blur-md transition-all hover:border-primary hover:bg-primary/20 hover:scale-105 cursor-pointer"
+          >
+            {isMuted ? (
+              <>
+                <VolumeX className="h-3.5 w-3.5 text-primary" />
+                <span>UNMUTE</span>
+              </>
+            ) : (
+              <>
+                <Volume2 className="h-3.5 w-3.5 text-primary animate-pulse" />
+                <span>SOUND ON</span>
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowTheatreModal(true)}
+            aria-label="Expand to theatre mode"
+            className="flex items-center gap-1.5 rounded-full border border-border bg-black/85 px-3.5 py-1.5 text-xs font-bold text-white shadow-xl backdrop-blur-md transition-all hover:border-primary hover:bg-primary/20 hover:scale-105 cursor-pointer"
+          >
+            <Maximize2 className="h-3.5 w-3.5 text-primary" />
+            <span>THEATRE</span>
+          </button>
+        </div>
       </div>
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -397,13 +457,22 @@ function Landing() {
               <Trophy className="h-5 w-5" /> PLAY NOW & WIN CASH <ArrowRight className="h-4 w-4" />
             </Button>
             <Button
+              type="button"
+              onClick={() => setShowTheatreModal(true)}
+              variant="outlineGreen"
+              size="xl"
+              className="gap-2 font-bold bg-surface/80 hover:bg-surface-2 border-emerald-500/40 cursor-pointer shadow-lg shadow-emerald-950/30"
+            >
+              <Play className="h-4 w-4 text-primary fill-primary/30" /> WATCH 4K TRAILER
+            </Button>
+            <Button
               asChild
               variant="outline"
               size="xl"
               className="gap-2 border-border/80 bg-surface/80 font-bold hover:bg-surface-2"
             >
               <a href="#how-to-play">
-                <Play className="h-4 w-4 text-primary" /> HOW TO PLAY
+                <Sparkles className="h-4 w-4 text-primary" /> HOW TO PLAY
               </a>
             </Button>
           </div>
@@ -898,6 +967,69 @@ function Landing() {
           </div>
         </footer>
       </div>
+
+      {/* ============================================================= */}
+      {/* THEATRE MODE VIDEO MODAL                                      */}
+      {/* ============================================================= */}
+      {showTheatreModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in-50 duration-200">
+          <div className="w-full max-w-4xl bg-surface rounded-3xl border border-primary/40 shadow-2xl shadow-primary/10 overflow-hidden space-y-4 p-5 sm:p-6 relative">
+            <div className="flex items-center justify-between pb-3 border-b border-border/80">
+              <div className="flex items-center gap-3">
+                <span className="flex h-3 w-3 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-primary" />
+                </span>
+                <div>
+                  <h3 className="font-display font-black text-base sm:text-lg text-foreground uppercase tracking-wide">
+                    ⚡ FANTASY ARENA CINEMATIC 4K REEL
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Official high-octane 3D matchday experience</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTheatreModal(false)}
+                aria-label="Close theatre mode"
+                className="h-9 w-9 rounded-full bg-surface-2 hover:bg-surface border border-border flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="aspect-video bg-black rounded-2xl relative overflow-hidden shadow-2xl border border-border/80">
+              <video
+                src="/for_this_fantasy_cricket_wbsit.mp4"
+                controls
+                autoPlay
+                playsInline
+                className="h-full w-full object-cover"
+              />
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="rounded-md bg-primary/10 px-2 py-0.5 font-mono font-bold text-primary border border-primary/20">
+                  4K 60FPS
+                </span>
+                <span>Dolby Soundscape • Next-Gen Cricket Gaming</span>
+              </div>
+              <Button
+                type="button"
+                onClick={() => {
+                  setShowTheatreModal(false);
+                  handleAction("🏏 Register now to start playing in the Fantasy Arena!");
+                }}
+                variant="hero"
+                size="sm"
+                className="gap-2 font-bold"
+              >
+                <Trophy className="h-4 w-4" /> ENTER THE ARENA <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

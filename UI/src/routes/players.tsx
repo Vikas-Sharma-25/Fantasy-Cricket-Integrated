@@ -58,6 +58,13 @@ function Players() {
   function toggle(id: string) {
     setError("");
     const player = players.find((p) => p.playerId === id);
+    if (!player || !player.isAvailable) return;
+    setPicked((current) => {
+      if (current.includes(id)) return current.filter((x) => x !== id);
+      if (current.length >= 11) return current;
+      if (creditsUsed + (player.credits ?? 0) > 100) return current;
+      return [...current, id];
+    });
     if (!player) return;
 
     if (picked.includes(id)) {
@@ -104,6 +111,7 @@ function Players() {
   function continueTeam() {
     setError("");
     if (!matchId) return setError("Select a match first.");
+    if (picked.length !== 11) return setError("Select exactly 11 players before continuing.");
     if (picked.length !== 11) {
       return setError(`Please select exactly 11 players. Currently selected: ${picked.length}/11.`);
     }
@@ -139,6 +147,7 @@ function Players() {
           </span>
         }
       />
+
       {/* Selection Stats Bar */}
       <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-border bg-surface p-3 text-xs">
         <div className="flex items-center justify-between border-r border-border pr-3">
@@ -226,7 +235,7 @@ function Players() {
                     ? "cursor-not-allowed border-border text-muted-foreground"
                     : on
                       ? "border-primary bg-primary text-primary-foreground"
-                      : "border-primary/50 text-primary hover:bg-primary/15 hover:border-primary",
+                      : "border-primary/50 text-primary hover:bg-primary/15 hover:border-primary"
                 )}
               >
                 {on ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}

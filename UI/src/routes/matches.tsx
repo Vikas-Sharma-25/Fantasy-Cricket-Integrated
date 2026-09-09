@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/fc/AppShell";
 import { Card } from "@/components/fc/bits";
@@ -59,6 +59,9 @@ import {
   Eye,
   ShieldCheck,
   Lock,
+  Volume2,
+  VolumeX,
+  Maximize2,
 } from "lucide-react";
 
 export const Route = createFileRoute("/matches")({ component: Matches });
@@ -231,11 +234,20 @@ const LATEST_NEWS_ITEMS = [
 
 const FEATURED_VIDEOS = [
   {
+    id: "v0",
+    title: "⚡ OFFICIAL CRICKET ARENA: Cinematic 4K Matchday Anthem",
+    duration: "00:15",
+    views: "1.8M views",
+    tag: "ARENA 4K",
+    videoUrl: "/for_this_fantasy_cricket_wbsit.mp4",
+  },
+  {
     id: "v1",
     title: "Injuries hit India's squad! Bumrah returns... Where's Hardik?",
     duration: "14:22",
     views: "245K views",
     tag: "ANALYSIS",
+    videoUrl: "/for_this_fantasy_cricket_wbsit.mp4",
   },
   {
     id: "v2",
@@ -243,6 +255,7 @@ const FEATURED_VIDEOS = [
     duration: "18:45",
     views: "512K views",
     tag: "EXCLUSIVE",
+    videoUrl: "/for_this_fantasy_cricket_wbsit.mp4",
   },
   {
     id: "v3",
@@ -250,6 +263,7 @@ const FEATURED_VIDEOS = [
     duration: "11:08",
     views: "189K views",
     tag: "DEBATE",
+    videoUrl: "/for_this_fantasy_cricket_wbsit.mp4",
   },
   {
     id: "v4",
@@ -257,6 +271,7 @@ const FEATURED_VIDEOS = [
     duration: "09:30",
     views: "890K views",
     tag: "HIGHLIGHTS",
+    videoUrl: "/for_this_fantasy_cricket_wbsit.mp4",
   },
 ];
 
@@ -449,6 +464,20 @@ function Matches() {
 
   // Featured video modal state
   const [activeVideo, setActiveVideo] = useState<any | null>(null);
+
+  // Arena Hero Banner Video State
+  const [isBannerMuted, setIsBannerMuted] = useState(true);
+  const bannerVideoRef = useRef<HTMLVideoElement>(null);
+
+  function toggleBannerSound() {
+    if (bannerVideoRef.current) {
+      const next = !bannerVideoRef.current.muted;
+      bannerVideoRef.current.muted = next;
+      setIsBannerMuted(next);
+    } else {
+      setIsBannerMuted((prev) => !prev);
+    }
+  }
 
   // Fetch world cricket live matches
   useEffect(() => {
@@ -1613,7 +1642,108 @@ function Matches() {
           /* ========================================================================= */
           /* VIEW B: DEFAULT HOME PAGE (Pic 3: Cricbuzz 3-Column Layout & Stories)       */
           /* ========================================================================= */
-          <div className="space-y-10 animate-in fade-in-50 duration-200">
+          <div className="space-y-8 animate-in fade-in-50 duration-200">
+            {/* ============================================================= */}
+            {/* ARENA LIVE STRIKE: CINEMATIC 4K MOTION REEL                   */}
+            {/* High-octane interactive video banner with audio & actions    */}
+            {/* ============================================================= */}
+            <div className="relative rounded-3xl overflow-hidden border border-emerald-500/40 bg-gradient-to-r from-emerald-950/80 via-slate-950 to-black p-6 sm:p-8 shadow-2xl shadow-emerald-950/40 group">
+              {/* Background ambient video */}
+              <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-45 group-hover:opacity-55 transition-opacity duration-500">
+                <video
+                  ref={bannerVideoRef}
+                  src="/for_this_fantasy_cricket_wbsit.mp4"
+                  autoPlay
+                  loop
+                  muted={isBannerMuted}
+                  playsInline
+                  className="h-full w-full object-cover object-center scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-background via-background/70 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background to-transparent" />
+              </div>
+
+              {/* Banner Foreground Content */}
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="max-w-2xl space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-mono font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/15 border border-emerald-500/40 px-2.5 py-1 rounded-full shadow">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                      </span>
+                      ⚡ ARENA LIVE STRIKE • 4K 60FPS
+                    </span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-surface-2/80 px-2 py-0.5 rounded border border-border">
+                      HIGH-OCTANE ACTION
+                    </span>
+                  </div>
+
+                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight uppercase leading-none">
+                    DOMINATE EVERY BALL. <span className="text-emerald-400">WIN REAL CASH.</span>
+                  </h2>
+
+                  <p className="text-xs sm:text-sm text-foreground/85 max-w-xl leading-relaxed">
+                    Step inside the most electric cricket arena in India. Real-time pitch dynamics, high-multiplier mega pools, and instant automated bank payouts.
+                  </p>
+
+                  <div className="pt-1 flex flex-wrap items-center gap-3">
+                    {sortedMatches.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleSelectMatch(sortedMatches[0])}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black shadow-lg shadow-emerald-500/25 transition-all hover:scale-105 cursor-pointer"
+                      >
+                        <Trophy className="h-4 w-4" />
+                        <span>ENTER MATCH CENTER ({sortedMatches[0].teamA} vs {sortedMatches[0].teamB})</span>
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Banner Action Controls */}
+                <div className="flex flex-wrap items-center gap-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={toggleBannerSound}
+                    aria-label={isBannerMuted ? "Turn reel sound on" : "Mute reel sound"}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-black/80 hover:bg-emerald-950/80 border border-emerald-500/40 text-xs font-bold text-white shadow-lg backdrop-blur-md transition-all hover:scale-105 cursor-pointer"
+                  >
+                    {isBannerMuted ? (
+                      <>
+                        <VolumeX className="h-4 w-4 text-emerald-400" />
+                        <span>UNMUTE REEL</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="h-4 w-4 text-emerald-400 animate-pulse" />
+                        <span>SOUND ON</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveVideo({
+                        id: "promo-theatre",
+                        title: "⚡ OFFICIAL CRICKET ARENA: 4K Cinematic Matchday Trailer",
+                        videoUrl: "/for_this_fantasy_cricket_wbsit.mp4",
+                        duration: "00:15",
+                        views: "1.8M views",
+                      })
+                    }
+                    aria-label="Expand cinematic reel"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-2/90 hover:bg-surface border border-border text-foreground text-xs font-bold shadow-lg backdrop-blur-md transition-all hover:scale-105 cursor-pointer"
+                  >
+                    <Maximize2 className="h-4 w-4 text-emerald-400" />
+                    <span>THEATRE MODE</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* 3-COLUMN CRICBUZZ LAYOUT */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* ------------------------------------------------------------- */}
@@ -1945,24 +2075,39 @@ function Matches() {
       {/* VIDEO PLAYER MODAL                                            */}
       {/* ============================================================= */}
       {activeVideo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in-50 duration-150">
-          <div className="w-full max-w-2xl bg-surface rounded-2xl border border-border shadow-2xl overflow-hidden space-y-4 p-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in-50 duration-150">
+          <div className="w-full max-w-3xl bg-surface rounded-2xl border border-primary/40 shadow-2xl shadow-primary/10 overflow-hidden space-y-4 p-5 sm:p-6">
             <div className="flex items-center justify-between pb-3 border-b border-border">
-              <h3 className="font-bold text-foreground text-sm line-clamp-1">{activeVideo.title}</h3>
+              <div className="flex items-center gap-2">
+                <span className="flex h-2.5 w-2.5 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                </span>
+                <h3 className="font-bold text-foreground text-sm line-clamp-1">{activeVideo.title}</h3>
+              </div>
               <button
                 type="button"
                 onClick={() => setActiveVideo(null)}
                 aria-label="Close video"
-                className="h-7 w-7 rounded-full bg-surface-2 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
+                className="h-8 w-8 rounded-full bg-surface-2 hover:bg-surface border border-border flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="aspect-video bg-black rounded-xl flex items-center justify-center relative overflow-hidden">
-              <div className="text-center space-y-2">
-                <Play className="h-12 w-12 text-emerald-400 mx-auto animate-pulse" />
-                <p className="text-xs text-muted-foreground">Playing video reel...</p>
-              </div>
+            <div className="aspect-video bg-black rounded-xl relative overflow-hidden shadow-inner border border-border/60">
+              <video
+                src={activeVideo.videoUrl || "/for_this_fantasy_cricket_wbsit.mp4"}
+                controls
+                autoPlay
+                playsInline
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+              <span className="flex items-center gap-1.5 font-semibold text-emerald-400">
+                <Sparkles className="h-3.5 w-3.5" /> Ultra HD 60fps • Official Arena Reel
+              </span>
+              <span>{activeVideo.duration || "00:15"} • {activeVideo.views || "1.8M views"}</span>
             </div>
           </div>
         </div>

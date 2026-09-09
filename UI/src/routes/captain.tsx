@@ -85,6 +85,14 @@ function Captain() {
           captainId: cap,
           viceCaptainId: vice,
         });
+      } else {
+        await createTeam({
+          matchId,
+          name,
+          playerIds: ids,
+          captainId: cap,
+          viceCaptainId: vice,
+        });
 
         removeFlow(FLOW_KEYS.editingTeamId);
         removeFlow(FLOW_KEYS.selectedPlayerIds);
@@ -95,6 +103,7 @@ function Captain() {
         return;
       }
 
+      // Clear drafting state
       const created = await createTeam({
         matchId,
         name,
@@ -113,6 +122,9 @@ function Captain() {
       if (returnContestId) {
         setFlow(FLOW_KEYS.autoOpenJoinContestId, returnContestId);
         removeFlow(FLOW_KEYS.returnToContestId);
+        navigate({ to: "/contests" });
+      } else {
+        navigate({ to: "/create-team" });
       }
 
       // Fetch contests for this match to present Join Contest prompt
