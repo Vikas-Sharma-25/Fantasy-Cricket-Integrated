@@ -56,7 +56,7 @@ async function validateTeamComposition(input: TeamInput) {
   const matchPlayers = await MatchPlayer.find({
     matchId,
     playerId: { $in: playerIds }
-  }).populate("playerId");
+  });
 
   if (matchPlayers.length !== playerIds.length) {
     throw ApiError.badRequest("One or more selected players are not available for this match");

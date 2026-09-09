@@ -11,6 +11,9 @@ export const FLOW_KEYS = {
   authPromptMsg: "authPromptMsg",
   returnToContestId: "returnToContestId",
   autoOpenJoinContestId: "autoOpenJoinContestId",
+  pendingJoinContestId: "pendingJoinContestId",
+  pendingJoinTeamId: "pendingJoinTeamId",
+  pendingJoinTeamName: "pendingJoinTeamName",
 };
 
 export function setFlow(key: string, value: unknown) {

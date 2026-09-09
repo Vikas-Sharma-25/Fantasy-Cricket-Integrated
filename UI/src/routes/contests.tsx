@@ -185,6 +185,19 @@ function Contests() {
       (c.type || "").toUpperCase() === (filter === "Mega" ? "PUBLIC" : filter.toUpperCase()),
   );
 
+  // Group My Contests by Contest ID (Point 4: 1 card per contest with all joined teams)
+  const groupedMyContests = useMemo(() => {
+    const map = new Map<string, { contest: Contest; entries: Contest[] }>();
+    for (const c of myFiltered) {
+      const cId = String(c._id);
+      if (!map.has(cId)) {
+        map.set(cId, { contest: c, entries: [] });
+      }
+      map.get(cId)!.entries.push(c);
+    }
+    return Array.from(map.values());
+  }, [myFiltered]);
+
   function getJoinedTeamIdsForContest(contestId: string): string[] {
     return myContests
       .filter((mc) => mc._id === contestId)
@@ -397,19 +410,13 @@ function Contests() {
           })}
 
         {top === "My Contests" &&
-          list.map((c) => {
+          groupedMyContests.map(({ contest: c, entries }) => {
             const slots = c.maxSlots || 5000;
-            const joinedCount = joinedCountOf(c);
             const prizeFormatted = formatPrizeDisplay(c.prizePool ?? c.prize);
-
-            // Resolve joined team info
-            const teamObj: any = c.fantasyTeamId;
-            const teamName = teamObj?.name ?? "Team 1";
-            const capName = teamObj?.captainId ? getPlayerName(teamObj.captainId) : null;
-            const vcName = teamObj?.viceCaptainId ? getPlayerName(teamObj.viceCaptainId) : null;
+            const isMultiTeam = entries.length > 1;
 
             return (
-              <Card key={c.entryId || c._id} className="p-0 overflow-hidden border-border/80">
+              <Card key={c._id} className="p-0 overflow-hidden border-border/80">
                 <div className="flex items-center justify-between border-b border-border bg-surface-2/40 px-4 py-2.5">
                   <span className="font-display text-sm font-bold text-foreground">{c.name}</span>
                   <StatusBadge status={c.status || "OPEN"} />
@@ -426,28 +433,62 @@ function Contests() {
                     </span>
                   </div>
 
-                  {/* Joined Team Info Banner */}
-                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+                  {/* Joined Team(s) Info Banner */}
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
                           ✓
                         </span>
                         <span className="text-xs font-bold text-foreground">
-                          Joined with: <span className="text-primary">{teamName}</span>
+                          {isMultiTeam
+                            ? `Joined with (${entries.length} Teams):`
+                            : "Joined with:"}
                         </span>
                       </div>
+                      {isMultiTeam && (
+                        <span className="text-[10px] font-mono text-primary bg-primary/15 px-2 py-0.5 rounded border border-primary/30">
+                          Multi-Entry Active
+                        </span>
+                      )}
                     </div>
-                    {capName && vcName && (
-                      <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
-                        <span>
-                          <b className="text-amber-400">C:</b> {capName}
-                        </span>
-                        <span>
-                          <b className="text-cyan-400">VC:</b> {vcName}
-                        </span>
-                      </div>
-                    )}
+
+                    <div className={cn("gap-2", isMultiTeam ? "grid grid-cols-1 sm:grid-cols-2" : "space-y-1")}>
+                      {entries.map((entry, eIdx) => {
+                        const teamObj: any = entry.fantasyTeamId;
+                        const teamName = teamObj?.name ?? `Team ${eIdx + 1}`;
+                        const capName = teamObj?.captainId ? getPlayerName(teamObj.captainId) : null;
+                        const vcName = teamObj?.viceCaptainId ? getPlayerName(teamObj.viceCaptainId) : null;
+
+                        return (
+                          <div
+                            key={entry.entryId || entry._id || eIdx}
+                            className="rounded-lg bg-surface border border-border/80 p-2 text-xs"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-foreground">{teamName}</span>
+                              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                                Active
+                              </span>
+                            </div>
+                            {(capName || vcName) && (
+                              <div className="mt-1 flex items-center gap-2.5 text-[10px] text-muted-foreground">
+                                {capName && (
+                                  <span>
+                                    <b className="text-amber-400">C:</b> {capName}
+                                  </span>
+                                )}
+                                {vcName && (
+                                  <span>
+                                    <b className="text-cyan-400">VC:</b> {vcName}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {/* Action Buttons: VIEW and LEADERBOARD */}
@@ -474,7 +515,7 @@ function Contests() {
             );
           })}
 
-        {!list.length && (
+        {((top === "Contests" && !list.length) || (top === "My Contests" && !groupedMyContests.length)) && (
           <div className="py-16 text-center space-y-3">
             <p className="text-sm text-muted-foreground">
               {top === "Contests"

@@ -113,15 +113,13 @@ function Captain() {
       // Check if user came from a specific contest
       const returnContestId = getFlow<string | null>(FLOW_KEYS.returnToContestId, null);
       if (returnContestId) {
-        try {
-          await joinContest(returnContestId, created._id);
-        } catch (joinErr) {
-          console.warn("Auto-join contest failed:", joinErr);
-        }
         removeFlow(FLOW_KEYS.returnToContestId);
+        setFlow(FLOW_KEYS.pendingJoinContestId, returnContestId);
+        setFlow(FLOW_KEYS.pendingJoinTeamId, created._id);
+        setFlow(FLOW_KEYS.pendingJoinTeamName, created.name || name);
         if (matchId) setFlow(FLOW_KEYS.selectedMatchId, matchId);
         setFlow("OPEN_MATCH_TAB", "Contests");
-        setFlow("OPEN_CONTEST_SUBTAB", "myContests");
+        setFlow("OPEN_CONTEST_SUBTAB", "contests");
         navigate({ to: "/matches" });
         return;
       }
@@ -302,7 +300,14 @@ function Captain() {
           size="xl"
           className="gap-2"
         >
-          <Save className="h-4 w-4" /> {saving ? "SAVING..." : "SAVE TEAM"}
+          <Save className="h-4 w-4" />{" "}
+          {saving
+            ? "SAVING..."
+            : editingTeamId
+            ? "SAVE CHANGES"
+            : getFlow<string | null>(FLOW_KEYS.returnToContestId, null)
+            ? `NEXT → JOIN CONTEST (${name})`
+            : "SAVE TEAM"}
         </Button>
       </div>
 

@@ -32,25 +32,28 @@ function MyMatches() {
         const ms = await getMatches(
           tab === "Live" ? "LIVE" : tab === "Completed" ? "COMPLETED" : "UPCOMING"
         );
-        const results: MyMatchItem[] = [];
-
-        for (const m of ms) {
-          try {
-            const [teams, contests] = await Promise.all([
-              getMyTeams(m._id).catch(() => []),
-              getMyContests(m._id).catch(() => []),
-            ]);
-            if (teams.length > 0 || contests.length > 0) {
-              results.push({
-                match: m,
-                teamCount: teams.length,
-                contestCount: contests.length,
-              });
-            }
-          } catch {
-            // continue
-          }
-        }
+        const results = (
+          await Promise.all(
+            ms.map(async (m) => {
+              try {
+                const [teams, contests] = await Promise.all([
+                  getMyTeams(m._id).catch(() => []),
+                  getMyContests(m._id).catch(() => []),
+                ]);
+                if (teams.length > 0 || contests.length > 0) {
+                  return {
+                    match: m,
+                    teamCount: teams.length,
+                    contestCount: contests.length,
+                  };
+                }
+              } catch {
+                // continue
+              }
+              return null;
+            })
+          )
+        ).filter(Boolean) as MyMatchItem[];
 
         if (active) {
           setItems(results);

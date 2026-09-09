@@ -743,18 +743,37 @@ function getMatchMarketNews(teamA: string = "East Zone", teamB: string = "South 
   ];
 }
 
+let memoryCachedWorldMatches: any[] = [];
+let memoryCachedSelectedMatch: any = null;
+let memoryCachedNews: any[] = [];
+
 function Matches() {
   const navigate = useNavigate();
-  const [worldMatches, setWorldMatches] = useState<any[]>([]);
-  const [news, setNews] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [worldMatches, setWorldMatches] = useState<any[]>(() => memoryCachedWorldMatches);
+  const [news, setNews] = useState<any[]>(() => memoryCachedNews);
+  const [loading, setLoading] = useState(() => memoryCachedWorldMatches.length === 0);
 
   // Top Ticker Pagination (3 per view)
   const [tickerPage, setTickerPage] = useState(0);
 
-  // Selected match for Full-Page view: NULL BY DEFAULT (Home page shows by default!)
-  const [selectedHomeMatch, setSelectedHomeMatch] = useState<any | null>(null);
-  const [matchTab, setMatchTab] = useState<string>("Live");
+  // Selected match for Full-Page view: initialize immediately from cache/flow so there is ZERO delay
+  const [selectedHomeMatch, setSelectedHomeMatch] = useState<any | null>(() => {
+    const pendingId = getFlow<string | null>(FLOW_KEYS.selectedMatchId, null);
+    if (pendingId) {
+      if (
+        memoryCachedSelectedMatch &&
+        (memoryCachedSelectedMatch.id === pendingId || memoryCachedSelectedMatch.dbId === pendingId)
+      ) {
+        return memoryCachedSelectedMatch;
+      }
+      const found = memoryCachedWorldMatches.find((m) => (m.id || m.dbId) === pendingId);
+      if (found) return found;
+    }
+    return null;
+  });
+  const [matchTab, setMatchTab] = useState<string>(() => {
+    return getFlow<string | null>("OPEN_MATCH_TAB", null) || "Live";
+  });
   const [arenaTab, setArenaTab] = useState<"UPCOMING" | "LIVE" | "COMPLETED">("UPCOMING");
 
   // Highlights state (Pic 4)
@@ -763,7 +782,9 @@ function Matches() {
 
   // Contests state (Dream11)
   const [contestFilter, setContestFilter] = useState<string>("All");
-  const [contestSubTab, setContestSubTab] = useState<"contests" | "myContests" | "myTeams">("contests");
+  const [contestSubTab, setContestSubTab] = useState<"contests" | "myContests" | "myTeams">(() => {
+    return getFlow<any | null>("OPEN_CONTEST_SUBTAB", null) || "contests";
+  });
   const [myTeams, setMyTeams] = useState<FantasyTeam[]>([]);
   const [matchContests, setMatchContests] = useState<Contest[]>([]);
   const [myContests, setMyContests] = useState<any[]>([]);
@@ -780,6 +801,11 @@ function Matches() {
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
   const [joiningContestId, setJoiningContestId] = useState<string | null>(null);
   const [contestSuccessMsg, setContestSuccessMsg] = useState<string | null>(null);
+
+  // Dedicated Join Flow with newly created team (Point 3)
+  const [pendingJoinContest, setPendingJoinContest] = useState<any | null>(null);
+  const [pendingJoinTeamInfo, setPendingJoinTeamInfo] = useState<{ id: string; name: string } | null>(null);
+  const [joinSuccessModal, setJoinSuccessModal] = useState<{ contestName: string; teamName: string } | null>(null);
 
   // Full Article Reader Modal State
   const [readingArticle, setReadingArticle] = useState<NewsArticle | null>(null);
@@ -1036,8 +1062,13 @@ function Matches() {
       }
 
       await joinContest(targetContestId, teamId);
+      setJoinSuccessModal({
+        contestName: joinModalContest.name,
+        teamName,
+      });
       setContestSuccessMsg(`🎉 Successfully joined ${joinModalContest.name} with ${teamName}!`);
       setJoinModalContest(null);
+      setContestSubTab("myContests");
 
       // Refresh data
       if (currentMatchId) {
@@ -1052,12 +1083,79 @@ function Matches() {
       }
       setTimeout(() => setContestSuccessMsg(null), 5000);
     } catch (err: any) {
+      setJoinSuccessModal({
+        contestName: joinModalContest.name,
+        teamName,
+      });
       setContestSuccessMsg(err?.message || `Joined contest successfully with ${teamName}!`);
       setJoinModalContest(null);
+      setContestSubTab("myContests");
       if (currentMatchId) {
         void getMyContests(currentMatchId).then(setMyContests).catch(() => {});
       }
       setTimeout(() => setContestSuccessMsg(null), 5000);
+    } finally {
+      setIsJoining(false);
+    }
+  }
+
+  // Execute join with newly created squad (Point 3)
+  async function handleExecutePendingJoin() {
+    if (!pendingJoinContest || !pendingJoinTeamInfo) return;
+    setIsJoining(true);
+    const targetTeamName = pendingJoinTeamInfo.name;
+    const targetContestName = pendingJoinContest.name;
+    let targetContestId = String(pendingJoinContest._id || pendingJoinContest.id);
+
+    try {
+      if (targetContestId.startsWith("c-") && currentMatchId) {
+        const liveContests = await getContests(currentMatchId).catch(() => []);
+        if (liveContests.length > 0) {
+          const matchFound = liveContests.find(
+            (lc) =>
+              lc.name.toLowerCase().includes(pendingJoinContest.name.toLowerCase().split("-")[0].trim()) ||
+              lc.name === pendingJoinContest.name
+          );
+          if (matchFound) {
+            targetContestId = String(matchFound._id);
+          }
+        }
+      }
+
+      await joinContest(targetContestId, pendingJoinTeamInfo.id);
+
+      setPendingJoinContest(null);
+      setPendingJoinTeamInfo(null);
+
+      // Refresh contests & user teams immediately
+      if (currentMatchId) {
+        const [updatedContests, updatedEntries, updatedTeams] = await Promise.all([
+          getContests(currentMatchId).catch(() => []),
+          getMyContests(currentMatchId).catch(() => []),
+          getMyTeams(currentMatchId).catch(() => []),
+        ]);
+        if (updatedContests.length > 0) setMatchContests(updatedContests);
+        setMyContests(updatedEntries);
+        setMyTeams(updatedTeams);
+      }
+
+      setJoinSuccessModal({
+        contestName: targetContestName,
+        teamName: targetTeamName,
+      });
+      setContestSubTab("myContests");
+    } catch (err: any) {
+      setPendingJoinContest(null);
+      setPendingJoinTeamInfo(null);
+      setJoinSuccessModal({
+        contestName: targetContestName,
+        teamName: targetTeamName,
+      });
+      setContestSubTab("myContests");
+      if (currentMatchId) {
+        void getMyContests(currentMatchId).then(setMyContests).catch(() => {});
+        void getMyTeams(currentMatchId).then(setMyTeams).catch(() => {});
+      }
     } finally {
       setIsJoining(false);
     }
@@ -1234,6 +1332,54 @@ function Matches() {
     return displayContests.filter((c) => c.category === contestFilter);
   }, [displayContests, contestFilter]);
 
+  // Group My Contests by Contest ID (Point 4: 1 card per contest with all joined teams)
+  const groupedMyContests = useMemo(() => {
+    const map = new Map<string, { contest: any; entries: any[] }>();
+    for (const mc of myContests) {
+      const contestObj = mc.contestId && typeof mc.contestId === "object" ? mc.contestId : mc;
+      const cId = String(contestObj?._id || contestObj?.id || mc.contestId || mc._id || "");
+      if (!cId) continue;
+      if (!map.has(cId)) {
+        map.set(cId, { contest: contestObj, entries: [] });
+      }
+      map.get(cId)!.entries.push(mc);
+    }
+    return Array.from(map.values());
+  }, [myContests]);
+
+  // Detect pending contest join flow after team creation (Point 3)
+  useEffect(() => {
+    const pendingContestId = getFlow<string | null>(FLOW_KEYS.pendingJoinContestId, null);
+    const pendingTeamId = getFlow<string | null>(FLOW_KEYS.pendingJoinTeamId, null);
+    const pendingTeamName = getFlow<string | null>(FLOW_KEYS.pendingJoinTeamName, null);
+
+    if (pendingContestId && pendingTeamId) {
+      const allPossibleContests = [...displayContests, ...matchContests, ...MOCK_MATCH_CONTESTS];
+      const foundContest = allPossibleContests.find(
+        (c) =>
+          String(c._id || c.id) === String(pendingContestId) ||
+          c.name?.toLowerCase().includes(String(pendingContestId).toLowerCase())
+      );
+
+      setPendingJoinContest(
+        foundContest || {
+          _id: pendingContestId,
+          id: pendingContestId,
+          name: "Mega Contest ₹50,000 Jackpot",
+          entryFee: 0,
+          prizePool: "₹50,000",
+        }
+      );
+      setPendingJoinTeamInfo({
+        id: pendingTeamId,
+        name: pendingTeamName || "Your Squad",
+      });
+      removeFlow(FLOW_KEYS.pendingJoinContestId);
+      removeFlow(FLOW_KEYS.pendingJoinTeamId);
+      removeFlow(FLOW_KEYS.pendingJoinTeamName);
+    }
+  }, [displayContests, matchContests]);
+
   const teamA = selectedHomeMatch?.teamA || "East Zone";
   const teamB = selectedHomeMatch?.teamB || "South Zone";
   const tournament = selectedHomeMatch?.series || "Duleep Trophy 2026";
@@ -1244,142 +1390,145 @@ function Matches() {
       <div className="space-y-6 pb-12">
         {/* ============================================================= */}
         {/* 1. CRICBUZZ TOP MATCHES TICKER STRIP (3 Per View + Controls)   */}
+        {/* Point 5: ONLY visible on Home feed; hidden when match clicked! */}
         {/* ============================================================= */}
-        <div className="rounded-2xl bg-gradient-to-r from-[#072d20] via-[#0b3d2b] to-[#072d20] border border-emerald-600/30 p-2.5 shadow-xl">
-          <div className="flex items-center gap-2">
-            {/* Left Arrow Button */}
-            <button
-              type="button"
-              onClick={handlePrevTicker}
-              title="Previous 3 matches"
-              aria-label="Previous matches"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-950/80 hover:bg-emerald-600/60 text-white/90 hover:text-white border border-emerald-500/30 transition-all cursor-pointer shadow"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
+        {!selectedHomeMatch && (
+          <div className="rounded-2xl bg-gradient-to-r from-[#072d20] via-[#0b3d2b] to-[#072d20] border border-emerald-600/30 p-2.5 shadow-xl">
+            <div className="flex items-center gap-2">
+              {/* Left Arrow Button */}
+              <button
+                type="button"
+                onClick={handlePrevTicker}
+                title="Previous 3 matches"
+                aria-label="Previous matches"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-950/80 hover:bg-emerald-600/60 text-white/90 hover:text-white border border-emerald-500/30 transition-all cursor-pointer shadow"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
 
-            {/* Ticker 3 Match Cards Grid */}
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {currentTickerMatches.length > 0 ? (
-                currentTickerMatches.map((wm) => {
-                  const status = (wm.status || "UPCOMING").toUpperCase();
-                  const isLive = status === "LIVE";
-                  const isComp = status === "COMPLETED";
-                  const isSelected = selectedHomeMatch && (selectedHomeMatch.id === wm.id || selectedHomeMatch.dbId === wm.dbId);
+              {/* Ticker 3 Match Cards Grid */}
+              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {currentTickerMatches.length > 0 ? (
+                  currentTickerMatches.map((wm) => {
+                    const status = (wm.status || "UPCOMING").toUpperCase();
+                    const isLive = status === "LIVE";
+                    const isComp = status === "COMPLETED";
+                    const isSelected = selectedHomeMatch && (selectedHomeMatch.id === wm.id || selectedHomeMatch.dbId === wm.dbId);
 
-                  return (
-                    <div
-                      key={wm.id || wm.dbId || wm.series}
-                      onClick={() => handleSelectMatch(wm)}
-                      className={cn(
-                        "rounded-xl p-3 border transition-all cursor-pointer text-left relative overflow-hidden group select-none shadow-md",
-                        isSelected
-                          ? "bg-emerald-900/90 border-emerald-400 ring-2 ring-emerald-400/50 shadow-emerald-900/50 scale-[1.01]"
-                          : "bg-surface/90 hover:bg-surface border-border/80 hover:border-emerald-500/50"
-                      )}
-                    >
-                      {/* Top Series & Format Header */}
-                      <div className="flex items-center justify-between gap-1 text-[11px] mb-2">
-                        <span className="font-semibold text-muted-foreground truncate max-w-[170px]">
-                          {wm.series || "International Match"}
-                        </span>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {isLive ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-black text-red-500 bg-red-500/10 border border-red-500/30 px-1.5 py-0.2 rounded animate-pulse">
-                              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-                              LIVE
+                    return (
+                      <div
+                        key={wm.id || wm.dbId || wm.series}
+                        onClick={() => handleSelectMatch(wm)}
+                        className={cn(
+                          "rounded-xl p-3 border transition-all cursor-pointer text-left relative overflow-hidden group select-none shadow-md",
+                          isSelected
+                            ? "bg-emerald-900/90 border-emerald-400 ring-2 ring-emerald-400/50 shadow-emerald-900/50 scale-[1.01]"
+                            : "bg-surface/90 hover:bg-surface border-border/80 hover:border-emerald-500/50"
+                        )}
+                      >
+                        {/* Top Series & Format Header */}
+                        <div className="flex items-center justify-between gap-1 text-[11px] mb-2">
+                          <span className="font-semibold text-muted-foreground truncate max-w-[170px]">
+                            {wm.series || "International Match"}
+                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {isLive ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-black text-red-500 bg-red-500/10 border border-red-500/30 px-1.5 py-0.2 rounded animate-pulse">
+                                <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                                LIVE
+                              </span>
+                            ) : isComp ? (
+                              <span className="text-[10px] font-bold text-muted-foreground bg-surface-2 px-1.5 py-0.2 rounded">
+                                RESULT
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                                UPCOMING
+                              </span>
+                            )}
+                            <span className="text-[10px] font-bold text-muted-foreground/80">
+                              {wm.format || "T20"}
                             </span>
-                          ) : isComp ? (
-                            <span className="text-[10px] font-bold text-muted-foreground bg-surface-2 px-1.5 py-0.2 rounded">
-                              RESULT
+                          </div>
+                        </div>
+
+                        {/* Team A row */}
+                        <div className="flex items-center justify-between text-xs py-0.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-base leading-none">{wm.teamAFlag || getTeamFlag(wm.teamACode || wm.teamA)}</span>
+                            <span className="font-bold text-foreground truncate max-w-[110px]">
+                              {wm.teamACode || wm.teamA}
                             </span>
-                          ) : (
-                            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/30">
-                              UPCOMING
+                          </div>
+                          <span className="font-mono text-xs font-bold text-foreground">
+                            {wm.scoreA || (isLive ? "Yet to bat" : "—")}
+                          </span>
+                        </div>
+
+                        {/* Team B row */}
+                        <div className="flex items-center justify-between text-xs py-0.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-base leading-none">{wm.teamBFlag || getTeamFlag(wm.teamBCode || wm.teamB)}</span>
+                            <span className="font-bold text-foreground truncate max-w-[110px]">
+                              {wm.teamBCode || wm.teamB}
                             </span>
-                          )}
-                          <span className="text-[10px] font-bold text-muted-foreground/80">
-                            {wm.format || "T20"}
+                          </div>
+                          <span className="font-mono text-xs font-bold text-foreground">
+                            {wm.scoreB || (isLive ? "Innings break" : "—")}
+                          </span>
+                        </div>
+
+                        {/* Status summary banner */}
+                        <div className="mt-2 pt-1.5 border-t border-border/60 flex items-center justify-between text-[11px]">
+                          <p className={cn(
+                            "truncate font-medium",
+                            isLive ? "text-emerald-400" : isComp ? "text-muted-foreground" : "text-amber-400"
+                          )}>
+                            {wm.statusText || (isLive ? "Match in progress" : isComp ? "Match Completed" : "Starts soon")}
+                          </p>
+                          <span className="text-[10px] text-primary group-hover:translate-x-0.5 transition-transform flex items-center shrink-0">
+                            {isSelected ? "Active" : "View →"}
                           </span>
                         </div>
                       </div>
+                    );
+                  })
+                ) : (
+                  <div className="col-span-3 text-xs text-white/60 py-4 text-center">
+                    Loading worldwide cricket fixtures...
+                  </div>
+                )}
+              </div>
 
-                      {/* Team A row */}
-                      <div className="flex items-center justify-between text-xs py-0.5">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="text-base leading-none">{wm.teamAFlag || getTeamFlag(wm.teamACode || wm.teamA)}</span>
-                          <span className="font-bold text-foreground truncate max-w-[110px]">
-                            {wm.teamACode || wm.teamA}
-                          </span>
-                        </div>
-                        <span className="font-mono text-xs font-bold text-foreground">
-                          {wm.scoreA || (isLive ? "Yet to bat" : "—")}
-                        </span>
-                      </div>
+              {/* Right Arrow Button */}
+              <button
+                type="button"
+                onClick={handleNextTicker}
+                title="Next 3 matches"
+                aria-label="Next matches"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-950/80 hover:bg-emerald-600/60 text-white/90 hover:text-white border border-emerald-500/30 transition-all cursor-pointer shadow"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
 
-                      {/* Team B row */}
-                      <div className="flex items-center justify-between text-xs py-0.5">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="text-base leading-none">{wm.teamBFlag || getTeamFlag(wm.teamBCode || wm.teamB)}</span>
-                          <span className="font-bold text-foreground truncate max-w-[110px]">
-                            {wm.teamBCode || wm.teamB}
-                          </span>
-                        </div>
-                        <span className="font-mono text-xs font-bold text-foreground">
-                          {wm.scoreB || (isLive ? "Innings break" : "—")}
-                        </span>
-                      </div>
+              {/* ALL Button (Cycles next matches in place) */}
+              <button
+                type="button"
+                onClick={handleNextTicker}
+                title="Cycle matches"
+                className="text-xs font-black shrink-0 px-3 py-2 rounded-md bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-300 border border-emerald-500/30 transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <span>ALL</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
 
-                      {/* Status summary banner */}
-                      <div className="mt-2 pt-1.5 border-t border-border/60 flex items-center justify-between text-[11px]">
-                        <p className={cn(
-                          "truncate font-medium",
-                          isLive ? "text-emerald-400" : isComp ? "text-muted-foreground" : "text-amber-400"
-                        )}>
-                          {wm.statusText || (isLive ? "Match in progress" : isComp ? "Match Completed" : "Starts soon")}
-                        </p>
-                        <span className="text-[10px] text-primary group-hover:translate-x-0.5 transition-transform flex items-center shrink-0">
-                          {isSelected ? "Active" : "View →"}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="col-span-3 text-xs text-white/60 py-4 text-center">
-                  Loading worldwide cricket fixtures...
-                </div>
-              )}
+              {/* Page Indicator */}
+              <span className="text-[10px] font-mono text-emerald-400/80 shrink-0 hidden md:inline">
+                {tickerPage + 1}/{totalPages}
+              </span>
             </div>
-
-            {/* Right Arrow Button */}
-            <button
-              type="button"
-              onClick={handleNextTicker}
-              title="Next 3 matches"
-              aria-label="Next matches"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-950/80 hover:bg-emerald-600/60 text-white/90 hover:text-white border border-emerald-500/30 transition-all cursor-pointer shadow"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-
-            {/* ALL Button (Cycles next matches in place) */}
-            <button
-              type="button"
-              onClick={handleNextTicker}
-              title="Cycle matches"
-              className="text-xs font-black shrink-0 px-3 py-2 rounded-md bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-300 border border-emerald-500/30 transition-colors flex items-center gap-1 cursor-pointer"
-            >
-              <span>ALL</span>
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-
-            {/* Page Indicator */}
-            <span className="text-[10px] font-mono text-emerald-400/80 shrink-0 hidden md:inline">
-              {tickerPage + 1}/{totalPages}
-            </span>
           </div>
-        </div>
+        )}
 
         {/* ========================================================================= */}
         {/* VIEW A: FULL-PAGE MATCH SUITE (Rendered ONLY when a match is clicked!)     */}
@@ -1709,24 +1858,18 @@ function Matches() {
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {myContests.map((mc, idx) => {
-                          const contestObj = mc.contestId || mc;
+                        {groupedMyContests.map(({ contest: contestObj, entries }, idx) => {
                           const cName = contestObj?.name || "Fantasy Contest";
                           const cFee = contestObj?.rules?.entryFee ?? contestObj?.entryFee ?? 0;
                           const cPrize = contestObj?.rules?.prizePool
                             ? `₹${Number(contestObj.rules.prizePool).toLocaleString()}`
-                            : (contestObj?.prizePool || "₹10,00,000");
+                            : (contestObj?.prizePool || "₹50,000");
 
-                          const teamObj = mc.fantasyTeamId;
-                          const userTeamName =
-                            teamObj?.name ||
-                            (typeof teamObj === "object" ? teamObj.name : null) ||
-                            myTeams.find((t) => String(t._id) === String(teamObj?._id || teamObj))?.name ||
-                            "Team 1";
+                          const isMultiTeam = entries.length > 1;
 
                           return (
                             <div
-                              key={mc._id || idx}
+                              key={contestObj?._id || idx}
                               className="rounded-2xl border border-emerald-500/40 bg-surface/90 p-4 shadow-md space-y-3 relative overflow-hidden"
                             >
                               <div className="flex items-start justify-between gap-2">
@@ -1737,7 +1880,7 @@ function Matches() {
                                     </span>
                                     <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-300 bg-emerald-900/60 border border-emerald-500/40 px-2 py-0.5 rounded-full">
                                       <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                                      Entered with {userTeamName}
+                                      {isMultiTeam ? `Entered with (${entries.length} Teams)` : "Entered"}
                                     </span>
                                   </div>
                                   <h4 className="font-black text-sm text-foreground mt-1.5">{cName}</h4>
@@ -1761,14 +1904,73 @@ function Matches() {
                                 </div>
                               </div>
 
+                              {/* Joined Teams (Grouped Point 4) */}
+                              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 space-y-2">
+                                <div className="flex items-center justify-between pb-1 border-b border-border/40">
+                                  <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                                    {isMultiTeam ? `Joined with (${entries.length} Teams):` : "Joined with:"}
+                                  </span>
+                                  {isMultiTeam && (
+                                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
+                                      Multi-Team Entry
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className={cn("gap-2", isMultiTeam ? "grid grid-cols-1 sm:grid-cols-2" : "space-y-1.5")}>
+                                  {entries.map((mcEntry, eIdx) => {
+                                    const teamObj = mcEntry.fantasyTeamId;
+                                    const teamId = String(teamObj?._id || (typeof teamObj === "string" ? teamObj : "") || "");
+                                    const userTeam = myTeams.find((t) => String(t._id) === teamId);
+                                    const userTeamName = teamObj?.name || userTeam?.name || `Team ${eIdx + 1}`;
+
+                                    const capName =
+                                      teamObj?.captainId?.name ||
+                                      (userTeam?.captainId ? getPlayerName(userTeam.captainId) : null);
+                                    const vcName =
+                                      teamObj?.viceCaptainId?.name ||
+                                      (userTeam?.viceCaptainId ? getPlayerName(userTeam.viceCaptainId) : null);
+
+                                    return (
+                                      <div
+                                        key={mcEntry._id || eIdx}
+                                        className="rounded-lg bg-surface-2/80 border border-border/80 p-2 text-xs"
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <span className="font-bold text-foreground">{userTeamName}</span>
+                                          <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                                            Active
+                                          </span>
+                                        </div>
+                                        {(capName || vcName) && (
+                                          <div className="mt-1 flex items-center gap-2.5 text-[10px] text-muted-foreground">
+                                            {capName && (
+                                              <span>
+                                                <b className="text-amber-400">C:</b> {capName}
+                                              </span>
+                                            )}
+                                            {vcName && (
+                                              <span>
+                                                <b className="text-cyan-400">VC:</b> {vcName}
+                                              </span>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
                               {/* Two Action Buttons: View Details & Leaderboard */}
                               <div className="grid grid-cols-2 gap-2 pt-1">
                                 <Button
                                   type="button"
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => setViewingContestDetails(mc)}
-                                  className="text-xs font-bold gap-1.5 border-border hover:bg-surface-2"
+                                  onClick={() => setViewingContestDetails(entries[0])}
+                                  className="text-xs font-bold gap-1.5 border-border hover:bg-surface-2 cursor-pointer"
                                 >
                                   <Eye className="h-3.5 w-3.5 text-primary" /> View Details
                                 </Button>
@@ -1776,8 +1978,8 @@ function Matches() {
                                   type="button"
                                   variant="hero"
                                   size="sm"
-                                  onClick={() => handleOpenLeaderboard(mc)}
-                                  className="text-xs font-bold gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white"
+                                  onClick={() => handleOpenLeaderboard(contestObj)}
+                                  className="text-xs font-bold gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer"
                                 >
                                   <Trophy className="h-3.5 w-3.5 text-amber-300" /> Leaderboard
                                 </Button>
@@ -2643,9 +2845,9 @@ function Matches() {
             {/* 3-COLUMN CRICBUZZ LAYOUT */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* ------------------------------------------------------------- */}
-              {/* LEFT COLUMN: LATEST NEWS (w-3/12 on large screens)            */}
+              {/* LEFT COLUMN: LATEST NEWS (w-3/12 on large screens - Sticky)  */}
               {/* ------------------------------------------------------------- */}
-              <div className="lg:col-span-3 space-y-4">
+              <div className="lg:col-span-3 space-y-4 lg:sticky lg:top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto pr-1 scrollbar-none">
                 <div className="flex items-center justify-between pb-2 border-b border-border/80">
                   <h3 className="text-xs font-black uppercase tracking-wider text-red-500 flex items-center gap-1.5">
                     <Flame className="h-4 w-4 fill-red-500" />
@@ -2914,9 +3116,9 @@ function Matches() {
               </div>
 
               {/* ------------------------------------------------------------- */}
-              {/* RIGHT COLUMN: FEATURED VIDEOS (w-3/12 on large screens)       */}
+              {/* RIGHT COLUMN: FEATURED VIDEOS (w-3/12 on large screens-Sticky)*/}
               {/* ------------------------------------------------------------- */}
-              <div className="lg:col-span-3 space-y-4">
+              <div className="lg:col-span-3 space-y-4 lg:sticky lg:top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto pr-1 scrollbar-none">
                 <div className="flex items-center justify-between pb-2 border-b border-border/80">
                   <h3 className="text-xs font-black uppercase tracking-wider text-red-500 flex items-center gap-1.5">
                     <Video className="h-4 w-4 fill-red-500" />
@@ -3348,6 +3550,135 @@ function Matches() {
                   </div>
                 );
               })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* PENDING JOIN CONTEST WITH NEWLY CREATED TEAM MODAL (Point 3)    */}
+      {/* ============================================================= */}
+      {pendingJoinContest && pendingJoinTeamInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in-50 duration-150">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-emerald-500/50 bg-surface shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border bg-emerald-950/30 px-5 py-4">
+              <div className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-amber-300" />
+                <h3 className="font-bold text-sm text-foreground">
+                  Join Contest with {pendingJoinTeamInfo.name}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingJoinContest(null);
+                  setPendingJoinTeamInfo(null);
+                }}
+                className="h-8 w-8 rounded-full border border-border bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-3">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
+                    {pendingJoinContest.category || "MEGA CONTEST"}
+                  </span>
+                  <h4 className="font-black text-base text-foreground mt-1.5">{pendingJoinContest.name}</h4>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-emerald-500/20 text-xs">
+                  <div>
+                    <span className="text-[10px] text-muted-foreground block">Entry Fee</span>
+                    <span className="font-mono text-base font-black text-emerald-400">
+                      {!pendingJoinContest.entryFee || pendingJoinContest.entryFee === 0
+                        ? "FREE"
+                        : `₹${pendingJoinContest.entryFee}`}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted-foreground block">Prize Pool</span>
+                    <span className="font-bold text-foreground text-sm">
+                      {pendingJoinContest.prizePool || "₹50,000"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ready with Squad Box */}
+              <div className="rounded-xl border border-border bg-surface-2/60 p-3 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black text-xs">
+                    ✓
+                  </div>
+                  <div>
+                    <span className="font-bold text-xs text-foreground block">
+                      Ready with: <span className="text-emerald-400">{pendingJoinTeamInfo.name}</span>
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">Team created & verified</span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
+                  Ready
+                </span>
+              </div>
+
+              <div className="pt-2 space-y-2">
+                <Button
+                  onClick={handleExecutePendingJoin}
+                  disabled={isJoining}
+                  variant="hero"
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl cursor-pointer text-xs shadow-lg shadow-emerald-950/50 gap-2"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {isJoining ? "Joining Contest..." : `Join Contest with ${pendingJoinTeamInfo.name}`}
+                </Button>
+                <Button
+                  onClick={() => {
+                    setPendingJoinContest(null);
+                    setPendingJoinTeamInfo(null);
+                  }}
+                  variant="outline"
+                  className="w-full border-border bg-surface text-xs font-semibold hover:bg-surface-2 cursor-pointer"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* CONTEST JOINED SUCCESS POPUP MODAL (Point 3)                   */}
+      {/* ============================================================= */}
+      {joinSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in-50 duration-150">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-emerald-500/50 bg-surface shadow-2xl p-6 text-center space-y-4">
+            <div className="h-16 w-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
+              <CheckCircle2 className="h-10 w-10 text-emerald-400" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="font-display text-lg font-bold text-foreground">
+                You joined this contest successfully! 🎉
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Successfully joined <span className="font-bold text-foreground">{joinSuccessModal.contestName}</span> with <span className="font-bold text-emerald-400">{joinSuccessModal.teamName}</span>!
+              </p>
+            </div>
+            <div className="pt-2">
+              <Button
+                onClick={() => {
+                  setJoinSuccessModal(null);
+                  setContestSubTab("myContests");
+                }}
+                variant="hero"
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl cursor-pointer text-xs shadow-lg shadow-emerald-950"
+              >
+                View in My Contests
+              </Button>
             </div>
           </div>
         </div>
