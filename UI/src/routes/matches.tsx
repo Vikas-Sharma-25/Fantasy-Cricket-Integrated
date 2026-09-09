@@ -3,7 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/fc/AppShell";
 import { Card } from "@/components/fc/bits";
 import { Button } from "@/components/ui/button";
-import { getMatches, getContests, getMyTeams, joinContest, getMyContests, getLeaderboard, getMatchPlayers } from "@/lib/api-services";
+import { getMatches, getContests, getMyTeams, joinContest, getMyContests, getLeaderboard, getMatchPlayers, deleteTeam } from "@/lib/api-services";
 import type { Match, Contest, FantasyTeam, MatchPlayer } from "@/lib/api-types";
 import { TeamPitchPreview, type PitchPlayer } from "@/components/fc/TeamPitchPreview";
 import { setFlow, removeFlow, getFlow, FLOW_KEYS } from "@/lib/flow";
@@ -70,6 +70,7 @@ import {
   Sun,
   Compass,
   Pencil,
+  Trash2,
   AlertCircle,
 } from "lucide-react";
 
@@ -1199,6 +1200,25 @@ function Matches() {
     navigate({ to: "/players" });
   }
 
+  // Delete existing team
+  const [deletingTeamId, setDeletingTeamId] = useState<string | null>(null);
+  async function handleDeleteTeam(team: FantasyTeam) {
+    const confirmed = window.confirm(`Are you sure you want to delete "${team.name}"?`);
+    if (!confirmed) return;
+    setDeletingTeamId(team._id);
+    try {
+      await deleteTeam(team._id);
+      setMyTeams((prev) => prev.filter((t) => t._id !== team._id));
+      if (currentMatchId) {
+        void getMyContests(currentMatchId).then(setMyContests).catch(() => {});
+      }
+    } catch (err: any) {
+      alert(err?.message || "Failed to delete team");
+    } finally {
+      setDeletingTeamId(null);
+    }
+  }
+
   // Open leaderboard modal
   function handleOpenLeaderboard(c: any) {
     setLeaderboardContestModal(c);
@@ -1969,7 +1989,7 @@ function Matches() {
                                   type="button"
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => setViewingContestDetails(entries[0])}
+                                  onClick={() => setViewingContestDetails({ contest: contestObj, entries })}
                                   className="text-xs font-bold gap-1.5 border-border hover:bg-surface-2 cursor-pointer"
                                 >
                                   <Eye className="h-3.5 w-3.5 text-primary" /> View Details
@@ -2076,25 +2096,35 @@ function Matches() {
                                 <span>Max 7 from one team</span>
                               </div>
 
-                              {/* View & Edit Buttons */}
-                              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/60">
+                              {/* View, Edit & Delete Buttons */}
+                              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border/60">
                                 <Button
                                   type="button"
                                   variant="outline"
                                   size="sm"
                                   onClick={() => setPreviewTeamModal(t)}
-                                  className="text-xs font-bold gap-1.5 border-border hover:bg-surface-2"
+                                  className="text-xs font-bold gap-1 border-border hover:bg-surface-2"
                                 >
-                                  <Eye className="h-3.5 w-3.5 text-primary" /> View Team
+                                  <Eye className="h-3.5 w-3.5 text-primary" /> View
                                 </Button>
                                 <Button
                                   type="button"
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleEditTeam(t)}
-                                  className="text-xs font-bold gap-1.5 border-border hover:bg-surface-2"
+                                  className="text-xs font-bold gap-1 border-border hover:bg-surface-2"
                                 >
-                                  <Pencil className="h-3.5 w-3.5 text-emerald-400" /> Edit Team
+                                  <Pencil className="h-3.5 w-3.5 text-emerald-400" /> Edit
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDeleteTeam(t)}
+                                  disabled={deletingTeamId === t._id}
+                                  className="text-xs font-bold gap-1 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-red-400" /> {deletingTeamId === t._id ? "..." : "Delete"}
                                 </Button>
                               </div>
                             </div>
@@ -3794,143 +3824,193 @@ function Matches() {
       {/* ============================================================= */}
       {/* VIEW CONTEST DETAILS MODAL (MY CONTESTS)                      */}
       {/* ============================================================= */}
-      {viewingContestDetails && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in-50 duration-150">
-          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-border/80 bg-surface shadow-2xl">
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-surface/95 backdrop-blur px-5 py-4">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
-                  {viewingContestDetails.contestId?.type || "CONTEST DETAILS"}
-                </span>
-                <h3 className="font-bold text-base text-foreground">
-                  {viewingContestDetails.contestId?.name || "Contest Details"}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewingContestDetails(null)}
-                className="h-8 w-8 rounded-full border border-border bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+      {viewingContestDetails && (() => {
+        const contestData = viewingContestDetails.contest || viewingContestDetails.contestId || viewingContestDetails;
+        const entriesList: any[] = viewingContestDetails.entries || [viewingContestDetails];
+        const cName = contestData.name || "Contest Details";
+        const cType = contestData.type || "CONTEST DETAILS";
+        const cPrize = contestData.totalPrize
+          ? `₹${Number(contestData.totalPrize).toLocaleString()}`
+          : (contestData.prizePool || "₹10 Lakhs");
+        const cFee = contestData.entryFee === 0 ? "FREE" : `₹${contestData.entryFee ?? 0}`;
+        const maxTeams = contestData.maxTeams || 11;
 
-            <div className="p-6 space-y-5">
-              {/* Match Strip */}
-              <div className="p-3 rounded-xl border border-border/80 bg-surface-2/60 flex items-center justify-between text-xs">
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in-50 duration-150">
+            <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-border/80 bg-surface shadow-2xl">
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-surface/95 backdrop-blur px-5 py-4">
                 <div>
-                  <span className="font-bold text-foreground">
-                    {selectedHomeMatch?.teamA || "Team A"} vs {selectedHomeMatch?.teamB || "Team B"}
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                    {cType}
                   </span>
-                  <span className="text-muted-foreground block text-[11px]">
-                    {selectedHomeMatch?.series || "ICC Match"} • {selectedHomeMatch?.format || "T20"}
-                  </span>
+                  <h3 className="font-bold text-base text-foreground">
+                    {cName}
+                  </h3>
                 </div>
-                <div className="text-right">
-                  <span className="font-mono text-emerald-400 font-bold block">
-                    {selectedHomeMatch?.venue || "Main Stadium"}
-                  </span>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setViewingContestDetails(null)}
+                  className="h-8 w-8 rounded-full border border-border bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
 
-              {/* Contest Overview */}
-              <div className="grid grid-cols-3 gap-3 p-3 rounded-xl border border-border/80 bg-surface-2/40 text-center">
-                <div>
-                  <span className="text-[10px] text-muted-foreground block">Prize Pool</span>
-                  <span className="font-bold text-sm text-foreground">
-                    {viewingContestDetails.contestId?.totalPrize
-                      ? `₹${viewingContestDetails.contestId.totalPrize.toLocaleString()}`
-                      : "₹10 Lakhs"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-muted-foreground block">Entry Fee</span>
-                  <span className="font-bold text-sm text-emerald-400">
-                    {viewingContestDetails.contestId?.entryFee === 0
-                      ? "FREE"
-                      : `₹${viewingContestDetails.contestId?.entryFee ?? 0}`}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-muted-foreground block">Max Teams</span>
-                  <span className="font-bold text-sm text-foreground">
-                    {viewingContestDetails.contestId?.maxTeams || 11}
-                  </span>
-                </div>
-              </div>
-
-              {/* Your Entered Squad */}
-              <div className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-950/20 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                    <span className="font-bold text-xs text-foreground">
-                      Entered with: {viewingContestDetails.fantasyTeamId?.name || "Team 1"}
+              <div className="p-6 space-y-5">
+                {/* Match Strip */}
+                <div className="p-3 rounded-xl border border-border/80 bg-surface-2/60 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-bold text-foreground">
+                      {selectedHomeMatch?.teamA || "Team A"} vs {selectedHomeMatch?.teamB || "Team B"}
+                    </span>
+                    <span className="text-muted-foreground block text-[11px]">
+                      {selectedHomeMatch?.series || "ICC Match"} • {selectedHomeMatch?.format || "T20"}
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-emerald-400">
-                    Credits: {viewingContestDetails.fantasyTeamId?.totalCredits ?? 100}/100
-                  </span>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Captain:{" "}
-                  <b className="text-amber-400">
-                    {getPlayerName(viewingContestDetails.fantasyTeamId?.captainId)} (2X)
-                  </b>{" "}
-                  • Vice-Captain:{" "}
-                  <b className="text-cyan-400">
-                    {getPlayerName(viewingContestDetails.fantasyTeamId?.viceCaptainId)} (1.5X)
-                  </b>
-                </div>
-              </div>
-
-              {/* Prize Pool Distribution */}
-              <div className="space-y-2">
-                <h4 className="font-bold text-xs text-foreground uppercase tracking-wider">
-                  Prize Distribution Breakdown
-                </h4>
-                <div className="rounded-xl border border-border/80 overflow-hidden text-xs">
-                  <div className="grid grid-cols-2 bg-surface-2 p-2.5 font-bold text-muted-foreground text-[11px] border-b border-border">
-                    <span>Rank</span>
-                    <span className="text-right">Prize Amount</span>
+                  <div className="text-right">
+                    <span className="font-mono text-emerald-400 font-bold block">
+                      {selectedHomeMatch?.venue || "Main Stadium"}
+                    </span>
                   </div>
-                  <div className="divide-y divide-border/60">
-                    <div className="grid grid-cols-2 p-2.5 bg-surface font-semibold">
-                      <span className="flex items-center gap-1.5 text-amber-400">
-                        <Trophy className="h-3.5 w-3.5" /> Rank 1
+                </div>
+
+                {/* Contest Overview */}
+                <div className="grid grid-cols-3 gap-3 p-3 rounded-xl border border-border/80 bg-surface-2/40 text-center">
+                  <div>
+                    <span className="text-[10px] text-muted-foreground block">Prize Pool</span>
+                    <span className="font-bold text-sm text-foreground">
+                      {cPrize}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted-foreground block">Entry Fee</span>
+                    <span className="font-bold text-sm text-emerald-400">
+                      {cFee}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted-foreground block">Max Teams</span>
+                    <span className="font-bold text-sm text-foreground">
+                      {maxTeams}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Your Entered Squads (Supports Multi-Team Entries) */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-xs text-foreground uppercase tracking-wider">
+                      Your Entered Squads ({entriesList.length})
+                    </h4>
+                    {entriesList.length > 1 && (
+                      <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
+                        Multi-Team Entry
                       </span>
-                      <span className="text-right font-bold text-foreground">₹3,00,000</span>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    {entriesList.map((entryItem, eIdx) => {
+                      const teamObj = entryItem.fantasyTeamId;
+                      const teamId = String(teamObj?._id || (typeof teamObj === "string" ? teamObj : "") || "");
+                      const userTeam = myTeams.find((t) => String(t._id) === teamId);
+                      const userTeamName = teamObj?.name || userTeam?.name || `Team ${eIdx + 1}`;
+
+                      const capName =
+                        teamObj?.captainId?.name ||
+                        (userTeam?.captainId ? getPlayerName(userTeam.captainId) : null);
+                      const vcName =
+                        teamObj?.viceCaptainId?.name ||
+                        (userTeam?.viceCaptainId ? getPlayerName(userTeam.viceCaptainId) : null);
+                      const credits = teamObj?.totalCredits ?? userTeam?.totalCredits ?? 100;
+
+                      return (
+                        <div
+                          key={entryItem._id || eIdx}
+                          className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-950/20 space-y-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-black">
+                                ✓
+                              </span>
+                              <span className="font-bold text-xs text-foreground">
+                                Entered with: {userTeamName}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-mono text-emerald-400 bg-emerald-900/40 px-2 py-0.5 rounded border border-emerald-500/20">
+                              Credits: {credits}/100
+                            </span>
+                          </div>
+                          {(capName || vcName) && (
+                            <div className="text-xs text-muted-foreground flex items-center gap-3 pl-7">
+                              {capName && (
+                                <span>
+                                  Captain: <b className="text-amber-400">{capName} (2X)</b>
+                                </span>
+                              )}
+                              {capName && vcName && <span>•</span>}
+                              {vcName && (
+                                <span>
+                                  Vice-Captain: <b className="text-cyan-400">{vcName} (1.5X)</b>
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Prize Pool Distribution */}
+                <div className="space-y-2">
+                  <h4 className="font-bold text-xs text-foreground uppercase tracking-wider">
+                    Prize Distribution Breakdown
+                  </h4>
+                  <div className="rounded-xl border border-border/80 overflow-hidden text-xs">
+                    <div className="grid grid-cols-2 bg-surface-2 p-2.5 font-bold text-muted-foreground text-[11px] border-b border-border">
+                      <span>Rank</span>
+                      <span className="text-right">Prize Amount</span>
                     </div>
-                    <div className="grid grid-cols-2 p-2.5 bg-surface">
-                      <span className="text-muted-foreground">Rank 2</span>
-                      <span className="text-right font-semibold text-foreground">₹1,50,000</span>
-                    </div>
-                    <div className="grid grid-cols-2 p-2.5 bg-surface">
-                      <span className="text-muted-foreground">Rank 3</span>
-                      <span className="text-right font-semibold text-foreground">₹1,00,000</span>
-                    </div>
-                    <div className="grid grid-cols-2 p-2.5 bg-surface">
-                      <span className="text-muted-foreground">Rank 4 - 10</span>
-                      <span className="text-right font-semibold text-foreground">₹30,000 each</span>
-                    </div>
-                    <div className="grid grid-cols-2 p-2.5 bg-surface">
-                      <span className="text-muted-foreground">Rank 11 - 50</span>
-                      <span className="text-right font-semibold text-foreground">₹5,000 each</span>
+                    <div className="divide-y divide-border/60">
+                      <div className="grid grid-cols-2 p-2.5 bg-surface font-semibold">
+                        <span className="flex items-center gap-1.5 text-amber-400">
+                          <Trophy className="h-3.5 w-3.5" /> Rank 1
+                        </span>
+                        <span className="text-right font-bold text-foreground">₹3,00,000</span>
+                      </div>
+                      <div className="grid grid-cols-2 p-2.5 bg-surface">
+                        <span className="text-muted-foreground">Rank 2</span>
+                        <span className="text-right font-semibold text-foreground">₹1,50,000</span>
+                      </div>
+                      <div className="grid grid-cols-2 p-2.5 bg-surface">
+                        <span className="text-muted-foreground">Rank 3</span>
+                        <span className="text-right font-semibold text-foreground">₹1,00,000</span>
+                      </div>
+                      <div className="grid grid-cols-2 p-2.5 bg-surface">
+                        <span className="text-muted-foreground">Rank 4 - 10</span>
+                        <span className="text-right font-semibold text-foreground">₹30,000 each</span>
+                      </div>
+                      <div className="grid grid-cols-2 p-2.5 bg-surface">
+                        <span className="text-muted-foreground">Rank 11 - 50</span>
+                        <span className="text-right font-semibold text-foreground">₹5,000 each</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <Button
-                onClick={() => setViewingContestDetails(null)}
-                className="w-full bg-surface-2 hover:bg-surface border border-border text-foreground font-bold py-2 rounded-xl text-xs cursor-pointer"
-              >
-                Close Details
-              </Button>
+                <Button
+                  onClick={() => setViewingContestDetails(null)}
+                  className="w-full bg-surface-2 hover:bg-surface border border-border text-foreground font-bold py-2 rounded-xl text-xs cursor-pointer"
+                >
+                  Close Details
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ============================================================= */}
       {/* CONTEST LEADERBOARD MODAL                                      */}

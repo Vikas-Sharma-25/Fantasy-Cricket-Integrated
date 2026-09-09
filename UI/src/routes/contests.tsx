@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import {
   CheckCircle2,
@@ -496,7 +496,7 @@ function Contests() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setViewingContest(c)}
+                      onClick={() => setViewingContest({ ...c, entries } as any)}
                       className="gap-1.5 font-bold border-border bg-surface text-foreground hover:bg-surface-2"
                     >
                       <Eye className="h-3.5 w-3.5" /> VIEW
@@ -883,64 +883,74 @@ function Contests() {
                 </div>
               </div>
 
-              {/* 4. Joined Team Details */}
+              {/* 4. Joined Team(s) Details */}
               {(() => {
-                const teamObj: any = viewingContest.fantasyTeamId;
-                const fullTeam =
-                  teams.find(
-                    (t) => t._id === String(teamObj?._id ?? teamObj ?? ""),
-                  ) ?? teamObj;
-
-                const teamName = fullTeam?.name ?? "Team 1";
-                const capName = fullTeam?.captainId ? getPlayerName(fullTeam.captainId) : "Captain";
-                const vcName = fullTeam?.viceCaptainId
-                  ? getPlayerName(fullTeam.viceCaptainId)
-                  : "Vice Captain";
-
+                const entriesList: any[] = (viewingContest as any).entries || [viewingContest];
                 return (
-                  <div className="rounded-xl border border-primary/30 bg-surface-2/60 p-4">
-                    <div className="flex items-center justify-between border-b border-border pb-3">
-                      <div>
-                        <span className="block text-[10px] uppercase font-bold text-muted-foreground">
-                          Your Joined Team
-                        </span>
-                        <span className="font-display text-base font-bold text-foreground">
-                          {teamName}
-                        </span>
-                      </div>
-                      {fullTeam && fullTeam.playerIds && (
-                        <Button
-                          size="sm"
-                          variant="outlineGreen"
-                          className="gap-1.5 text-xs font-bold"
-                          onClick={() => setPitchPreviewTeam(fullTeam)}
-                        >
-                          <Eye className="h-3.5 w-3.5" /> PITCH PREVIEW
-                        </Button>
-                      )}
-                    </div>
+                  <div className="space-y-3">
+                    <span className="block text-[10px] uppercase font-bold text-muted-foreground">
+                      Your Joined {entriesList.length > 1 ? `Teams (${entriesList.length})` : "Team"}
+                    </span>
+                    {entriesList.map((entryItem, eIdx) => {
+                      const teamObj: any = entryItem.fantasyTeamId;
+                      const fullTeam =
+                        teams.find(
+                          (t) => t._id === String(teamObj?._id ?? teamObj ?? ""),
+                        ) ?? teamObj;
 
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                      <div className="flex items-center gap-2 rounded-lg bg-surface p-2.5 border border-border">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-[9px] font-extrabold text-black">
-                          C
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <span className="block truncate text-xs font-bold">{capName}</span>
-                          <span className="block text-[10px] text-muted-foreground">Captain 2X</span>
-                        </div>
-                      </div>
+                      const teamName = fullTeam?.name ?? `Team ${eIdx + 1}`;
+                      const capName = fullTeam?.captainId ? getPlayerName(fullTeam.captainId) : "Captain";
+                      const vcName = fullTeam?.viceCaptainId
+                        ? getPlayerName(fullTeam.viceCaptainId)
+                        : "Vice Captain";
 
-                      <div className="flex items-center gap-2 rounded-lg bg-surface p-2.5 border border-border">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-500 text-[8px] font-extrabold text-black">
-                          VC
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <span className="block truncate text-xs font-bold">{vcName}</span>
-                          <span className="block text-[10px] text-muted-foreground">Vice-Cap 1.5X</span>
+                      return (
+                        <div key={entryItem.entryId || entryItem._id || eIdx} className="rounded-xl border border-primary/30 bg-surface-2/60 p-4">
+                          <div className="flex items-center justify-between border-b border-border pb-3">
+                            <div className="flex items-center gap-2">
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                                ✓
+                              </span>
+                              <span className="font-display text-base font-bold text-foreground">
+                                {teamName}
+                              </span>
+                            </div>
+                            {fullTeam && fullTeam.playerIds && (
+                              <Button
+                                size="sm"
+                                variant="outlineGreen"
+                                className="gap-1.5 text-xs font-bold"
+                                onClick={() => setPitchPreviewTeam(fullTeam)}
+                              >
+                                <Eye className="h-3.5 w-3.5" /> PITCH PREVIEW
+                              </Button>
+                            )}
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-2 gap-3">
+                            <div className="flex items-center gap-2 rounded-lg bg-surface p-2.5 border border-border">
+                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-[9px] font-extrabold text-black">
+                                C
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <span className="block truncate text-xs font-bold">{capName}</span>
+                                <span className="block text-[10px] text-muted-foreground">Captain 2X</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 rounded-lg bg-surface p-2.5 border border-border">
+                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-500 text-[8px] font-extrabold text-black">
+                                VC
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <span className="block truncate text-xs font-bold">{vcName}</span>
+                                <span className="block text-[10px] text-muted-foreground">Vice-Cap 1.5X</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      );
+                    })}
                   </div>
                 );
               })()}

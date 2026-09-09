@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { Eye, Pencil, Plus, Users, X } from "lucide-react";
+import { Eye, Pencil, Plus, Trash2, Users, X } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/fc/AppShell";
 import { Card } from "@/components/fc/bits";
 import { Button } from "@/components/ui/button";
 import { TeamPitchPreview, type PitchPlayer } from "@/components/fc/TeamPitchPreview";
 import { LoadingState } from "@/components/fc/ListState";
-import { getMatchPlayers, getMyTeams, getMatch, getMatches } from "@/lib/api-services";
+import { getMatchPlayers, getMyTeams, getMatch, getMatches, deleteTeam } from "@/lib/api-services";
 import type { FantasyTeam, MatchPlayer, Match } from "@/lib/api-types";
 import { getFlow, setFlow, removeFlow, FLOW_KEYS } from "@/lib/flow";
 
@@ -82,6 +82,22 @@ function MyTeams() {
     setFlow(FLOW_KEYS.viceCaptainId, vcId);
 
     navigate({ to: "/players" });
+  }
+
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleDeleteTeam(t: FantasyTeam) {
+    const confirmed = window.confirm(`Are you sure you want to delete "${t.name}"?`);
+    if (!confirmed) return;
+    setDeletingId(t._id);
+    try {
+      await deleteTeam(t._id);
+      setTeams((prev) => prev.filter((item) => item._id !== t._id));
+    } catch (err: any) {
+      alert(err?.message || "Failed to delete team");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   function getSquadForTeam(team: FantasyTeam): PitchPlayer[] {
@@ -230,26 +246,36 @@ function MyTeams() {
                   </div>
                 </div>
 
-                {/* Action Buttons: EDIT and VIEW */}
-                <div className="grid grid-cols-2 gap-3 border-t border-border bg-surface-2/40 p-3">
+                {/* Action Buttons: EDIT, VIEW and DELETE */}
+                <div className="grid grid-cols-3 gap-2 border-t border-border bg-surface-2/40 p-3">
                   <Button
                     type="button"
                     variant="outline"
-                    size="lg"
+                    size="sm"
                     onClick={() => handleEditTeam(t)}
                     disabled={t.isLocked}
-                    className="gap-2 border-border bg-surface text-foreground hover:bg-surface-2"
+                    className="gap-1.5 border-border bg-surface text-foreground hover:bg-surface-2 font-bold text-xs"
                   >
-                    <Pencil className="h-4 w-4" /> EDIT
+                    <Pencil className="h-3.5 w-3.5" /> EDIT
                   </Button>
                   <Button
                     type="button"
                     variant="outlineGreen"
-                    size="lg"
+                    size="sm"
                     onClick={() => setPreviewTeam(t)}
-                    className="gap-2 font-bold"
+                    className="gap-1.5 font-bold text-xs"
                   >
-                    <Eye className="h-4 w-4" /> VIEW
+                    <Eye className="h-3.5 w-3.5" /> VIEW
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDeleteTeam(t)}
+                    disabled={deletingId === t._id || t.isLocked}
+                    className="gap-1.5 font-bold text-xs border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-red-400" /> {deletingId === t._id ? "DELETING..." : "DELETE"}
                   </Button>
                 </div>
               </Card>

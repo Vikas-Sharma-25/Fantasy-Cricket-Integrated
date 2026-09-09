@@ -2,6 +2,8 @@ import { Types } from "mongoose";
 import { FantasyTeam } from "../models/FantasyTeam";
 import { Match } from "../models/Match";
 import { MatchPlayer } from "../models/MatchPlayer";
+import { Contest } from "../models/Contest";
+import { ContestEntry } from "../models/ContestEntry";
 import { ApiError } from "../utils/apiError";
 
 /** Configurable fantasy team rules (SRS section 6). Move to SystemConfig/scoringRules-style admin config for production. */
@@ -167,6 +169,13 @@ export async function deleteTeam(userId: string, teamId: string) {
   const existing = await FantasyTeam.findOne({ _id: teamId, userId });
   if (!existing) throw ApiError.notFound("Fantasy team not found");
   if (existing.isLocked) throw ApiError.badRequest("Locked teams cannot be deleted");
+
+  // Find joined contest entries using this team and decrement contest slots
+  const entries = await ContestEntry.find({ fantasyTeamId: teamId, userId });
+  for (const entry of entries) {
+    await Contest.updateOne({ _id: entry.contestId }, { $inc: { joinedSlots: -1 } });
+  }
+  await ContestEntry.deleteMany({ fantasyTeamId: teamId, userId });
   await existing.deleteOne();
   return { deleted: true };
 }
