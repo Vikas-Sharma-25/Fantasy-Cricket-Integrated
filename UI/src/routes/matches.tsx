@@ -3,9 +3,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/fc/AppShell";
 import { Card } from "@/components/fc/bits";
 import { Button } from "@/components/ui/button";
-import { getMatches, getContests, getMyTeams, joinContest } from "@/lib/api-services";
-import type { Match, Contest, FantasyTeam } from "@/lib/api-types";
-import { setFlow, removeFlow, FLOW_KEYS } from "@/lib/flow";
 import { getMatches, getContests, getMyTeams, joinContest, getMyContests, getLeaderboard, getMatchPlayers } from "@/lib/api-services";
 import type { Match, Contest, FantasyTeam, MatchPlayer } from "@/lib/api-types";
 import { TeamPitchPreview, type PitchPlayer } from "@/components/fc/TeamPitchPreview";
@@ -842,8 +839,6 @@ function Matches() {
 
   // Auto-fetch contests, user teams, and joined entries whenever match selection changes
   useEffect(() => {
-    void getMyTeams()
-      .then((t) => setMyTeams(t || []))
     if (!currentMatchId) return;
     let mounted = true;
 
@@ -852,7 +847,6 @@ function Matches() {
         if (mounted && c && c.length > 0) setMatchContests(c);
       })
       .catch(() => {});
-  }, []);
 
     void getMyTeams(currentMatchId)
       .then((t) => {
@@ -965,8 +959,6 @@ function Matches() {
     }
   }
 
-  // Join contest handler: ONLY available for UPCOMING matches
-  async function handleJoinContest(contestId: string) {
   // Initiate Join Contest: Checks if user has 0 teams, unjoined teams, or all teams joined
   function handleInitiateJoin(c: any) {
     const contestId = String(c._id || c.id);
@@ -978,11 +970,9 @@ function Matches() {
     const unjoinedTeams = myTeams.filter((t) => !joinedTeamIds.includes(String(t._id)));
 
     if (myTeams.length === 0) {
-      handleCreateTeam();
       setNoTeamsModalContest(c);
       return;
     }
-    setJoiningContestId(contestId);
 
     if (unjoinedTeams.length > 0) {
       setJoinModalContest(c);
@@ -1003,12 +993,6 @@ function Matches() {
     const teamName = targetTeam ? targetTeam.name : "your team";
 
     try {
-      await joinContest(contestId, myTeams[0]._id);
-      setContestSuccessMsg("Joined contest successfully with your Team 1!");
-      setTimeout(() => setContestSuccessMsg(null), 4000);
-    } catch {
-      setContestSuccessMsg("Joined contest successfully!");
-      setTimeout(() => setContestSuccessMsg(null), 4000);
       await joinContest(targetContestId, selectedJoinTeamId);
       setContestSuccessMsg(`🎉 Successfully joined ${joinModalContest.name} with ${teamName}!`);
       setJoinModalContest(null);
@@ -1033,7 +1017,6 @@ function Matches() {
       }
       setTimeout(() => setContestSuccessMsg(null), 5000);
     } finally {
-      setJoiningContestId(null);
       setIsJoining(false);
     }
   }
@@ -1198,9 +1181,6 @@ function Matches() {
   }, [matchContests]);
 
   const filteredContests = useMemo(() => {
-    if (contestFilter === "All") return MOCK_MATCH_CONTESTS;
-    return MOCK_MATCH_CONTESTS.filter((c) => c.category === contestFilter);
-  }, [contestFilter]);
     if (contestFilter === "All") return displayContests;
     return displayContests.filter((c) => c.category === contestFilter);
   }, [displayContests, contestFilter]);
@@ -1469,23 +1449,6 @@ function Matches() {
                   </Button>
                 </div>
 
-                {/* Contest Category Filter Pills */}
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  {["All", "Mega Contests", "Winner Takes All", "Head to Head", "Practice"].map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setContestFilter(cat)}
-                      className={cn(
-                        "px-3.5 py-1.5 rounded-full font-bold transition-all border cursor-pointer",
-                        contestFilter === cat
-                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-sm"
-                          : "bg-surface-2 text-muted-foreground border-border hover:text-foreground"
-                      )}
-                    >
-                      {cat}
-                    </button>
-                  ))}
                 {/* Contests Sub-tabs Bar: All Contests, My Contests, My Teams */}
                 <div className="flex items-center gap-2 border-b border-border/80 pb-3">
                   <button
@@ -1529,30 +1492,6 @@ function Matches() {
                   </button>
                 </div>
 
-                {/* Contests Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredContests.map((c) => {
-                    const spotsLeft = c.totalSpots - c.filledSpots;
-                    const pct = Math.round((c.filledSpots / c.totalSpots) * 100);
-                    return (
-                      <div
-                        key={c.id}
-                        className="rounded-2xl border border-border/80 bg-surface/90 hover:border-emerald-500/40 p-4 transition-all shadow-md space-y-3.5"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded">
-                              {c.category}
-                            </span>
-                            <h4 className="font-black text-sm text-foreground mt-1.5">{c.name}</h4>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-[10px] text-muted-foreground block">Entry Fee</span>
-                            <span className="font-mono text-base font-black text-emerald-400">
-                              {c.entryFee === 0 ? "FREE" : `₹${c.entryFee}`}
-                            </span>
-                          </div>
-                        </div>
                 {/* VIEW 1: ALL CONTESTS */}
                 {contestSubTab === "contests" && (
                   <div className="space-y-4">
@@ -1575,10 +1514,6 @@ function Matches() {
                       ))}
                     </div>
 
-                        <div className="flex items-center justify-between text-xs py-1 border-y border-border/60">
-                          <div>
-                            <span className="text-[10px] text-muted-foreground block">Prize Pool</span>
-                            <span className="font-bold text-foreground">{c.prizePool}</span>
                     {/* Contests Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {filteredContests.map((c) => {
@@ -1686,23 +1621,12 @@ function Matches() {
                               </Button>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <span className="text-[10px] text-muted-foreground block">1st Prize</span>
-                            <span className="font-bold text-amber-400 flex items-center gap-1">
-                              <Trophy className="h-3 w-3 text-amber-400" />
-                              {c.firstPrize}
-                            </span>
-                          </div>
-                        </div>
                         );
                       })}
                     </div>
                   </div>
                 )}
 
-                        {/* Spots progress */}
-                        <div className="space-y-1">
-                          <div className="h-1.5 w-full bg-surface-2 rounded-full overflow-hidden">
                 {/* VIEW 2: MY CONTESTS */}
                 {contestSubTab === "myContests" && (
                   <div className="space-y-4">
@@ -1741,15 +1665,6 @@ function Matches() {
 
                           return (
                             <div
-                              className="h-full bg-gradient-to-r from-emerald-500 to-amber-500 rounded-full"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                            <span>{spotsLeft.toLocaleString()} spots left</span>
-                            <span>{c.totalSpots.toLocaleString()} spots</span>
-                          </div>
-                        </div>
                               key={mc._id || idx}
                               className="rounded-2xl border border-emerald-500/40 bg-surface/90 p-4 shadow-md space-y-3 relative overflow-hidden"
                             >
@@ -1774,19 +1689,6 @@ function Matches() {
                                 </div>
                               </div>
 
-                        <div className="flex items-center justify-between pt-1">
-                          <span className="text-[10px] text-muted-foreground">
-                            Up to {c.maxTeams} teams {c.guaranteed && "• Guaranteed"}
-                          </span>
-                          <Button
-                            onClick={() => handleJoinContest(c.id)}
-                            disabled={joiningContestId === c.id}
-                            size="sm"
-                            className="bg-primary hover:bg-primary/90 text-black font-bold text-xs px-4"
-                          >
-                            {joiningContestId === c.id ? "Joining..." : "Join Contest"}
-                          </Button>
-                        </div>
                               <div className="flex items-center justify-between text-xs py-2 border-y border-border/60">
                                 <div>
                                   <span className="text-[10px] text-muted-foreground block">Prize Pool</span>
@@ -1823,9 +1725,6 @@ function Matches() {
                           );
                         })}
                       </div>
-                    );
-                  })}
-                </div>
                     )}
                   </div>
                 )}
