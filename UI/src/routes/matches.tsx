@@ -62,6 +62,12 @@ import {
   Volume2,
   VolumeX,
   Maximize2,
+  Thermometer,
+  CloudRain,
+  Wind,
+  Droplets,
+  Sun,
+  Compass,
 } from "lucide-react";
 
 export const Route = createFileRoute("/matches")({ component: Matches });
@@ -436,6 +442,304 @@ const MOCK_LEADERBOARD = [
   { rank: 7, name: "RishabhPant17", teamName: "Spidey XI", points: 768.5, prize: "₹30,000" },
 ];
 
+const MOCK_POINTS_TABLE = [
+  { rank: 1, team: "East Zone", p: 4, w: 3, l: 0, d: 1, nr: 0, pts: 21, nrr: "+1.420" },
+  { rank: 2, team: "South Zone", p: 4, w: 2, l: 1, d: 1, nr: 0, pts: 15, nrr: "+0.840" },
+  { rank: 3, team: "West Zone", p: 4, w: 2, l: 2, d: 0, nr: 0, pts: 12, nrr: "-0.110" },
+  { rank: 4, team: "North Zone", p: 4, w: 1, l: 2, d: 1, nr: 0, pts: 9, nrr: "-0.560" },
+  { rank: 5, team: "Central Zone", p: 4, w: 0, l: 3, d: 1, nr: 0, pts: 3, nrr: "-1.280" },
+];
+
+interface TeamSquadDetails {
+  players: string[];
+  bench: string[];
+}
+
+function getTeamSquadDetails(teamName: string = ""): TeamSquadDetails {
+  const t = teamName.toUpperCase();
+  if (t.includes("EAST") || t.includes("EZONE")) {
+    return {
+      players: [
+        "Abhimanyu Easwaran",
+        "Vaibhav Sooryavanshi",
+        "Kumar Kushagra (wk)",
+        "Sudip Kumar Gharami",
+        "Shikhar Mohan",
+        "Ishan Kishan (c)",
+        "Md Kounain Quraishi",
+        "Anukul Roy",
+        "Mohammed Shami",
+        "Abhijit K Sarkar",
+        "Mukesh Kumar",
+      ],
+      bench: [
+        "Virat Singh",
+        "Subhranshu Senapati",
+        "Shahbaz Ahmed",
+        "Denish Das",
+        "Suraj Sindhu Jaiswal",
+      ],
+    };
+  }
+  if (t.includes("SOUTH") || t.includes("SZONE")) {
+    return {
+      players: [
+        "Ricky Bhui",
+        "Narayan Jagadeesan (wk)",
+        "Devdutt Padikkal",
+        "Shaik Rasheed",
+        "Tilak Varma (c)",
+        "Smaran Ravichandran",
+        "Shreyas Gopal",
+        "Tripurana Vijay",
+        "Mohammed Siraj",
+        "Chama V Milind",
+        "MD Nidheesh",
+      ],
+      bench: [
+        "Kodimela Himateja",
+        "Tanay Thyagarajan",
+        "Vidhwath Kaverappa",
+        "Kavuri Saiteja",
+        "Karun Nair",
+        "Aman Khan",
+        "Abhinav Tejrana",
+      ],
+    };
+  }
+  if (t.includes("ENG") || t.includes("ENGLAND")) {
+    return {
+      players: [
+        "Jos Buttler (c, wk)",
+        "Phil Salt",
+        "Will Jacks",
+        "Harry Brook",
+        "Liam Livingstone",
+        "Moeen Ali",
+        "Sam Curran",
+        "Chris Jordan",
+        "Jofra Archer",
+        "Adil Rashid",
+        "Reece Topley",
+      ],
+      bench: ["Ben Duckett", "Tom Hartley", "Mark Wood", "Luke Wood"],
+    };
+  }
+  if (t.includes("PAK") || t.includes("PAKISTAN")) {
+    return {
+      players: [
+        "Babar Azam (c)",
+        "Mohammad Rizwan (wk)",
+        "Saim Ayub",
+        "Fakhar Zaman",
+        "Iftikhar Ahmed",
+        "Shadab Khan",
+        "Imad Wasim",
+        "Shaheen Afridi",
+        "Naseem Shah",
+        "Haris Rauf",
+        "Mohammad Amir",
+      ],
+      bench: ["Usman Khan", "Azam Khan", "Abbas Afridi", "Abrar Ahmed"],
+    };
+  }
+  if (t.includes("IND") || t.includes("INDIA")) {
+    return {
+      players: [
+        "Rohit Sharma (c)",
+        "Virat Kohli",
+        "Rishabh Pant (wk)",
+        "Suryakumar Yadav",
+        "Hardik Pandya",
+        "Shivam Dube",
+        "Ravindra Jadeja",
+        "Axar Patel",
+        "Kuldeep Yadav",
+        "Arshdeep Singh",
+        "Jasprit Bumrah",
+      ],
+      bench: ["Sanju Samson", "Mohammed Siraj", "Yuzvendra Chahal", "Yashasvi Jaiswal"],
+    };
+  }
+  if (t.includes("AUS") || t.includes("AUSTRALIA")) {
+    return {
+      players: [
+        "Travis Head",
+        "David Warner",
+        "Mitchell Marsh (c)",
+        "Glenn Maxwell",
+        "Marcus Stoinis",
+        "Tim David",
+        "Matthew Wade (wk)",
+        "Pat Cummins",
+        "Mitchell Starc",
+        "Adam Zampa",
+        "Josh Hazlewood",
+      ],
+      bench: ["Josh Inglis", "Ashton Agar", "Cameron Green", "Nathan Ellis"],
+    };
+  }
+  return {
+    players: [
+      `${teamName} Captain (c)`,
+      "Opening Batter 1",
+      "Opening Batter 2",
+      "Wicketkeeper (wk)",
+      "Top Order Batter",
+      "All-Rounder 1",
+      "All-Rounder 2",
+      "Spin Bowler",
+      "Fast Bowler 1",
+      "Fast Bowler 2",
+      "Pace Specialist",
+    ],
+    bench: ["Bench Batter", "Reserve Pacer", "Reserve Spinner", "Substitute Fielder"],
+  };
+}
+
+function getVenueGuide(venueName: string = "") {
+  const v = venueName.toLowerCase();
+  if (v.includes("chidambaram") || v.includes("chennai")) {
+    return {
+      stadium: "MA Chidambaram Stadium",
+      city: "Chennai, India",
+      capacity: "50,000",
+      ends: "Anna Pavilion End, V Pattabhiraman Gate End",
+      hostsTo: "Tamil Nadu, Chennai Super Kings",
+      pitchType: "Balanced • Red Soil with true bounce & turn",
+      avg1st: 178,
+      avg2nd: 158,
+      pacersPct: 62,
+      spinnersPct: 38,
+      temp: "29°C",
+      feelsLike: "33°C",
+      condition: "Clear & Pleasant",
+      rainProb: "5%",
+      humidity: "64%",
+      wind: "14 km/h ENE",
+      dewFactor: "Moderate Dew predicted around 8:30 PM (Dew Index 6.5/10)",
+    };
+  }
+  if (v.includes("edgbaston") || v.includes("birmingham")) {
+    return {
+      stadium: "Edgbaston Cricket Ground",
+      city: "Birmingham, England",
+      capacity: "25,000",
+      ends: "Pavilion End, Birmingham End",
+      hostsTo: "Warwickshire, Birmingham Phoenix, England",
+      pitchType: "Batting Friendly • True carry & fast outfield",
+      avg1st: 184,
+      avg2nd: 169,
+      pacersPct: 71,
+      spinnersPct: 29,
+      temp: "19°C",
+      feelsLike: "19°C",
+      condition: "Overcast with sunny spells",
+      rainProb: "15%",
+      humidity: "58%",
+      wind: "18 km/h SW",
+      dewFactor: "Negligible Dew (Dry evening breeze)",
+    };
+  }
+  if (v.includes("wankhede") || v.includes("mumbai")) {
+    return {
+      stadium: "Wankhede Stadium",
+      city: "Mumbai, India",
+      capacity: "33,108",
+      ends: "Garware Pavilion End, Tata End",
+      hostsTo: "Mumbai, Mumbai Indians, India",
+      pitchType: "High-Scoring Belter • Short boundaries & dew",
+      avg1st: 192,
+      avg2nd: 181,
+      pacersPct: 65,
+      spinnersPct: 35,
+      temp: "31°C",
+      feelsLike: "35°C",
+      condition: "Humid & Clear",
+      rainProb: "0%",
+      humidity: "72%",
+      wind: "12 km/h WNW",
+      dewFactor: "Heavy Dew in 2nd Innings (Dew Index 8.9/10)",
+    };
+  }
+  return {
+    stadium: venueName || "MA Chidambaram Stadium",
+    city: "Chennai, India",
+    capacity: "50,000",
+    ends: "Anna Pavilion End, V Pattabhiraman Gate End",
+    hostsTo: "Tamil Nadu, Chennai Super Kings",
+    pitchType: "Balanced • Good contest between bat and ball",
+    avg1st: 178,
+    avg2nd: 158,
+    pacersPct: 62,
+    spinnersPct: 38,
+    temp: "29°C",
+    feelsLike: "33°C",
+    condition: "Partly Cloudy",
+    rainProb: "10%",
+    humidity: "64%",
+    wind: "14 km/h NE",
+    dewFactor: "Moderate Dew expected in 2nd innings",
+  };
+}
+
+function getMatchMarketNews(teamA: string = "East Zone", teamB: string = "South Zone") {
+  return [
+    {
+      id: "mn-1",
+      title: `${teamA} vs ${teamB} Tactical Preview: Bowling combinations and death-overs strategy`,
+      category: "MATCH PREVIEW",
+      timeAgo: "45m ago",
+      author: "Cricbuzz Match Center",
+      summary: `Both ${teamA} and ${teamB} completed intensive net sessions today. Team management confirmed that pitch conditions will dictate the final balance between extra spin or raw pace.`,
+      content: [
+        `Ahead of the high-stakes clash between ${teamA} and ${teamB}, team captains addressed media briefings outlining their tactical approach.`,
+        `${teamA}'s strike bowlers looked sharp in the morning session, focusing on hitting the hard length to extract early bounce.`,
+        `${teamB}'s top order practiced extensively against spin with specialized netting setups to neutralize turn in the middle overs.`,
+      ],
+      quotes: `"We know their strengths, but our preparation has been tailored to capitalize on every phase of play."`,
+    },
+    {
+      id: "mn-2",
+      title: `Curator confirms pitch report: Red-clay surface expected to favor strokeplay early`,
+      category: "PITCH & WEATHER",
+      timeAgo: "2h ago",
+      author: "Chepauk Ground Staff",
+      summary: `The chief curator revealed that the wicket retains adequate moisture to ensure consistent carry, with light evening dew likely to play a role in the second innings.`,
+      content: [
+        `The curator confirmed that 12% live grass has been left to bind the wicket, preventing rapid crumble during the first innings.`,
+        `Captains winning the toss will heavily weigh the dew factor, with teams batting first having won 58% of recent fixtures at this venue.`,
+      ],
+      quotes: `"Expect a 175+ par score. The ball will come onto the bat nicely in the powerplay."`,
+    },
+    {
+      id: "mn-3",
+      title: `Fantasy XI & Market Odds: Top captaincy picks and high-multiplier differentials`,
+      category: "FANTASY INSIDER",
+      timeAgo: "3h ago",
+      author: "Fantasy Analytics Hub",
+      summary: `Our statistical predictive model highlights key match-ups: ${teamA}'s premier all-rounder carries an 84% selection rate, making vice-captaincy differentials crucial for mega contest leaderboard climbs.`,
+      content: [
+        `Over 25,000 fantasy managers have locked in their core XI. Historical data suggests pacers claim 62% of wickets on this deck.`,
+        `Key differential pick: Middle-order anchor capable of accumulating steady boundaries during middle overs.`,
+      ],
+      quotes: `"Look for all-rounders who bowl in death overs to maximize 2x captain multipliers."`,
+    },
+    {
+      id: "mn-4",
+      title: `Squad Clearance: Frontline bowlers declared 100% fit after morning fitness drill`,
+      category: "FITNESS UPDATE",
+      timeAgo: "5h ago",
+      author: "Medical Desk",
+      summary: `All players passed mandatory fitness drills with zero injury concerns reported from either ${teamA} or ${teamB} camps.`,
+      content: [
+        `Both squads have a clean bill of health going into matchday, providing captains full tactical freedom for their Playing XI selection.`,
+      ],
+      quotes: `"Everyone is fit, firing, and eager to step onto the turf."`,
+    },
+  ];
+}
+
 function Matches() {
   const navigate = useNavigate();
   const [worldMatches, setWorldMatches] = useState<any[]>([]);
@@ -610,10 +914,33 @@ function Matches() {
   // - COMPLETED: Result, Scorecard, Leaderboard, Highlights, Graphs, Info, Squads
   const availableTabs = useMemo(() => {
     if (matchStatus === "UPCOMING") {
-      return ["Contests", "Info", "Squads", "Pitch & Weather", "News"];
+      return [
+        "Contests",
+        "Info",
+        "Live",
+        "Scorecard",
+        "Squads",
+        "Pitch & Weather",
+        "Overs",
+        "Graphs",
+        "Highlights",
+        "Full Commentary",
+        "News",
+      ];
     }
     if (matchStatus === "COMPLETED") {
-      return ["Result", "Scorecard", "Leaderboard", "Highlights", "Graphs", "Info", "Squads"];
+      return [
+        "Result",
+        "Scorecard",
+        "Leaderboard",
+        "Highlights",
+        "Graphs",
+        "Info",
+        "Squads",
+        "Pitch & Weather",
+        "Full Commentary",
+        "News",
+      ];
     }
     // LIVE Match
     return [
@@ -621,6 +948,7 @@ function Matches() {
       "Scorecard",
       "Leaderboard",
       "Squads",
+      "Pitch & Weather",
       "Points Table",
       "Overs",
       "Graphs",
@@ -836,16 +1164,7 @@ function Matches() {
 
               {/* Action Buttons */}
               <div className="flex items-center gap-2.5">
-                {matchStatus === "UPCOMING" ? (
-                  <Button
-                    onClick={handleCreateTeam}
-                    variant="hero"
-                    size="sm"
-                    className="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5 shadow-md cursor-pointer"
-                  >
-                    <Plus className="h-4 w-4" /> Create Team
-                  </Button>
-                ) : (
+                {matchStatus !== "UPCOMING" && (
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-2/70 border border-border text-xs text-muted-foreground font-semibold">
                     <Lock className="h-3.5 w-3.5 text-muted-foreground" />
                     <span>{matchStatus === "LIVE" ? "Contests Closed • Live Standings Active" : "Match Finished"}</span>
@@ -895,7 +1214,7 @@ function Matches() {
                   </div>
                 )}
 
-                {/* Contests Top CTA Banner */}
+                {/* Contests Top CTA Banner (Unified Single Button combining Create Team and Create Team Now) */}
                 <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/60 via-surface to-surface-2 p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md">
                   <div>
                     <div className="flex items-center gap-2">
@@ -911,9 +1230,9 @@ function Matches() {
                   <Button
                     onClick={handleCreateTeam}
                     variant="hero"
-                    className="w-full sm:w-auto text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white gap-2 shadow-lg"
+                    className="w-full sm:w-auto text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white gap-2 shadow-lg cursor-pointer transition-all hover:scale-[1.02]"
                   >
-                    <Plus className="h-4 w-4" /> Create Team Now
+                    <Plus className="h-4 w-4" /> Create Team • Create Team Now
                   </Button>
                 </div>
 
@@ -2076,7 +2395,7 @@ function Matches() {
       {/* ============================================================= */}
       {activeVideo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in-50 duration-150">
-          <div className="w-full max-w-3xl bg-surface rounded-2xl border border-primary/40 shadow-2xl shadow-primary/10 overflow-hidden space-y-4 p-5 sm:p-6">
+          <div className="w-full max-w-3xl bg-surface rounded-2xl border border-emerald-500/40 shadow-2xl overflow-hidden space-y-4 p-5 sm:p-6">
             <div className="flex items-center justify-between pb-3 border-b border-border">
               <div className="flex items-center gap-2">
                 <span className="flex h-2.5 w-2.5 relative">
