@@ -21,7 +21,10 @@ function Players() {
   const flowName = getFlow<string>(FLOW_KEYS.selectedTeamName, "My Team");
   const [tab, setTab] = useState("Batsman");
   const [players, setPlayers] = useState<MatchPlayer[]>([]);
-  const [picked, setPicked] = useState<string[]>(getFlow(FLOW_KEYS.selectedPlayerIds, []));
+  const [picked, setPicked] = useState<string[]>(() => {
+    const raw = getFlow<any[]>(FLOW_KEYS.selectedPlayerIds, []);
+    return Array.from(new Set((raw ?? []).map((x) => String(x?._id ?? x?.playerId ?? x))));
+  });
   const [showPreview, setShowPreview] = useState(false);
   const [error, setError] = useState("");
 
@@ -58,14 +61,7 @@ function Players() {
   function toggle(id: string) {
     setError("");
     const player = players.find((p) => p.playerId === id);
-    if (!player || !player.isAvailable) return;
-    setPicked((current) => {
-      if (current.includes(id)) return current.filter((x) => x !== id);
-      if (current.length >= 11) return current;
-      if (creditsUsed + (player.credits ?? 0) > 100) return current;
-      return [...current, id];
-    });
-    if (!player) return;
+    if (!player || player.isAvailable === false) return;
 
     if (picked.includes(id)) {
       setPicked((current) => current.filter((x) => x !== id));
@@ -105,13 +101,15 @@ function Players() {
       return;
     }
 
-    setPicked((current) => [...current, id]);
+    setPicked((current) => {
+      if (current.includes(id)) return current;
+      return [...current, id];
+    });
   }
 
   function continueTeam() {
     setError("");
     if (!matchId) return setError("Select a match first.");
-    if (picked.length !== 11) return setError("Select exactly 11 players before continuing.");
     if (picked.length !== 11) {
       return setError(`Please select exactly 11 players. Currently selected: ${picked.length}/11.`);
     }

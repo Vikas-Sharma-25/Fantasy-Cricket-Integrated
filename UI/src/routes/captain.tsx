@@ -18,7 +18,7 @@ function Captain() {
   const matchId = getFlow<string | null>(FLOW_KEYS.selectedMatchId, null);
   const editingTeamId = getFlow<string | null>(FLOW_KEYS.editingTeamId, null);
   const rawIds = getFlow<any[]>(FLOW_KEYS.selectedPlayerIds, []);
-  const ids = (rawIds ?? []).map((x) => String(x?._id ?? x?.playerId ?? x));
+  const ids = Array.from(new Set((rawIds ?? []).map((x) => String(x?._id ?? x?.playerId ?? x))));
   const name = getFlow<string>(FLOW_KEYS.selectedTeamName, "My Team");
   const [players, setPlayers] = useState<MatchPlayer[]>([]);
   const [loading, setLoading] = useState(true);
