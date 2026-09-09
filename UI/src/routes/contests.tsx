@@ -28,8 +28,17 @@ import {
 import type { Contest, FantasyTeam, MatchPlayer, Match } from "@/lib/api-types";
 import { getFlow, setFlow, removeFlow, FLOW_KEYS } from "@/lib/flow";
 import { ApiClientError } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/contests")({ component: Contests });
+
+// Module-level in-memory cache for instant zero-lag first frame rendering
+let memoryCachedContests: Contest[] = [];
+let memoryCachedMyContests: Contest[] = [];
+let memoryCachedMatch: Match | null = null;
+let memoryCachedMatchId: string | null = null;
+let memoryCachedTeams: FantasyTeam[] = [];
+let memoryCachedPlayers: MatchPlayer[] = [];
 
 function joinedCountOf(c: Contest) {
   return c.joinedSlots ?? c.entriesCount ?? c.joinedCount ?? 0;
@@ -63,16 +72,39 @@ function getPrizeBreakdown(prizePool: any) {
 
 function Contests() {
   const navigate = useNavigate();
-  const matchId = getFlow<string | null>(FLOW_KEYS.selectedMatchId, null);
-  const [items, setItems] = useState<Contest[]>([]);
-  const [myContests, setMyContests] = useState<Contest[]>([]);
-  const [teams, setTeams] = useState<FantasyTeam[]>([]);
-  const [players, setPlayers] = useState<MatchPlayer[]>([]);
+  const rawMatchId = getFlow<string | null>(FLOW_KEYS.selectedMatchId, null);
+  const [matchId, setMatchId] = useState<string | null>(rawMatchId);
+
+  // Synchronous cache hydration for 0ms render
+  const [items, setItems] = useState<Contest[]>(() => {
+    if (rawMatchId && memoryCachedMatchId === rawMatchId && memoryCachedContests.length > 0) {
+      return memoryCachedContests;
+    }
+    if (!rawMatchId && memoryCachedContests.length > 0) {
+      return memoryCachedContests;
+    }
+    return [];
+  });
+  const [myContests, setMyContests] = useState<Contest[]>(() => memoryCachedMyContests);
+  const [teams, setTeams] = useState<FantasyTeam[]>(() => memoryCachedTeams);
+  const [players, setPlayers] = useState<MatchPlayer[]>(() => memoryCachedPlayers);
+  const [currentMatch, setCurrentMatch] = useState<Match | null>(() => {
+    if (rawMatchId && memoryCachedMatchId === rawMatchId && memoryCachedMatch) {
+      return memoryCachedMatch;
+    }
+    if (!rawMatchId && memoryCachedMatch) {
+      return memoryCachedMatch;
+    }
+    return null;
+  });
+
   const [filter, setFilter] = useState("All");
   const [top, setTop] = useState("Contests");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [joining, setJoining] = useState(false);
+  const [loadingContests, setLoadingContests] = useState(() => items.length === 0);
+  const [loadingMyContests, setLoadingMyContests] = useState(false);
 
   // Join modal state
   const [contestToJoin, setContestToJoin] = useState<Contest | null>(null);
@@ -81,16 +113,22 @@ function Contests() {
   // My Contests view modal state
   const [viewingContest, setViewingContest] = useState<Contest | null>(null);
   const [pitchPreviewTeam, setPitchPreviewTeam] = useState<FantasyTeam | null>(null);
-  const [currentMatch, setCurrentMatch] = useState<Match | null>(null);
   const [allMatches, setAllMatches] = useState<Match[]>([]);
   const [leaderboardContest, setLeaderboardContest] = useState<Contest | null>(null);
   const [leaderboardRows, setLeaderboardRows] = useState<any[]>([]);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
 
-  function loadMyContests() {
-    void getMyContests(matchId ?? undefined)
-      .then(setMyContests)
-      .catch(() => {});
+  function loadMyContests(mId?: string | null) {
+    const targetId = mId !== undefined ? mId : matchId;
+    setLoadingMyContests(true);
+    void getMyContests(targetId ?? undefined)
+      .then((res) => {
+        const arr = Array.isArray(res) ? res.filter(Boolean) : [];
+        setMyContests(arr);
+        memoryCachedMyContests = arr;
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMyContests(false));
   }
 
   function handleOpenLeaderboard(c: Contest) {
@@ -132,68 +170,131 @@ function Contests() {
   }
 
   useEffect(() => {
-    void getMatches().then(setAllMatches).catch(() => {});
+    let active = true;
 
-    if (matchId) {
-      void getMatch(matchId).then(setCurrentMatch).catch(() => {});
-      void getMyTeams(matchId)
-        .then((fetchedTeams) => {
+    async function initData() {
+      try {
+        const matches = await getMatches();
+        if (!active) return;
+        setAllMatches(matches);
+
+        let activeMatchId = rawMatchId;
+        let activeMatch = matches.find((m) => m._id === activeMatchId);
+
+        // If no match specified (e.g. clicking "Mega Contests" from sidebar), pick the primary upcoming/live match
+        if (!activeMatchId || !activeMatch) {
+          const upcomingOrLive =
+            matches.find(
+              (m) =>
+                m.providerMatchId === "ENG-PAK-T20-2026" ||
+                (m.teamA?.toLowerCase().includes("england") && m.teamB?.toLowerCase().includes("pakistan")) ||
+                m.status === "UPCOMING" ||
+                m.status === "LIVE",
+            ) || matches[0];
+
+          if (upcomingOrLive) {
+            activeMatchId = upcomingOrLive._id;
+            activeMatch = upcomingOrLive;
+            setFlow(FLOW_KEYS.selectedMatchId, activeMatchId);
+            setMatchId(activeMatchId);
+            setCurrentMatch(upcomingOrLive);
+            memoryCachedMatch = upcomingOrLive;
+            memoryCachedMatchId = activeMatchId;
+          }
+        } else {
+          setCurrentMatch(activeMatch);
+          memoryCachedMatch = activeMatch;
+          memoryCachedMatchId = activeMatchId;
+        }
+
+        if (activeMatchId) {
+          const [fetchedTeams, fetchedContests, fetchedPlayers] = await Promise.all([
+            getMyTeams(activeMatchId).catch(() => []),
+            getContests(activeMatchId).catch(() => []),
+            getMatchPlayers(activeMatchId).catch(() => []),
+          ]);
+
+          if (!active) return;
           setTeams(fetchedTeams);
-          return getContests(matchId).then((fetchedContests) => {
-            setItems(fetchedContests);
-            const autoOpenId = getFlow<string | null>(FLOW_KEYS.autoOpenJoinContestId, null);
-            if (autoOpenId) {
-              removeFlow(FLOW_KEYS.autoOpenJoinContestId);
-              const target = fetchedContests.find((c) => c._id === autoOpenId);
-              if (target) {
-                // Auto-open modal with the newest team selected
-                setContestToJoin(target);
-                if (fetchedTeams.length > 0) {
-                  // Select the newest team (last in array)
-                  setSelectedTeamId(fetchedTeams[fetchedTeams.length - 1]._id);
-                }
+          setItems(fetchedContests);
+          setPlayers(fetchedPlayers);
+          setLoadingContests(false);
+
+          memoryCachedTeams = fetchedTeams;
+          memoryCachedContests = fetchedContests;
+          memoryCachedPlayers = fetchedPlayers;
+          memoryCachedMatchId = activeMatchId;
+
+          const autoOpenId = getFlow<string | null>(FLOW_KEYS.autoOpenJoinContestId, null);
+          if (autoOpenId) {
+            removeFlow(FLOW_KEYS.autoOpenJoinContestId);
+            const target = fetchedContests.find((c) => c._id === autoOpenId);
+            if (target) {
+              setContestToJoin(target);
+              if (fetchedTeams.length > 0) {
+                setSelectedTeamId(fetchedTeams[fetchedTeams.length - 1]._id);
               }
             }
-          });
-        })
-        .catch((e) => setError(e.message));
+          }
+        } else {
+          const [fetchedTeams, fetchedContests] = await Promise.all([
+            getMyTeams().catch(() => []),
+            getContests().catch(() => []),
+          ]);
+          if (!active) return;
+          setTeams(fetchedTeams);
+          setItems(fetchedContests);
+          setLoadingContests(false);
 
-      void getMatchPlayers(matchId)
-        .then(setPlayers)
-        .catch(() => {});
-      loadMyContests();
-    } else {
-      void getMyTeams()
-        .then(setTeams)
-        .catch(() => {});
-      void getContests()
-        .then(setItems)
-        .catch((e) => setError(e.message));
+          memoryCachedTeams = fetchedTeams;
+          memoryCachedContests = fetchedContests;
+        }
+
+        loadMyContests(activeMatchId);
+      } catch (e: any) {
+        if (active) {
+          setError(e?.message || "Failed to load contests");
+          setLoadingContests(false);
+        }
+      }
     }
-    loadMyContests();
+
+    void initData();
+
+    return () => {
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchId]);
+  }, [rawMatchId]);
 
   const filtered = items.filter(
     (c) =>
-      filter === "All" ||
-      (c.type || "").toUpperCase() === (filter === "Mega" ? "PUBLIC" : filter.toUpperCase()),
+      c &&
+      (filter === "All" ||
+        (c.type || "").toUpperCase() === (filter === "Mega" ? "PUBLIC" : filter.toUpperCase())),
   );
-  const myFiltered = myContests.filter(
-    (c) =>
-      filter === "All" ||
-      (c.type || "").toUpperCase() === (filter === "Mega" ? "PUBLIC" : filter.toUpperCase()),
-  );
+  const myFiltered = useMemo(() => {
+    return (myContests || [])
+      .filter(Boolean)
+      .filter(
+        (c) =>
+          filter === "All" ||
+          (c.type || "").toUpperCase() === (filter === "Mega" ? "PUBLIC" : filter.toUpperCase()),
+      );
+  }, [myContests, filter]);
 
   // Group My Contests by Contest ID (Point 4: 1 card per contest with all joined teams)
   const groupedMyContests = useMemo(() => {
     const map = new Map<string, { contest: Contest; entries: Contest[] }>();
-    for (const c of myFiltered) {
-      const cId = String(c._id);
+    for (const mc of myFiltered) {
+      if (!mc) continue;
+      const contestObj = mc.contestId && typeof mc.contestId === "object" ? mc.contestId : mc;
+      const cId = String(contestObj?._id || contestObj?.id || mc.contestId || mc._id || "");
+      if (!cId) continue;
       if (!map.has(cId)) {
-        map.set(cId, { contest: c, entries: [] });
+        map.set(cId, { contest: contestObj, entries: [] });
       }
-      map.get(cId)!.entries.push(c);
+      map.get(cId)!.entries.push(mc);
     }
     return Array.from(map.values());
   }, [myFiltered]);
@@ -292,10 +393,21 @@ function Contests() {
     });
   }
 
-  function getPlayerName(playerIdOrObj: any) {
+  function getPlayerName(playerIdOrObj: any): string {
+    if (!playerIdOrObj) return "Player";
+    if (typeof playerIdOrObj === "object") {
+      if (typeof playerIdOrObj.name === "string" && playerIdOrObj.name.trim()) {
+        return playerIdOrObj.name;
+      }
+    }
     const pid = String(playerIdOrObj?._id ?? playerIdOrObj?.playerId ?? playerIdOrObj ?? "");
-    const matchPlayer = players.find((mp) => mp.playerId === pid);
-    return matchPlayer?.name ?? playerIdOrObj?.name ?? "Player";
+    if (!pid) return "Player";
+    const matchPlayer = (players || []).find(
+      (mp) => String(mp?.playerId) === pid || String(mp?.matchPlayerId) === pid || String(mp?._id) === pid,
+    );
+    if (matchPlayer?.name) return String(matchPlayer.name);
+    if (typeof playerIdOrObj === "object" && playerIdOrObj?.name) return String(playerIdOrObj.name);
+    return "Player";
   }
 
   const list = top === "Contests" ? filtered : myFiltered;
@@ -455,10 +567,21 @@ function Contests() {
 
                     <div className={cn("gap-2", isMultiTeam ? "grid grid-cols-1 sm:grid-cols-2" : "space-y-1")}>
                       {entries.map((entry, eIdx) => {
-                        const teamObj: any = entry.fantasyTeamId;
-                        const teamName = teamObj?.name ?? `Team ${eIdx + 1}`;
-                        const capName = teamObj?.captainId ? getPlayerName(teamObj.captainId) : null;
-                        const vcName = teamObj?.viceCaptainId ? getPlayerName(teamObj.viceCaptainId) : null;
+                        if (!entry) return null;
+                        const teamObj: any = typeof entry.fantasyTeamId === "object" ? entry.fantasyTeamId : null;
+                        const teamId = String(teamObj?._id || (typeof entry.fantasyTeamId === "string" ? entry.fantasyTeamId : "") || "");
+                        const userTeam = teams.find((t) => String(t._id) === teamId);
+                        const teamName = teamObj?.name || userTeam?.name || `Team ${eIdx + 1}`;
+
+                        const capName =
+                          teamObj?.captainId?.name ||
+                          (teamObj?.captainId ? getPlayerName(teamObj.captainId) : null) ||
+                          (userTeam?.captainId ? getPlayerName(userTeam.captainId) : null);
+
+                        const vcName =
+                          teamObj?.viceCaptainId?.name ||
+                          (teamObj?.viceCaptainId ? getPlayerName(teamObj.viceCaptainId) : null) ||
+                          (userTeam?.viceCaptainId ? getPlayerName(userTeam.viceCaptainId) : null);
 
                         return (
                           <div
@@ -515,12 +638,39 @@ function Contests() {
             );
           })}
 
-        {((top === "Contests" && !list.length) || (top === "My Contests" && !groupedMyContests.length)) && (
+        {/* Loading Skeletons */}
+        {top === "Contests" && loadingContests && items.length === 0 && (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-40 rounded-xl bg-surface-2/40 animate-pulse border border-border/60" />
+            ))}
+          </div>
+        )}
+
+        {top === "My Contests" && loadingMyContests && myContests.length === 0 && (
+          <div className="space-y-4">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-36 rounded-xl bg-surface-2/40 animate-pulse border border-border/60" />
+            ))}
+          </div>
+        )}
+
+        {/* Real Empty States (only when fetch complete) */}
+        {top === "Contests" && !loadingContests && !list.length && (
           <div className="py-16 text-center space-y-3">
             <p className="text-sm text-muted-foreground">
-              {top === "Contests"
-                ? "No contests available for this match."
-                : "You haven't joined any contests yet."}
+              No contests available for this match.
+            </p>
+            <Button asChild variant="outlineGreen" size="sm">
+              <Link to="/matches">EXPLORE MATCHES</Link>
+            </Button>
+          </div>
+        )}
+
+        {top === "My Contests" && !loadingMyContests && !groupedMyContests.length && (
+          <div className="py-16 text-center space-y-3">
+            <p className="text-sm text-muted-foreground">
+              You haven't joined any contests yet.
             </p>
             <Button asChild variant="outlineGreen" size="sm">
               <Link to="/matches">EXPLORE MATCHES</Link>

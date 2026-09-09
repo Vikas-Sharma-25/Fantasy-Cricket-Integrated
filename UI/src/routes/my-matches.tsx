@@ -102,7 +102,7 @@ function MyMatches() {
                   className="font-display text-sm font-extrabold tracking-wider"
                   onClick={() => setFlow(FLOW_KEYS.selectedMatchId, m._id)}
                 >
-                  <Link to="/create-team">
+                  <Link to="/create-team" onClick={() => setFlow(FLOW_KEYS.selectedMatchId, m._id)}>
                     {teamCount} {teamCount === 1 ? "TEAM" : "TEAMS"}
                   </Link>
                 </Button>
@@ -113,7 +113,7 @@ function MyMatches() {
                   className="font-display text-sm font-extrabold tracking-wider shadow-lg"
                   onClick={() => setFlow(FLOW_KEYS.selectedMatchId, m._id)}
                 >
-                  <Link to="/contests">
+                  <Link to="/contests" onClick={() => setFlow(FLOW_KEYS.selectedMatchId, m._id)}>
                     {contestCount} {contestCount === 1 ? "CONTEST" : "CONTESTS"}
                   </Link>
                 </Button>
