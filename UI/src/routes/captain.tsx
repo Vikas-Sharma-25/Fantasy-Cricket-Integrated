@@ -85,27 +85,17 @@ function Captain() {
           captainId: cap,
           viceCaptainId: vice,
         });
-      } else {
-        await createTeam({
-          matchId,
-          name,
-          playerIds: ids,
-          captainId: cap,
-          viceCaptainId: vice,
-        });
-
         removeFlow(FLOW_KEYS.editingTeamId);
         removeFlow(FLOW_KEYS.selectedPlayerIds);
         removeFlow(FLOW_KEYS.captainId);
         removeFlow(FLOW_KEYS.viceCaptainId);
-
-        navigate({ to: "/create-team" });
         if (matchId) setFlow(FLOW_KEYS.selectedMatchId, matchId);
+        setFlow("OPEN_MATCH_TAB", "Contests");
+        setFlow("OPEN_CONTEST_SUBTAB", "myTeams");
         navigate({ to: "/matches" });
         return;
       }
 
-      // Clear drafting state
       // Create new team
       const created = await createTeam({
         matchId,
@@ -123,24 +113,25 @@ function Captain() {
       // Check if user came from a specific contest
       const returnContestId = getFlow<string | null>(FLOW_KEYS.returnToContestId, null);
       if (returnContestId) {
-        setFlow(FLOW_KEYS.autoOpenJoinContestId, returnContestId);
+        try {
+          await joinContest(returnContestId, created._id);
+        } catch (joinErr) {
+          console.warn("Auto-join contest failed:", joinErr);
+        }
         removeFlow(FLOW_KEYS.returnToContestId);
-        navigate({ to: "/contests" });
-      } else {
-        navigate({ to: "/create-team" });
+        if (matchId) setFlow(FLOW_KEYS.selectedMatchId, matchId);
+        setFlow("OPEN_MATCH_TAB", "Contests");
+        setFlow("OPEN_CONTEST_SUBTAB", "myContests");
+        navigate({ to: "/matches" });
+        return;
       }
 
-      // Fetch contests for this match to present Join Contest prompt
-      const contests = await getContests(matchId).catch(() => []);
-      setAvailableContests(contests);
-      setSavedTeamId(created._id);
-
-      if (returnContestId) {
-        setSelectedContestId(returnContestId);
-      } else if (contests.length > 0) {
-        setSelectedContestId(contests[0]._id);
-      }
-      setShowJoinModal(true);
+      // If created normally, navigate back to Match Center
+      if (matchId) setFlow(FLOW_KEYS.selectedMatchId, matchId);
+      setFlow("OPEN_MATCH_TAB", "Contests");
+      setFlow("OPEN_CONTEST_SUBTAB", "myTeams");
+      navigate({ to: "/matches" });
+      return;
     } catch (e) {
       setError(e instanceof ApiClientError ? e.message : "Unable to save team");
     } finally {

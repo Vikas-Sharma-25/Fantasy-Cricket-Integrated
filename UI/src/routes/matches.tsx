@@ -884,6 +884,29 @@ function Matches() {
     };
   }, []);
 
+  // Restore pending match selection if returning from team creation or captain flow
+  useEffect(() => {
+    if (worldMatches.length > 0 && !selectedHomeMatch) {
+      const pendingMatchId = getFlow<string | null>(FLOW_KEYS.selectedMatchId, null);
+      if (pendingMatchId) {
+        const found = worldMatches.find((m) => (m.id || m.dbId) === pendingMatchId);
+        if (found) {
+          handleSelectMatch(found);
+          const openTab = getFlow<string | null>("OPEN_MATCH_TAB", null);
+          if (openTab) {
+            setMatchTab(openTab);
+            removeFlow("OPEN_MATCH_TAB");
+          }
+          const openSubTab = getFlow<any | null>("OPEN_CONTEST_SUBTAB", null);
+          if (openSubTab) {
+            setContestSubTab(openSubTab);
+            removeFlow("OPEN_CONTEST_SUBTAB");
+          }
+        }
+      }
+    }
+  }, [worldMatches, selectedHomeMatch]);
+
   // Helper: map players for pitch preview
   function getSquadForTeam(team: FantasyTeam): PitchPlayer[] {
     return (team.playerIds ?? []).map((player: any) => {
@@ -992,15 +1015,27 @@ function Matches() {
   }
 
   // Confirm join with chosen existing team
-  async function handleConfirmJoinContest() {
-    if (!joinModalContest || !selectedJoinTeamId) return;
+  async function handleConfirmJoinContest(overrideTeamId?: string) {
+    const teamId = overrideTeamId || selectedJoinTeamId;
+    if (!joinModalContest || !teamId) return;
     setIsJoining(true);
-    const targetContestId = String(joinModalContest._id || joinModalContest.id);
-    const targetTeam = myTeams.find((t) => String(t._id) === selectedJoinTeamId);
+    let targetContestId = String(joinModalContest._id || joinModalContest.id);
+    const targetTeam = myTeams.find((t) => String(t._id) === teamId);
     const teamName = targetTeam ? targetTeam.name : "your team";
 
     try {
-      await joinContest(targetContestId, selectedJoinTeamId);
+      if (targetContestId.startsWith("c-") && currentMatchId) {
+        const liveContests = await getContests(currentMatchId).catch(() => []);
+        if (liveContests.length > 0) {
+          setMatchContests(liveContests);
+          const matchFound = liveContests.find((lc) => lc.name.toLowerCase().includes(joinModalContest.name.toLowerCase().split("-")[0].trim()) || lc.name === joinModalContest.name);
+          if (matchFound) {
+            targetContestId = String(matchFound._id);
+          }
+        }
+      }
+
+      await joinContest(targetContestId, teamId);
       setContestSuccessMsg(`🎉 Successfully joined ${joinModalContest.name} with ${teamName}!`);
       setJoinModalContest(null);
 
@@ -1031,9 +1066,16 @@ function Matches() {
   // Navigate to create new team targeted for this contest
   function handleCreateTeamForSpecificContest(contest: any) {
     if (!currentMatchId) return;
+    let contestIdToPass = String(contest._id || contest.id);
+    if (contestIdToPass.startsWith("c-") && matchContests.length > 0) {
+      const matchFound = matchContests.find((lc) => lc.name.toLowerCase().includes(contest.name.toLowerCase().split("-")[0].trim()) || lc.name === contest.name);
+      if (matchFound) {
+        contestIdToPass = String(matchFound._id);
+      }
+    }
     setFlow(FLOW_KEYS.selectedMatchId, currentMatchId);
     setFlow(FLOW_KEYS.selectedTeamName, `Team ${myTeams.length + 1}`);
-    setFlow(FLOW_KEYS.returnToContestId, String(contest._id || contest.id));
+    setFlow(FLOW_KEYS.returnToContestId, contestIdToPass);
     removeFlow(FLOW_KEYS.selectedPlayerIds);
     removeFlow(FLOW_KEYS.captainId);
     removeFlow(FLOW_KEYS.viceCaptainId);
@@ -1553,8 +1595,11 @@ function Matches() {
                         return (
                           <div
                             key={c.id || c._id}
+                            onClick={() => handleInitiateJoin(c)}
+                            role="button"
+                            tabIndex={0}
                             className={cn(
-                              "rounded-2xl border bg-surface/90 hover:border-emerald-500/40 p-4 transition-all shadow-md space-y-3.5",
+                              "rounded-2xl border bg-surface/90 hover:border-emerald-500/60 p-4 transition-all shadow-md space-y-3.5 cursor-pointer hover:shadow-lg",
                               hasJoinedAny ? "border-emerald-500/40 ring-1 ring-emerald-500/20" : "border-border/80"
                             )}
                           >
@@ -1614,7 +1659,10 @@ function Matches() {
                                 Up to {c.maxTeams} teams {c.guaranteed && "• Guaranteed"}
                               </span>
                               <Button
-                                onClick={() => handleInitiateJoin(c)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleInitiateJoin(c);
+                                }}
                                 disabled={isJoining}
                                 size="sm"
                                 className={cn(
@@ -3183,14 +3231,50 @@ function Matches() {
                 const joinedTeamIds = entries.map((e) => String(e.fantasyTeamId?._id || e.fantasyTeamId || ""));
                 const unjoinedTeams = myTeams.filter((t) => !joinedTeamIds.includes(String(t._id)));
 
+                if (myTeams.length === 1) {
+                  const singleTeam = unjoinedTeams[0] || myTeams[0];
+                  return (
+                    <div className="space-y-4">
+                      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center space-y-1.5">
+                        <h4 className="text-sm font-black text-foreground">
+                          Do you want to join with {singleTeam.name} or create Team 2?
+                        </h4>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          You currently have 1 team created ({singleTeam.name}). Choose to enter immediately or build a new team.
+                        </p>
+                      </div>
+
+                      <div className="space-y-2.5 pt-1">
+                        <Button
+                          onClick={() => handleConfirmJoinContest(String(singleTeam._id))}
+                          disabled={isJoining}
+                          className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl cursor-pointer text-xs flex items-center justify-center gap-2 shadow-md hover:scale-[1.01] transition-all"
+                        >
+                          <CheckCircle2 className="h-4 w-4 text-white" />
+                          {isJoining ? "Joining Contest..." : `Yes, Join with ${singleTeam.name}`}
+                        </Button>
+
+                        <Button
+                          onClick={() => handleCreateTeamForSpecificContest(joinModalContest)}
+                          variant="outline"
+                          className="w-full border border-emerald-500/50 hover:bg-emerald-500/10 text-emerald-400 font-bold py-3 rounded-xl cursor-pointer text-xs flex items-center justify-center gap-2"
+                        >
+                          <Plus className="h-4 w-4" />
+                          + Create Team 2 & Join
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div className="space-y-4">
                     <div>
                       <h4 className="text-xs font-bold text-foreground">
-                        Do you want to join with an existing team or create Team {myTeams.length + 1}?
+                        Select an existing team or create Team {myTeams.length + 1}:
                       </h4>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Choose one of your unjoined squads below:
+                        Choose which unjoined team enters this contest:
                       </p>
                     </div>
 
@@ -3213,8 +3297,8 @@ function Matches() {
                             <div className="flex items-center gap-2.5">
                               <div
                                 className={cn(
-                                  "w-4 h-4 rounded-full border flex items-center justify-center",
-                                  isSelected ? "border-emerald-400 bg-emerald-500" : "border-muted-foreground"
+                                   "w-4 h-4 rounded-full border flex items-center justify-center",
+                                   isSelected ? "border-emerald-400 bg-emerald-500" : "border-muted-foreground"
                                 )}
                               >
                                 {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
@@ -3236,7 +3320,7 @@ function Matches() {
                     </div>
 
                     <Button
-                      onClick={handleConfirmJoinContest}
+                      onClick={() => handleConfirmJoinContest()}
                       disabled={isJoining || !selectedJoinTeamId}
                       className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl cursor-pointer text-xs"
                     >
@@ -3294,16 +3378,12 @@ function Matches() {
                 <ShieldCheck className="h-6 w-6" />
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <h4 className="font-bold text-sm text-foreground">
-                  You have joined {allJoinedModalContest.name} with all your existing teams!
+                  You have joined this contest with all existing teams ({myTeams.map((t) => t.name).join(", ")})!
                 </h4>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Joined with:{" "}
-                  <span className="text-foreground font-semibold">
-                    {myTeams.map((t) => t.name).join(", ")}
-                  </span>
-                  . To join this contest again, first create a new team (Team {myTeams.length + 1}) and then join!
+                  First create a new team (Team {myTeams.length + 1}) and then join this contest.
                 </p>
               </div>
 

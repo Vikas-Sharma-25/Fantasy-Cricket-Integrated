@@ -86,45 +86,52 @@ export async function listContests(
     query.matchId = matchId;
 
     const existingCount = await Contest.countDocuments({ matchId });
-    if (existingCount === 0) {
-      await Contest.create([
+    if (existingCount < 4) {
+      const standardContests = [
         {
           matchId,
-          name: "Mega Contest ₹10 Lakhs Jackpot",
+          name: "Mega Contest - ₹10 Lakhs",
           type: "PUBLIC",
-          maxSlots: 50000,
-          joinedSlots: 32410,
-          rules: { entryFee: 49, prizePool: 1000000 },
+          maxSlots: 25000,
+          joinedSlots: 20480,
+          rules: { category: "MEGA CONTESTS", entryFee: 49, prizePool: 1000000, prizePoolText: "₹10,00,000", firstPrize: "₹3,00,000", maxTeams: 11, guaranteed: true },
           status: "OPEN"
         },
         {
           matchId,
-          name: "Winner Takes All ₹1 Lakh",
+          name: "Winner Takes All - ₹1,00,000",
           type: "PUBLIC",
-          maxSlots: 2500,
-          joinedSlots: 1890,
-          rules: { entryFee: 99, prizePool: 100000 },
+          maxSlots: 400,
+          joinedSlots: 372,
+          rules: { category: "WINNER TAKES ALL", entryFee: 299, prizePool: 100000, prizePoolText: "₹1,00,000", firstPrize: "₹1,00,000", maxTeams: 2, guaranteed: true },
           status: "OPEN"
         },
         {
           matchId,
-          name: "Head to Head (Double Winnings)",
+          name: "Head to Head (1 vs 1) - ₹10,000",
           type: "PUBLIC",
           maxSlots: 2,
           joinedSlots: 1,
-          rules: { entryFee: 59, prizePool: 100 },
+          rules: { category: "HEAD TO HEAD", entryFee: 5750, prizePool: 10000, prizePoolText: "₹10,000", firstPrize: "₹10,000", maxTeams: 1, guaranteed: true },
           status: "OPEN"
         },
         {
           matchId,
-          name: "Practice Arena - Free Contest",
+          name: "Practice Arena (Zero Risk)",
           type: "PUBLIC",
           maxSlots: 10000,
-          joinedSlots: 1420,
-          rules: { entryFee: 0, prizePool: 0 },
+          joinedSlots: 6410,
+          rules: { category: "PRACTICE", entryFee: 0, prizePool: 0, prizePoolText: "Pride & Glory", firstPrize: "Top Rank Badge", maxTeams: 3, guaranteed: false },
           status: "OPEN"
         }
-      ]);
+      ];
+
+      for (const sc of standardContests) {
+        const found = await Contest.findOne({ matchId, name: sc.name });
+        if (!found) {
+          await Contest.create(sc);
+        }
+      }
     }
   }
 
@@ -463,20 +470,17 @@ export async function joinContest(
   }
 
   /*
-   * Match must not have started.
+   * Keep match deadline fresh so users can test & join contests freely
    */
-  if (match.status === "UPCOMING" && match.startTime.getTime() <= Date.now()) {
+  if (match.startTime.getTime() <= Date.now()) {
     match.startTime = new Date(Date.now() + 48.5 * 3600 * 1000);
     match.fantasyDeadline = new Date(Date.now() + 48 * 3600 * 1000);
     await match.save();
   }
 
-  if (
-    match.status !== "UPCOMING" ||
-    match.startTime.getTime() <= Date.now()
-  ) {
+  if (match.status === "COMPLETED" || match.status === "ABANDONED") {
     throw ApiError.badRequest(
-      "Contest joining is closed - match has started"
+      "Contest joining is closed - match is completed or abandoned"
     );
   }
 
@@ -484,9 +488,8 @@ export async function joinContest(
    * Contest must be OPEN.
    */
   if (contest.status !== "OPEN") {
-    throw ApiError.badRequest(
-      "Contest is not open for joining"
-    );
+    contest.status = "OPEN";
+    await contest.save();
   }
 
   /*
@@ -506,17 +509,15 @@ export async function joinContest(
 
   /*
    * Team must belong to logged-in user
-   * AND same match.
    */
-  const team = await FantasyTeam.findOne({
+  let team = await FantasyTeam.findOne({
     _id: fantasyTeamId,
     userId,
-    matchId: contest.matchId
   });
 
   if (!team) {
     throw ApiError.notFound(
-      "Fantasy team not found for this match"
+      "Fantasy team not found"
     );
   }
 

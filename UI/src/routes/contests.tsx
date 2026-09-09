@@ -161,6 +161,7 @@ function Contests() {
       void getMatchPlayers(matchId)
         .then(setPlayers)
         .catch(() => {});
+      loadMyContests();
     } else {
       void getMyTeams()
         .then(setTeams)
@@ -477,7 +478,7 @@ function Contests() {
           <div className="py-16 text-center space-y-3">
             <p className="text-sm text-muted-foreground">
               {top === "Contests"
-                ? "No contests available for this selection."
+                ? "No contests available for this match."
                 : "You haven't joined any contests yet."}
             </p>
             <Button asChild variant="outlineGreen" size="sm">

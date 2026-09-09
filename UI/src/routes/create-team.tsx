@@ -35,12 +35,18 @@ function MyTeams() {
         setTeams(allTeams);
 
         if (matchId) {
-          const [matchData, matchPlayers] = await Promise.all([
+          const [matchData, teamList, matchPlayers] = await Promise.all([
             getMatch(matchId).catch(() => null),
+            getMyTeams(matchId).catch(() => []),
             getMatchPlayers(matchId).catch(() => []),
           ]);
           setMatch(matchData);
+          setTeams(teamList);
           setPlayers(matchPlayers);
+        } else {
+          // If no match is selected, load all user's teams
+          const allTeams = await getMyTeams().catch(() => []);
+          setTeams(allTeams);
         }
       } finally {
         setLoading(false);
@@ -58,7 +64,7 @@ function MyTeams() {
     removeFlow(FLOW_KEYS.selectedPlayerIds);
     removeFlow(FLOW_KEYS.captainId);
     removeFlow(FLOW_KEYS.viceCaptainId);
-    setFlow(FLOW_KEYS.selectedMatchId, matchId);
+    if (matchId) setFlow(FLOW_KEYS.selectedMatchId, matchId);
     setFlow(FLOW_KEYS.selectedTeamName, `Team ${teams.length + 1}`);
     navigate({ to: "/players" });
   }
@@ -107,6 +113,15 @@ function MyTeams() {
 
       {loading && <LoadingState label="Loading your teams..." />}
 
+      {!loading && !matchId && (
+        <Card className="text-center">
+          <p className="text-sm text-muted-foreground">Select a match to view or create teams.</p>
+          <Button asChild variant="hero" className="mt-4">
+            <Link to="/matches">SELECT A MATCH</Link>
+          </Button>
+        </Card>
+      )}
+
       {!loading && teams.length === 0 && (
         <Card className="py-12 text-center">
           <Users className="mx-auto h-12 w-12 text-muted-foreground/60" />
@@ -114,11 +129,17 @@ function MyTeams() {
           <p className="mt-1 text-xs text-muted-foreground">
             Build your fantasy cricket team with 11 players and compete in contests!
           </p>
-          <Button asChild variant="hero" size="xl" className="mt-6 gap-2">
-            <Link to="/matches">
-              <Plus className="h-5 w-5" /> SELECT A MATCH TO BUILD A TEAM
-            </Link>
-          </Button>
+          {matchId ? (
+            <Button onClick={handleCreateNewTeam} variant="hero" size="xl" className="mt-6 gap-2">
+              <Plus className="h-5 w-5" /> CREATE TEAM 1
+            </Button>
+          ) : (
+            <Button asChild variant="hero" size="xl" className="mt-6 gap-2">
+              <Link to="/matches">
+                <Plus className="h-5 w-5" /> SELECT A MATCH TO BUILD A TEAM
+              </Link>
+            </Button>
+          )}
         </Card>
       )}
 
