@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { getMatches, getContests, getMyTeams, joinContest } from "@/lib/api-services";
 import type { Match, Contest, FantasyTeam } from "@/lib/api-types";
 import { setFlow, removeFlow, FLOW_KEYS } from "@/lib/flow";
+import { getMatches, getContests, getMyTeams, joinContest, getMyContests, getLeaderboard, getMatchPlayers } from "@/lib/api-services";
+import type { Match, Contest, FantasyTeam, MatchPlayer } from "@/lib/api-types";
+import { TeamPitchPreview, type PitchPlayer } from "@/components/fc/TeamPitchPreview";
+import { setFlow, removeFlow, getFlow, FLOW_KEYS } from "@/lib/flow";
 import { getSocket } from "@/lib/socket";
 import { cn } from "@/lib/utils";
 import heroCricket from "@/assets/hero-cricket.jpg";
@@ -68,6 +72,8 @@ import {
   Droplets,
   Sun,
   Compass,
+  Pencil,
+  AlertCircle,
 } from "lucide-react";
 
 export const Route = createFileRoute("/matches")({ component: Matches });
@@ -759,7 +765,21 @@ function Matches() {
 
   // Contests state (Dream11)
   const [contestFilter, setContestFilter] = useState<string>("All");
+  const [contestSubTab, setContestSubTab] = useState<"contests" | "myContests" | "myTeams">("contests");
   const [myTeams, setMyTeams] = useState<FantasyTeam[]>([]);
+  const [matchContests, setMatchContests] = useState<Contest[]>([]);
+  const [myContests, setMyContests] = useState<any[]>([]);
+  const [matchPlayers, setMatchPlayers] = useState<MatchPlayer[]>([]);
+  const [joinModalContest, setJoinModalContest] = useState<any | null>(null);
+  const [selectedJoinTeamId, setSelectedJoinTeamId] = useState<string>("");
+  const [allJoinedModalContest, setAllJoinedModalContest] = useState<any | null>(null);
+  const [noTeamsModalContest, setNoTeamsModalContest] = useState<any | null>(null);
+  const [isJoining, setIsJoining] = useState(false);
+  const [previewTeamModal, setPreviewTeamModal] = useState<FantasyTeam | null>(null);
+  const [viewingContestDetails, setViewingContestDetails] = useState<any | null>(null);
+  const [leaderboardContestModal, setLeaderboardContestModal] = useState<any | null>(null);
+  const [leaderboardRows, setLeaderboardRows] = useState<any[]>([]);
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
   const [joiningContestId, setJoiningContestId] = useState<string | null>(null);
   const [contestSuccessMsg, setContestSuccessMsg] = useState<string | null>(null);
 
@@ -818,11 +838,79 @@ function Matches() {
   }, []);
 
   // Fetch user fantasy teams for contest interactions
+  const currentMatchId = selectedHomeMatch?.id || selectedHomeMatch?.dbId;
+
+  // Auto-fetch contests, user teams, and joined entries whenever match selection changes
   useEffect(() => {
     void getMyTeams()
       .then((t) => setMyTeams(t || []))
+    if (!currentMatchId) return;
+    let mounted = true;
+
+    void getContests(currentMatchId)
+      .then((c) => {
+        if (mounted && c && c.length > 0) setMatchContests(c);
+      })
       .catch(() => {});
   }, []);
+
+    void getMyTeams(currentMatchId)
+      .then((t) => {
+        if (mounted && t) setMyTeams(t);
+      })
+      .catch(() => {});
+
+    void getMyContests(currentMatchId)
+      .then((mc) => {
+        if (mounted && mc) setMyContests(mc);
+      })
+      .catch(() => {});
+
+    void getMatchPlayers(currentMatchId)
+      .then((mp) => {
+        if (mounted && mp) setMatchPlayers(mp);
+      })
+      .catch(() => {});
+
+    return () => {
+      mounted = false;
+    };
+  }, [currentMatchId]);
+
+  // Restore pending match selection if returning from team creation or captain flow
+  useEffect(() => {
+    if (worldMatches.length > 0 && !selectedHomeMatch) {
+      const pendingMatchId = getFlow<string | null>(FLOW_KEYS.selectedMatchId, null);
+      if (pendingMatchId) {
+        const found = worldMatches.find((m) => (m.id || m.dbId) === pendingMatchId);
+        if (found) {
+          handleSelectMatch(found);
+        }
+      }
+    }
+  }, [worldMatches, selectedHomeMatch]);
+
+  // Helper: map players for pitch preview
+  function getSquadForTeam(team: FantasyTeam): PitchPlayer[] {
+    return (team.playerIds ?? []).map((player: any) => {
+      const pid = String(player?._id ?? player?.playerId ?? player);
+      const matchPlayer = matchPlayers.find((mp) => String(mp.playerId ?? mp._id) === pid);
+      return {
+        playerId: pid,
+        name: matchPlayer?.name ?? player?.name ?? "Player",
+        role: matchPlayer?.role ?? player?.role ?? "Batsman",
+        realTeam: matchPlayer?.realTeam ?? player?.realTeam ?? "-",
+        credits: matchPlayer?.credits ?? player?.credits ?? null,
+      };
+    });
+  }
+
+  // Helper: get player name
+  function getPlayerName(playerIdOrObj: any) {
+    const pid = String(playerIdOrObj?._id ?? playerIdOrObj?.playerId ?? playerIdOrObj ?? "");
+    const matchPlayer = matchPlayers.find((mp) => String(mp.playerId ?? mp._id) === pid);
+    return matchPlayer?.name ?? playerIdOrObj?.name ?? "Player";
+  }
 
   // Sort matches: LIVE first, then COMPLETED, then UPCOMING
   const sortedMatches = useMemo(() => {
@@ -870,6 +958,7 @@ function Matches() {
       removeFlow(FLOW_KEYS.selectedPlayerIds);
       removeFlow(FLOW_KEYS.captainId);
       removeFlow(FLOW_KEYS.viceCaptainId);
+      removeFlow(FLOW_KEYS.returnToContestId);
       setFlow(FLOW_KEYS.selectedMatchId, matchId);
       setFlow(FLOW_KEYS.selectedTeamName, `Team ${myTeams.length + 1}`);
       navigate({ to: "/players" });
@@ -878,11 +967,41 @@ function Matches() {
 
   // Join contest handler: ONLY available for UPCOMING matches
   async function handleJoinContest(contestId: string) {
+  // Initiate Join Contest: Checks if user has 0 teams, unjoined teams, or all teams joined
+  function handleInitiateJoin(c: any) {
+    const contestId = String(c._id || c.id);
+    const entries = myContests.filter((mc) => {
+      const cid = String(mc.contestId?._id || mc.contestId || mc._id || "");
+      return cid === contestId;
+    });
+    const joinedTeamIds = entries.map((e) => String(e.fantasyTeamId?._id || e.fantasyTeamId || ""));
+    const unjoinedTeams = myTeams.filter((t) => !joinedTeamIds.includes(String(t._id)));
+
     if (myTeams.length === 0) {
       handleCreateTeam();
+      setNoTeamsModalContest(c);
       return;
     }
     setJoiningContestId(contestId);
+
+    if (unjoinedTeams.length > 0) {
+      setJoinModalContest(c);
+      setSelectedJoinTeamId(String(unjoinedTeams[0]._id));
+      return;
+    }
+
+    // All existing teams have already joined this contest!
+    setAllJoinedModalContest(c);
+  }
+
+  // Confirm join with chosen existing team
+  async function handleConfirmJoinContest() {
+    if (!joinModalContest || !selectedJoinTeamId) return;
+    setIsJoining(true);
+    const targetContestId = String(joinModalContest._id || joinModalContest.id);
+    const targetTeam = myTeams.find((t) => String(t._id) === selectedJoinTeamId);
+    const teamName = targetTeam ? targetTeam.name : "your team";
+
     try {
       await joinContest(contestId, myTeams[0]._id);
       setContestSuccessMsg("Joined contest successfully with your Team 1!");
@@ -890,9 +1009,83 @@ function Matches() {
     } catch {
       setContestSuccessMsg("Joined contest successfully!");
       setTimeout(() => setContestSuccessMsg(null), 4000);
+      await joinContest(targetContestId, selectedJoinTeamId);
+      setContestSuccessMsg(`🎉 Successfully joined ${joinModalContest.name} with ${teamName}!`);
+      setJoinModalContest(null);
+
+      // Refresh data
+      if (currentMatchId) {
+        const [updatedContests, updatedEntries, updatedTeams] = await Promise.all([
+          getContests(currentMatchId).catch(() => []),
+          getMyContests(currentMatchId).catch(() => []),
+          getMyTeams(currentMatchId).catch(() => []),
+        ]);
+        if (updatedContests.length > 0) setMatchContests(updatedContests);
+        setMyContests(updatedEntries);
+        setMyTeams(updatedTeams);
+      }
+      setTimeout(() => setContestSuccessMsg(null), 5000);
+    } catch (err: any) {
+      setContestSuccessMsg(err?.message || `Joined contest successfully with ${teamName}!`);
+      setJoinModalContest(null);
+      if (currentMatchId) {
+        void getMyContests(currentMatchId).then(setMyContests).catch(() => {});
+      }
+      setTimeout(() => setContestSuccessMsg(null), 5000);
     } finally {
       setJoiningContestId(null);
+      setIsJoining(false);
     }
+  }
+
+  // Navigate to create new team targeted for this contest
+  function handleCreateTeamForSpecificContest(contest: any) {
+    if (!currentMatchId) return;
+    setFlow(FLOW_KEYS.selectedMatchId, currentMatchId);
+    setFlow(FLOW_KEYS.selectedTeamName, `Team ${myTeams.length + 1}`);
+    setFlow(FLOW_KEYS.returnToContestId, String(contest._id || contest.id));
+    removeFlow(FLOW_KEYS.selectedPlayerIds);
+    removeFlow(FLOW_KEYS.captainId);
+    removeFlow(FLOW_KEYS.viceCaptainId);
+    removeFlow(FLOW_KEYS.editingTeamId);
+    setJoinModalContest(null);
+    setAllJoinedModalContest(null);
+    setNoTeamsModalContest(null);
+    navigate({ to: "/players" });
+  }
+
+  // Edit existing team
+  function handleEditTeam(team: FantasyTeam) {
+    if (!currentMatchId) return;
+    setFlow(FLOW_KEYS.selectedMatchId, currentMatchId);
+    setFlow(FLOW_KEYS.editingTeamId, team._id);
+    setFlow(FLOW_KEYS.selectedTeamName, team.name);
+    setFlow(
+      FLOW_KEYS.selectedPlayerIds,
+      (team.playerIds ?? []).map((p: any) => String(p?._id ?? p?.playerId ?? p))
+    );
+    setFlow(FLOW_KEYS.captainId, String((team.captainId as any)?._id ?? team.captainId ?? ""));
+    setFlow(FLOW_KEYS.viceCaptainId, String((team.viceCaptainId as any)?._id ?? team.viceCaptainId ?? ""));
+    navigate({ to: "/players" });
+  }
+
+  // Open leaderboard modal
+  function handleOpenLeaderboard(c: any) {
+    setLeaderboardContestModal(c);
+    setLoadingLeaderboard(true);
+    const cid = String(c._id || c.id || c.contestId?._id || c.contestId);
+    void getLeaderboard(cid)
+      .then((rows) => {
+        if (rows && rows.length > 0) {
+          setLeaderboardRows(rows);
+        } else {
+          setLeaderboardRows(MOCK_LEADERBOARD);
+        }
+      })
+      .catch(() => {
+        setLeaderboardRows(MOCK_LEADERBOARD);
+      })
+      .finally(() => setLoadingLeaderboard(false));
   }
 
   const currentTickerMatches = sortedMatches.slice(
@@ -967,10 +1160,50 @@ function Matches() {
     });
   }, [highlightsInnings, highlightsFilter]);
 
+  const displayContests = useMemo(() => {
+    if (matchContests.length > 0) {
+      return matchContests.map((c) => {
+        const rules = (c.rules || {}) as any;
+        return {
+          _id: c._id,
+          id: c._id,
+          name: c.name,
+          category:
+            rules.category ||
+            (c.name.toLowerCase().includes("mega")
+              ? "Mega Contests"
+              : c.name.toLowerCase().includes("winner")
+              ? "Winner Takes All"
+              : c.name.toLowerCase().includes("head")
+              ? "Head to Head"
+              : "Practice"),
+          prizePool:
+            rules.prizePool !== undefined
+              ? `₹${Number(rules.prizePool).toLocaleString()}`
+              : c.prizePool || "₹10,00,000",
+          entryFee: rules.entryFee ?? (c.entryFee ?? 0),
+          firstPrize:
+            rules.firstPrize !== undefined
+              ? `₹${Number(rules.firstPrize).toLocaleString()}`
+              : c.firstPrize || (rules.entryFee === 0 || c.name.toLowerCase().includes("free") ? "Top Rank Badge" : "₹3,00,000"),
+          totalSpots: c.maxSlots || 25000,
+          filledSpots: c.joinedSlots || 0,
+          maxTeams: c.maxTeams || (c.name.toLowerCase().includes("head") ? 1 : c.name.toLowerCase().includes("winner") ? 2 : 11),
+          guaranteed: c.guaranteed ?? true,
+          raw: c,
+        };
+      });
+    }
+    return MOCK_MATCH_CONTESTS.map((c) => ({ ...c, _id: c.id, raw: c }));
+  }, [matchContests]);
+
   const filteredContests = useMemo(() => {
     if (contestFilter === "All") return MOCK_MATCH_CONTESTS;
     return MOCK_MATCH_CONTESTS.filter((c) => c.category === contestFilter);
   }, [contestFilter]);
+    if (contestFilter === "All") return displayContests;
+    return displayContests.filter((c) => c.category === contestFilter);
+  }, [displayContests, contestFilter]);
 
   const teamA = selectedHomeMatch?.teamA || "East Zone";
   const teamB = selectedHomeMatch?.teamB || "South Zone";
@@ -1253,6 +1486,47 @@ function Matches() {
                       {cat}
                     </button>
                   ))}
+                {/* Contests Sub-tabs Bar: All Contests, My Contests, My Teams */}
+                <div className="flex items-center gap-2 border-b border-border/80 pb-3">
+                  <button
+                    type="button"
+                    onClick={() => setContestSubTab("contests")}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                      contestSubTab === "contests"
+                        ? "bg-emerald-600 text-white shadow-md"
+                        : "bg-surface-2 text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    All Contests ({displayContests.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContestSubTab("myContests")}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                      contestSubTab === "myContests"
+                        ? "bg-emerald-600 text-white shadow-md"
+                        : "bg-surface-2 text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    My Contests ({myContests.length})
+                    {myContests.length > 0 && (
+                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContestSubTab("myTeams")}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                      contestSubTab === "myTeams"
+                        ? "bg-emerald-600 text-white shadow-md"
+                        : "bg-surface-2 text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    My Teams ({myTeams.length})
+                  </button>
                 </div>
 
                 {/* Contests Grid */}
@@ -1279,11 +1553,138 @@ function Matches() {
                             </span>
                           </div>
                         </div>
+                {/* VIEW 1: ALL CONTESTS */}
+                {contestSubTab === "contests" && (
+                  <div className="space-y-4">
+                    {/* Contest Category Filter Pills */}
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      {["All", "Mega Contests", "Winner Takes All", "Head to Head", "Practice"].map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setContestFilter(cat)}
+                          className={cn(
+                            "px-3.5 py-1.5 rounded-full font-bold transition-all border cursor-pointer",
+                            contestFilter === cat
+                              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-sm"
+                              : "bg-surface-2 text-muted-foreground border-border hover:text-foreground"
+                          )}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
 
                         <div className="flex items-center justify-between text-xs py-1 border-y border-border/60">
                           <div>
                             <span className="text-[10px] text-muted-foreground block">Prize Pool</span>
                             <span className="font-bold text-foreground">{c.prizePool}</span>
+                    {/* Contests Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {filteredContests.map((c) => {
+                        const spotsLeft = Math.max(0, c.totalSpots - c.filledSpots);
+                        const pct = Math.min(100, Math.round((c.filledSpots / c.totalSpots) * 100));
+
+                        const contestId = String(c._id || c.id);
+                        const joinedEntries = myContests.filter((mc) => {
+                          const cid = String(mc.contestId?._id || mc.contestId || mc._id || "");
+                          return cid === contestId;
+                        });
+                        const joinedTeamNames = joinedEntries.map((e) => {
+                          const teamObj = e.fantasyTeamId;
+                          const teamName = teamObj?.name || (typeof teamObj === "object" ? teamObj.name : null);
+                          if (teamName) return teamName;
+                          const found = myTeams.find((t) => String(t._id) === String(teamObj?._id || teamObj));
+                          return found ? found.name : "Team";
+                        });
+                        const joinedTeamIds = joinedEntries.map((e) => String(e.fantasyTeamId?._id || e.fantasyTeamId || ""));
+                        const unjoinedTeams = myTeams.filter((t) => !joinedTeamIds.includes(String(t._id)));
+                        const hasJoinedAny = joinedTeamIds.length > 0;
+                        const hasJoinedAll = myTeams.length > 0 && unjoinedTeams.length === 0;
+
+                        return (
+                          <div
+                            key={c.id || c._id}
+                            className={cn(
+                              "rounded-2xl border bg-surface/90 hover:border-emerald-500/40 p-4 transition-all shadow-md space-y-3.5",
+                              hasJoinedAny ? "border-emerald-500/40 ring-1 ring-emerald-500/20" : "border-border/80"
+                            )}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded">
+                                    {c.category}
+                                  </span>
+                                  {hasJoinedAny && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-300 bg-emerald-900/60 border border-emerald-500/40 px-2 py-0.5 rounded-full animate-in fade-in duration-200">
+                                      <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                                      Joined ({joinedTeamNames.join(", ")})
+                                    </span>
+                                  )}
+                                </div>
+                                <h4 className="font-black text-sm text-foreground mt-1.5">{c.name}</h4>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-[10px] text-muted-foreground block">Entry Fee</span>
+                                <span className="font-mono text-base font-black text-emerald-400">
+                                  {c.entryFee === 0 ? "FREE" : `₹${c.entryFee}`}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between text-xs py-1 border-y border-border/60">
+                              <div>
+                                <span className="text-[10px] text-muted-foreground block">Prize Pool</span>
+                                <span className="font-bold text-foreground">{c.prizePool}</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-[10px] text-muted-foreground block">1st Prize</span>
+                                <span className="font-bold text-amber-400 flex items-center gap-1">
+                                  <Trophy className="h-3 w-3 text-amber-400" />
+                                  {c.firstPrize}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Spots progress */}
+                            <div className="space-y-1">
+                              <div className="h-1.5 w-full bg-surface-2 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-emerald-500 to-amber-500 rounded-full"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                                <span>{spotsLeft.toLocaleString()} spots left</span>
+                                <span>{c.totalSpots.toLocaleString()} spots</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-1">
+                              <span className="text-[10px] text-muted-foreground">
+                                Up to {c.maxTeams} teams {c.guaranteed && "• Guaranteed"}
+                              </span>
+                              <Button
+                                onClick={() => handleInitiateJoin(c)}
+                                disabled={isJoining}
+                                size="sm"
+                                className={cn(
+                                  "font-bold text-xs px-4 cursor-pointer transition-all",
+                                  hasJoinedAll
+                                    ? "bg-surface-2 hover:bg-surface border border-emerald-500/50 text-emerald-300"
+                                    : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-md hover:scale-[1.02]"
+                                )}
+                              >
+                                {myTeams.length === 0
+                                  ? "Join Contest"
+                                  : hasJoinedAll
+                                  ? "+ Join with New Team"
+                                  : hasJoinedAny
+                                  ? `Join with another team (${unjoinedTeams.length} left)`
+                                  : "Join Contest"}
+                              </Button>
+                            </div>
                           </div>
                           <div className="text-right">
                             <span className="text-[10px] text-muted-foreground block">1st Prize</span>
@@ -1293,10 +1694,52 @@ function Matches() {
                             </span>
                           </div>
                         </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                         {/* Spots progress */}
                         <div className="space-y-1">
                           <div className="h-1.5 w-full bg-surface-2 rounded-full overflow-hidden">
+                {/* VIEW 2: MY CONTESTS */}
+                {contestSubTab === "myContests" && (
+                  <div className="space-y-4">
+                    {myContests.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-border/80 bg-surface/50 p-8 text-center space-y-3">
+                        <Trophy className="h-10 w-10 text-muted-foreground mx-auto opacity-50" />
+                        <h4 className="font-bold text-foreground text-sm">No Contests Joined Yet</h4>
+                        <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                          You haven't entered any contests for this match yet. Check out available contests and compete for mega prizes!
+                        </p>
+                        <Button
+                          onClick={() => setContestSubTab("contests")}
+                          variant="hero"
+                          size="sm"
+                          className="font-bold text-xs"
+                        >
+                          Browse All Contests
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {myContests.map((mc, idx) => {
+                          const contestObj = mc.contestId || mc;
+                          const cName = contestObj?.name || "Fantasy Contest";
+                          const cFee = contestObj?.rules?.entryFee ?? contestObj?.entryFee ?? 0;
+                          const cPrize = contestObj?.rules?.prizePool
+                            ? `₹${Number(contestObj.rules.prizePool).toLocaleString()}`
+                            : (contestObj?.prizePool || "₹10,00,000");
+
+                          const teamObj = mc.fantasyTeamId;
+                          const userTeamName =
+                            teamObj?.name ||
+                            (typeof teamObj === "object" ? teamObj.name : null) ||
+                            myTeams.find((t) => String(t._id) === String(teamObj?._id || teamObj))?.name ||
+                            "Team 1";
+
+                          return (
                             <div
                               className="h-full bg-gradient-to-r from-emerald-500 to-amber-500 rounded-full"
                               style={{ width: `${pct}%` }}
@@ -1307,6 +1750,29 @@ function Matches() {
                             <span>{c.totalSpots.toLocaleString()} spots</span>
                           </div>
                         </div>
+                              key={mc._id || idx}
+                              className="rounded-2xl border border-emerald-500/40 bg-surface/90 p-4 shadow-md space-y-3 relative overflow-hidden"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded">
+                                      {contestObj?.type || "PUBLIC"}
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-300 bg-emerald-900/60 border border-emerald-500/40 px-2 py-0.5 rounded-full">
+                                      <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                                      Entered with {userTeamName}
+                                    </span>
+                                  </div>
+                                  <h4 className="font-black text-sm text-foreground mt-1.5">{cName}</h4>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-[10px] text-muted-foreground block">Entry Fee</span>
+                                  <span className="font-mono text-base font-black text-emerald-400">
+                                    {cFee === 0 ? "FREE" : `₹${cFee}`}
+                                  </span>
+                                </div>
+                              </div>
 
                         <div className="flex items-center justify-between pt-1">
                           <span className="text-[10px] text-muted-foreground">
@@ -1321,10 +1787,161 @@ function Matches() {
                             {joiningContestId === c.id ? "Joining..." : "Join Contest"}
                           </Button>
                         </div>
+                              <div className="flex items-center justify-between text-xs py-2 border-y border-border/60">
+                                <div>
+                                  <span className="text-[10px] text-muted-foreground block">Prize Pool</span>
+                                  <span className="font-bold text-foreground">{cPrize}</span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-[10px] text-muted-foreground block">Status</span>
+                                  <span className="font-bold text-emerald-400">Active Entry</span>
+                                </div>
+                              </div>
+
+                              {/* Two Action Buttons: View Details & Leaderboard */}
+                              <div className="grid grid-cols-2 gap-2 pt-1">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setViewingContestDetails(mc)}
+                                  className="text-xs font-bold gap-1.5 border-border hover:bg-surface-2"
+                                >
+                                  <Eye className="h-3.5 w-3.5 text-primary" /> View Details
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="hero"
+                                  size="sm"
+                                  onClick={() => handleOpenLeaderboard(mc)}
+                                  className="text-xs font-bold gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white"
+                                >
+                                  <Trophy className="h-3.5 w-3.5 text-amber-300" /> Leaderboard
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })}
                 </div>
+                    )}
+                  </div>
+                )}
+
+                {/* VIEW 3: MY TEAMS */}
+                {contestSubTab === "myTeams" && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between bg-surface-2/60 border border-border/80 rounded-xl p-3">
+                      <div>
+                        <h4 className="font-bold text-xs text-foreground">Your Created Squads</h4>
+                        <p className="text-[11px] text-muted-foreground">
+                          {myTeams.length} of 11 teams created for this match
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleCreateTeam}
+                        variant="hero"
+                        size="sm"
+                        className="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5 cursor-pointer"
+                      >
+                        <Plus className="h-4 w-4" /> Create Team {myTeams.length + 1}
+                      </Button>
+                    </div>
+
+                    {myTeams.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-border/80 bg-surface/50 p-8 text-center space-y-3">
+                        <Users className="h-10 w-10 text-muted-foreground mx-auto opacity-50" />
+                        <h4 className="font-bold text-foreground text-sm">No Teams Created Yet</h4>
+                        <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                          Build your dream fantasy squad of 11 players, select Captain & Vice-Captain, and start winning!
+                        </p>
+                        <Button
+                          onClick={handleCreateTeam}
+                          variant="hero"
+                          size="sm"
+                          className="font-bold text-xs"
+                        >
+                          <Plus className="h-4 w-4" /> Create Team 1
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {myTeams.map((t) => {
+                          const capName = getPlayerName(t.captainId);
+                          const vcName = getPlayerName(t.viceCaptainId);
+                          const squadPlayers = getSquadForTeam(t);
+
+                          return (
+                            <div
+                              key={t._id}
+                              className="rounded-2xl border border-border/80 bg-surface/90 hover:border-emerald-500/40 p-4 shadow-md space-y-3 transition-all"
+                            >
+                              <div className="flex items-center justify-between pb-2 border-b border-border/60">
+                                <h4 className="font-black text-sm text-foreground flex items-center gap-1.5">
+                                  <span>🏏</span> {t.name}
+                                </h4>
+                                <span className="text-xs font-mono text-muted-foreground">
+                                  Credits: <b className="text-foreground">{t.totalCredits || 100}</b>/100
+                                </span>
+                              </div>
+
+                              {/* C & VC Badges */}
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="rounded-xl border border-border bg-surface-2/60 p-2 flex items-center gap-2">
+                                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-400 font-black text-[10px] text-black">
+                                    C
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="font-bold text-xs truncate text-foreground">{capName}</p>
+                                    <p className="text-[10px] text-muted-foreground">2X Points</p>
+                                  </div>
+                                </div>
+                                <div className="rounded-xl border border-border bg-surface-2/60 p-2 flex items-center gap-2">
+                                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-400 font-black text-[10px] text-black">
+                                    VC
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="font-bold text-xs truncate text-foreground">{vcName}</p>
+                                    <p className="text-[10px] text-muted-foreground">1.5X Points</p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="text-[11px] text-muted-foreground flex items-center justify-between">
+                                <span>{squadPlayers.length || 11} Players Selected</span>
+                                <span>Max 7 from one team</span>
+                              </div>
+
+                              {/* View & Edit Buttons */}
+                              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/60">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setPreviewTeamModal(t)}
+                                  className="text-xs font-bold gap-1.5 border-border hover:bg-surface-2"
+                                >
+                                  <Eye className="h-3.5 w-3.5 text-primary" /> View Team
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEditTeam(t)}
+                                  className="text-xs font-bold gap-1.5 border-border hover:bg-surface-2"
+                                >
+                                  <Pencil className="h-3.5 w-3.5 text-emerald-400" /> Edit Team
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -2427,6 +3044,511 @@ function Matches() {
                 <Sparkles className="h-3.5 w-3.5" /> Ultra HD 60fps • Official Arena Reel
               </span>
               <span>{activeVideo.duration || "00:15"} • {activeVideo.views || "1.8M views"}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* SQUAD PITCH PREVIEW MODAL (MY TEAMS)                         */}
+      {/* ============================================================= */}
+      {previewTeamModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm animate-in fade-in-50 duration-150">
+          <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto">
+            <TeamPitchPreview
+              players={getSquadForTeam(previewTeamModal)}
+              captainId={String((previewTeamModal.captainId as any)?._id ?? previewTeamModal.captainId ?? "")}
+              viceCaptainId={String((previewTeamModal.viceCaptainId as any)?._id ?? previewTeamModal.viceCaptainId ?? "")}
+              teamName={previewTeamModal.name}
+              totalCredits={previewTeamModal.totalCredits ?? 100}
+              onClose={() => setPreviewTeamModal(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* JOIN CONTEST MODAL (Select Team or Create Next Team)          */}
+      {/* ============================================================= */}
+      {joinModalContest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in-50 duration-150">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border bg-surface-2 px-5 py-4">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                  {joinModalContest.type || "CONTEST ENTRY"}
+                </span>
+                <h3 className="font-bold text-base text-foreground line-clamp-1">
+                  {joinModalContest.name}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setJoinModalContest(null)}
+                className="h-8 w-8 rounded-full border border-border bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Contest info strip */}
+              <div className="grid grid-cols-2 gap-3 p-3 rounded-xl border border-border/80 bg-surface-2/60">
+                <div>
+                  <span className="text-[10px] text-muted-foreground block">Prize Pool</span>
+                  <span className="font-bold text-sm text-foreground">
+                    {joinModalContest.totalPrize ? `₹${joinModalContest.totalPrize.toLocaleString()}` : "₹10 Lakhs"}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-muted-foreground block">Entry Fee</span>
+                  <span className="font-bold text-sm text-emerald-400">
+                    {joinModalContest.entryFee === 0 ? "FREE" : `₹${joinModalContest.entryFee}`}
+                  </span>
+                </div>
+              </div>
+
+              {(() => {
+                const contestId = String(joinModalContest._id || joinModalContest.id);
+                const entries = myContests.filter((mc) => {
+                  const cid = String(mc.contestId?._id || mc.contestId || mc._id || "");
+                  return cid === contestId;
+                });
+                const joinedTeamIds = entries.map((e) => String(e.fantasyTeamId?._id || e.fantasyTeamId || ""));
+                const unjoinedTeams = myTeams.filter((t) => !joinedTeamIds.includes(String(t._id)));
+
+                return (
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-xs font-bold text-foreground">
+                        Do you want to join with an existing team or create Team {myTeams.length + 1}?
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Choose one of your unjoined squads below:
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                      {unjoinedTeams.map((t) => {
+                        const isSelected = selectedJoinTeamId === String(t._id);
+                        const cap = getPlayerName(t.captainId);
+                        const vc = getPlayerName(t.viceCaptainId);
+                        return (
+                          <div
+                            key={t._id}
+                            onClick={() => setSelectedJoinTeamId(String(t._id))}
+                            className={cn(
+                              "p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between",
+                              isSelected
+                                ? "border-emerald-500 bg-emerald-500/10 shadow-sm"
+                                : "border-border bg-surface-2/60 hover:border-border"
+                            )}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div
+                                className={cn(
+                                  "w-4 h-4 rounded-full border flex items-center justify-center",
+                                  isSelected ? "border-emerald-400 bg-emerald-500" : "border-muted-foreground"
+                                )}
+                              >
+                                {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                              </div>
+                              <div>
+                                <span className="font-bold text-xs text-foreground block">{t.name}</span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  C: <span className="text-amber-400 font-semibold">{cap}</span> • VC:{" "}
+                                  <span className="text-cyan-400 font-semibold">{vc}</span>
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-mono text-muted-foreground">
+                              {t.totalCredits ?? 100} Cr
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <Button
+                      onClick={handleConfirmJoinContest}
+                      disabled={isJoining || !selectedJoinTeamId}
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl cursor-pointer text-xs"
+                    >
+                      {isJoining
+                        ? "Joining Contest..."
+                        : `Join Contest with ${myTeams.find((t) => String(t._id) === selectedJoinTeamId)?.name || "Selected Team"}`}
+                    </Button>
+
+                    <div className="relative flex items-center justify-center my-1">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-border" />
+                      </div>
+                      <span className="relative bg-surface px-3 text-[10px] font-black text-muted-foreground uppercase">
+                        OR
+                      </span>
+                    </div>
+
+                    <Button
+                      onClick={() => handleCreateTeamForSpecificContest(joinModalContest)}
+                      variant="outline"
+                      className="w-full border-dashed border-emerald-500/60 hover:bg-emerald-500/10 text-emerald-400 font-bold py-2.5 rounded-xl gap-2 cursor-pointer text-xs"
+                    >
+                      <Plus className="h-4 w-4" /> + Create Team {myTeams.length + 1} & Join
+                    </Button>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* ALL TEAMS ALREADY JOINED MODAL                                 */}
+      {/* ============================================================= */}
+      {allJoinedModalContest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in-50 duration-150">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-amber-500/40 bg-surface shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border bg-amber-950/20 px-5 py-4">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-amber-400" />
+                <h3 className="font-bold text-sm text-foreground">All Existing Teams Joined</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAllJoinedModalContest(null)}
+                className="h-8 w-8 rounded-full border border-border bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-center">
+              <div className="h-12 w-12 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
+                <ShieldCheck className="h-6 w-6" />
+              </div>
+
+              <div className="space-y-1.5">
+                <h4 className="font-bold text-sm text-foreground">
+                  You have joined {allJoinedModalContest.name} with all your existing teams!
+                </h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Joined with:{" "}
+                  <span className="text-foreground font-semibold">
+                    {myTeams.map((t) => t.name).join(", ")}
+                  </span>
+                  . To join this contest again, first create a new team (Team {myTeams.length + 1}) and then join!
+                </p>
+              </div>
+
+              <div className="pt-2 space-y-2">
+                <Button
+                  onClick={() => handleCreateTeamForSpecificContest(allJoinedModalContest)}
+                  variant="hero"
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl gap-2 cursor-pointer text-xs"
+                >
+                  <Plus className="h-4 w-4" /> Create Team {myTeams.length + 1} & Join Contest
+                </Button>
+                <Button
+                  onClick={() => setAllJoinedModalContest(null)}
+                  variant="outline"
+                  className="w-full border-border bg-surface text-xs font-semibold hover:bg-surface-2 cursor-pointer"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* NO TEAMS CREATED YET MODAL                                     */}
+      {/* ============================================================= */}
+      {noTeamsModalContest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in-50 duration-150">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-emerald-500/40 bg-surface shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border bg-surface-2 px-5 py-4">
+              <h3 className="font-bold text-sm text-foreground">Create Team 1 First</h3>
+              <button
+                type="button"
+                onClick={() => setNoTeamsModalContest(null)}
+                className="h-8 w-8 rounded-full border border-border bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-center">
+              <div className="h-12 w-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+                <Users className="h-6 w-6" />
+              </div>
+
+              <div className="space-y-1.5">
+                <h4 className="font-bold text-sm text-foreground">
+                  Build your squad to enter {noTeamsModalContest.name}
+                </h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  You haven't created any fantasy team for this match yet. Select 11 players, pick Captain & Vice-Captain, and join!
+                </p>
+              </div>
+
+              <div className="pt-2 space-y-2">
+                <Button
+                  onClick={() => handleCreateTeamForSpecificContest(noTeamsModalContest)}
+                  variant="hero"
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl gap-2 cursor-pointer text-xs"
+                >
+                  <Plus className="h-4 w-4" /> Create Team 1 & Join
+                </Button>
+                <Button
+                  onClick={() => setNoTeamsModalContest(null)}
+                  variant="outline"
+                  className="w-full border-border bg-surface text-xs font-semibold hover:bg-surface-2 cursor-pointer"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* VIEW CONTEST DETAILS MODAL (MY CONTESTS)                      */}
+      {/* ============================================================= */}
+      {viewingContestDetails && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in-50 duration-150">
+          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-border/80 bg-surface shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-surface/95 backdrop-blur px-5 py-4">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                  {viewingContestDetails.contestId?.type || "CONTEST DETAILS"}
+                </span>
+                <h3 className="font-bold text-base text-foreground">
+                  {viewingContestDetails.contestId?.name || "Contest Details"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingContestDetails(null)}
+                className="h-8 w-8 rounded-full border border-border bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Match Strip */}
+              <div className="p-3 rounded-xl border border-border/80 bg-surface-2/60 flex items-center justify-between text-xs">
+                <div>
+                  <span className="font-bold text-foreground">
+                    {selectedHomeMatch?.teamA || "Team A"} vs {selectedHomeMatch?.teamB || "Team B"}
+                  </span>
+                  <span className="text-muted-foreground block text-[11px]">
+                    {selectedHomeMatch?.series || "ICC Match"} • {selectedHomeMatch?.format || "T20"}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="font-mono text-emerald-400 font-bold block">
+                    {selectedHomeMatch?.venue || "Main Stadium"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Contest Overview */}
+              <div className="grid grid-cols-3 gap-3 p-3 rounded-xl border border-border/80 bg-surface-2/40 text-center">
+                <div>
+                  <span className="text-[10px] text-muted-foreground block">Prize Pool</span>
+                  <span className="font-bold text-sm text-foreground">
+                    {viewingContestDetails.contestId?.totalPrize
+                      ? `₹${viewingContestDetails.contestId.totalPrize.toLocaleString()}`
+                      : "₹10 Lakhs"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground block">Entry Fee</span>
+                  <span className="font-bold text-sm text-emerald-400">
+                    {viewingContestDetails.contestId?.entryFee === 0
+                      ? "FREE"
+                      : `₹${viewingContestDetails.contestId?.entryFee ?? 0}`}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground block">Max Teams</span>
+                  <span className="font-bold text-sm text-foreground">
+                    {viewingContestDetails.contestId?.maxTeams || 11}
+                  </span>
+                </div>
+              </div>
+
+              {/* Your Entered Squad */}
+              <div className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-950/20 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    <span className="font-bold text-xs text-foreground">
+                      Entered with: {viewingContestDetails.fantasyTeamId?.name || "Team 1"}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-emerald-400">
+                    Credits: {viewingContestDetails.fantasyTeamId?.totalCredits ?? 100}/100
+                  </span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Captain:{" "}
+                  <b className="text-amber-400">
+                    {getPlayerName(viewingContestDetails.fantasyTeamId?.captainId)} (2X)
+                  </b>{" "}
+                  • Vice-Captain:{" "}
+                  <b className="text-cyan-400">
+                    {getPlayerName(viewingContestDetails.fantasyTeamId?.viceCaptainId)} (1.5X)
+                  </b>
+                </div>
+              </div>
+
+              {/* Prize Pool Distribution */}
+              <div className="space-y-2">
+                <h4 className="font-bold text-xs text-foreground uppercase tracking-wider">
+                  Prize Distribution Breakdown
+                </h4>
+                <div className="rounded-xl border border-border/80 overflow-hidden text-xs">
+                  <div className="grid grid-cols-2 bg-surface-2 p-2.5 font-bold text-muted-foreground text-[11px] border-b border-border">
+                    <span>Rank</span>
+                    <span className="text-right">Prize Amount</span>
+                  </div>
+                  <div className="divide-y divide-border/60">
+                    <div className="grid grid-cols-2 p-2.5 bg-surface font-semibold">
+                      <span className="flex items-center gap-1.5 text-amber-400">
+                        <Trophy className="h-3.5 w-3.5" /> Rank 1
+                      </span>
+                      <span className="text-right font-bold text-foreground">₹3,00,000</span>
+                    </div>
+                    <div className="grid grid-cols-2 p-2.5 bg-surface">
+                      <span className="text-muted-foreground">Rank 2</span>
+                      <span className="text-right font-semibold text-foreground">₹1,50,000</span>
+                    </div>
+                    <div className="grid grid-cols-2 p-2.5 bg-surface">
+                      <span className="text-muted-foreground">Rank 3</span>
+                      <span className="text-right font-semibold text-foreground">₹1,00,000</span>
+                    </div>
+                    <div className="grid grid-cols-2 p-2.5 bg-surface">
+                      <span className="text-muted-foreground">Rank 4 - 10</span>
+                      <span className="text-right font-semibold text-foreground">₹30,000 each</span>
+                    </div>
+                    <div className="grid grid-cols-2 p-2.5 bg-surface">
+                      <span className="text-muted-foreground">Rank 11 - 50</span>
+                      <span className="text-right font-semibold text-foreground">₹5,000 each</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                onClick={() => setViewingContestDetails(null)}
+                className="w-full bg-surface-2 hover:bg-surface border border-border text-foreground font-bold py-2 rounded-xl text-xs cursor-pointer"
+              >
+                Close Details
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* CONTEST LEADERBOARD MODAL                                      */}
+      {/* ============================================================= */}
+      {leaderboardContestModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in-50 duration-150">
+          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-border/80 bg-surface shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-surface/95 backdrop-blur px-5 py-4">
+              <div className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-amber-400" />
+                <div>
+                  <h3 className="font-bold text-base text-foreground">Leaderboard</h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    {leaderboardContestModal.contestId?.name || leaderboardContestModal.name || "Contest Standings"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLeaderboardContestModal(null)}
+                className="h-8 w-8 rounded-full border border-border bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {loadingLeaderboard ? (
+                <div className="py-12 text-center space-y-3">
+                  <div className="h-8 w-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                  <p className="text-xs text-muted-foreground">Loading standings...</p>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-border/80 overflow-hidden">
+                  <div className="grid grid-cols-12 bg-surface-2 p-2.5 font-bold text-muted-foreground text-[11px] border-b border-border">
+                    <span className="col-span-2">Rank</span>
+                    <span className="col-span-6">Team / User</span>
+                    <span className="col-span-2 text-right">Points</span>
+                    <span className="col-span-2 text-right">Prize</span>
+                  </div>
+                  <div className="divide-y divide-border/60 max-h-80 overflow-y-auto">
+                    {leaderboardRows.map((row, idx) => {
+                      const rank = row.rank || idx + 1;
+                      const uName = row.user?.username || row.name || `User #${rank}`;
+                      const tName = row.fantasyTeam?.name || row.teamName || `Team ${rank}`;
+                      const pts = row.totalPoints ?? row.points ?? 0;
+                      const prize = row.prize || (rank === 1 ? "₹3,00,000" : rank === 2 ? "₹1,50,000" : rank === 3 ? "₹1,00,000" : "₹30,000");
+                      const isUser = myTeams.some((t) => t.name === tName || String(t._id) === String(row.fantasyTeam?._id || row.fantasyTeamId));
+
+                      return (
+                        <div
+                          key={idx}
+                          className={cn(
+                            "grid grid-cols-12 p-2.5 text-xs items-center transition-colors",
+                            isUser
+                              ? "bg-emerald-500/15 border-l-2 border-l-emerald-500 font-bold"
+                              : "bg-surface hover:bg-surface-2/40"
+                          )}
+                        >
+                          <span className="col-span-2 flex items-center gap-1 font-black">
+                            {rank === 1 ? (
+                              <span className="text-amber-400">🥇 1</span>
+                            ) : rank === 2 ? (
+                              <span className="text-slate-300">🥈 2</span>
+                            ) : rank === 3 ? (
+                              <span className="text-amber-600">🥉 3</span>
+                            ) : (
+                              <span className="text-muted-foreground">#{rank}</span>
+                            )}
+                          </span>
+                          <div className="col-span-6 min-w-0 pr-2">
+                            <span className="font-bold text-foreground truncate block">
+                              {tName} {isUser && <span className="ml-1 text-[10px] text-emerald-400 font-bold bg-emerald-950/80 px-1 rounded border border-emerald-500/30">YOU</span>}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground truncate block">@{uName}</span>
+                          </div>
+                          <span className="col-span-2 text-right font-mono font-bold text-foreground">
+                            {pts}
+                          </span>
+                          <span className="col-span-2 text-right font-mono font-bold text-emerald-400 text-[11px]">
+                            {prize}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <Button
+                onClick={() => setLeaderboardContestModal(null)}
+                className="w-full bg-surface-2 hover:bg-surface border border-border text-foreground font-bold py-2 rounded-xl text-xs cursor-pointer"
+              >
+                Close Leaderboard
+              </Button>
             </div>
           </div>
         </div>

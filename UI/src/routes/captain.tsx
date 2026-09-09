@@ -100,10 +100,13 @@ function Captain() {
         removeFlow(FLOW_KEYS.viceCaptainId);
 
         navigate({ to: "/create-team" });
+        if (matchId) setFlow(FLOW_KEYS.selectedMatchId, matchId);
+        navigate({ to: "/matches" });
         return;
       }
 
       // Clear drafting state
+      // Create new team
       const created = await createTeam({
         matchId,
         name,
@@ -131,6 +134,7 @@ function Captain() {
       const contests = await getContests(matchId).catch(() => []);
       setAvailableContests(contests);
       setSavedTeamId(created._id);
+
       if (returnContestId) {
         setSelectedContestId(returnContestId);
       } else if (contests.length > 0) {
@@ -350,6 +354,9 @@ function Captain() {
                     onClick={() => {
                       setShowJoinModal(false);
                       navigate({ to: "/contests" });
+                      removeFlow(FLOW_KEYS.returnToContestId);
+                      if (matchId) setFlow(FLOW_KEYS.selectedMatchId, matchId);
+                      navigate({ to: "/matches" });
                     }}
                   >
                     VIEW IN MY CONTESTS
@@ -377,6 +384,9 @@ function Captain() {
                     onClick={() => {
                       setShowJoinModal(false);
                       navigate({ to: "/create-team" });
+                      removeFlow(FLOW_KEYS.returnToContestId);
+                      if (matchId) setFlow(FLOW_KEYS.selectedMatchId, matchId);
+                      navigate({ to: "/matches" });
                     }}
                     className="h-8 w-8 rounded-full border border-border"
                   >
@@ -445,6 +455,9 @@ function Captain() {
                       onClick={() => {
                         setShowJoinModal(false);
                         navigate({ to: "/create-team" });
+                        removeFlow(FLOW_KEYS.returnToContestId);
+                        if (matchId) setFlow(FLOW_KEYS.selectedMatchId, matchId);
+                        navigate({ to: "/matches" });
                       }}
                       className="border-border bg-surface text-xs font-semibold hover:bg-surface-2"
                     >
