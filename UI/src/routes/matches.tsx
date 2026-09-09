@@ -755,6 +755,7 @@ function Matches() {
   // Selected match for Full-Page view: NULL BY DEFAULT (Home page shows by default!)
   const [selectedHomeMatch, setSelectedHomeMatch] = useState<any | null>(null);
   const [matchTab, setMatchTab] = useState<string>("Live");
+  const [arenaTab, setArenaTab] = useState<"UPCOMING" | "LIVE" | "COMPLETED">("UPCOMING");
 
   // Highlights state (Pic 4)
   const [highlightsInnings, setHighlightsInnings] = useState<string>("EZONE 1st Innings");
@@ -871,18 +872,17 @@ function Matches() {
     };
   }, [currentMatchId]);
 
-  // Restore pending match selection if returning from team creation or captain flow
+  // Listen for reset event from navigation (e.g. clicking Home in sidebar)
   useEffect(() => {
-    if (worldMatches.length > 0 && !selectedHomeMatch) {
-      const pendingMatchId = getFlow<string | null>(FLOW_KEYS.selectedMatchId, null);
-      if (pendingMatchId) {
-        const found = worldMatches.find((m) => (m.id || m.dbId) === pendingMatchId);
-        if (found) {
-          handleSelectMatch(found);
-        }
-      }
+    function onResetHomeMatch() {
+      setSelectedHomeMatch(null);
+      removeFlow(FLOW_KEYS.selectedMatchId);
     }
-  }, [worldMatches, selectedHomeMatch]);
+    window.addEventListener("reset-home-match", onResetHomeMatch);
+    return () => {
+      window.removeEventListener("reset-home-match", onResetHomeMatch);
+    };
+  }, []);
 
   // Helper: map players for pitch preview
   function getSquadForTeam(team: FantasyTeam): PitchPlayer[] {
@@ -915,6 +915,13 @@ function Matches() {
       return (order[statusA] || 99) - (order[order[statusB] || 99] || 99);
     });
   }, [worldMatches]);
+
+  const arenaMatches = useMemo(() => {
+    return sortedMatches.filter((m) => {
+      const s = (m.status || "UPCOMING").toUpperCase();
+      return s === arenaTab;
+    });
+  }, [sortedMatches, arenaTab]);
 
   const PAGE_SIZE = 3;
   const totalPages = Math.max(1, Math.ceil(sortedMatches.length / PAGE_SIZE));
@@ -1343,7 +1350,10 @@ function Matches() {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setSelectedHomeMatch(null)}
+                  onClick={() => {
+                    setSelectedHomeMatch(null);
+                    removeFlow(FLOW_KEYS.selectedMatchId);
+                  }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-2 hover:bg-surface border border-border text-xs font-bold text-foreground hover:text-primary transition-colors cursor-pointer shadow-sm"
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -1385,7 +1395,10 @@ function Matches() {
                 )}
                 <button
                   type="button"
-                  onClick={() => setSelectedHomeMatch(null)}
+                  onClick={() => {
+                    setSelectedHomeMatch(null);
+                    removeFlow(FLOW_KEYS.selectedMatchId);
+                  }}
                   title="Close match view"
                   aria-label="Close match view"
                   className="h-8 w-8 rounded-full bg-surface-2 hover:bg-surface border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
@@ -2657,6 +2670,160 @@ function Matches() {
                       </span>
                       <span>{heroArticle.author}</span>
                     </div>
+                  </div>
+                </div>
+
+                {/* ========================================================= */}
+                {/* MATCHES ARENA (Pic 4 only opens when clicking a match!)   */}
+                {/* ========================================================= */}
+                <div className="space-y-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-lg">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/70">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400">
+                        <Trophy className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black uppercase tracking-wider text-foreground">
+                          CRICKET MATCHES ARENA
+                        </h3>
+                        <p className="text-[11px] text-muted-foreground">
+                          Select any match to enter Match Center, view scorecard, or join contests
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Arena Tabs: Upcoming / Live / Completed */}
+                    <div className="inline-flex rounded-xl bg-surface-2 p-1 border border-border">
+                      <button
+                        type="button"
+                        onClick={() => setArenaTab("UPCOMING")}
+                        className={cn(
+                          "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                          arenaTab === "UPCOMING"
+                            ? "bg-emerald-500 text-slate-950 shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        Upcoming ({worldMatches.filter((m) => (m.status || "UPCOMING").toUpperCase() === "UPCOMING").length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setArenaTab("LIVE")}
+                        className={cn(
+                          "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                          arenaTab === "LIVE"
+                            ? "bg-red-500 text-white shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <span className="h-2 w-2 rounded-full bg-red-400 animate-pulse" />
+                        Live ({worldMatches.filter((m) => (m.status || "").toUpperCase() === "LIVE").length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setArenaTab("COMPLETED")}
+                        className={cn(
+                          "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                          arenaTab === "COMPLETED"
+                            ? "bg-surface text-foreground shadow-sm border border-border"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        Completed ({worldMatches.filter((m) => (m.status || "").toUpperCase() === "COMPLETED").length})
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Matches Grid */}
+                  <div className="space-y-3">
+                    {arenaMatches.length > 0 ? (
+                      arenaMatches.map((m: any) => {
+                        const isLive = (m.status || "").toUpperCase() === "LIVE";
+                        const isComp = (m.status || "").toUpperCase() === "COMPLETED";
+
+                        return (
+                          <div
+                            key={m.id || m.dbId || m.series}
+                            onClick={() => handleSelectMatch(m)}
+                            className="rounded-xl border border-border/80 bg-surface hover:border-emerald-500/50 hover:bg-surface-2/60 transition-all p-4 cursor-pointer group shadow-sm hover:shadow-md"
+                          >
+                            {/* Card Header: Series & Format & Status */}
+                            <div className="flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-border/50 text-xs">
+                              <span className="font-semibold text-muted-foreground truncate">
+                                {m.series || "International Cricket Series"}
+                              </span>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {isLive ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-black text-red-500 bg-red-500/10 border border-red-500/30 px-2 py-0.5 rounded-full animate-pulse">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                                    LIVE
+                                  </span>
+                                ) : isComp ? (
+                                  <span className="text-[10px] font-bold text-muted-foreground bg-surface-2 px-2 py-0.5 rounded-full border border-border">
+                                    RESULT
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                                    UPCOMING
+                                  </span>
+                                )}
+                                <span className="text-[10px] font-bold text-muted-foreground/80 bg-surface-2/80 px-1.5 py-0.5 rounded">
+                                  {m.format || "T20"}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Teams & Scores */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center py-1">
+                              {/* Team A */}
+                              <div className="flex items-center justify-between sm:justify-start sm:gap-3">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="text-xl leading-none">
+                                    {m.teamAFlag || getTeamFlag(m.teamACode || m.teamA)}
+                                  </span>
+                                  <span className="font-extrabold text-sm text-foreground truncate max-w-[130px]">
+                                    {m.teamA}
+                                  </span>
+                                </div>
+                                <span className="font-mono text-xs font-bold text-foreground sm:ml-auto">
+                                  {m.scoreA || (isLive ? "Yet to bat" : "—")}
+                                </span>
+                              </div>
+
+                              {/* Team B */}
+                              <div className="flex items-center justify-between sm:justify-start sm:gap-3">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="text-xl leading-none">
+                                    {m.teamBFlag || getTeamFlag(m.teamBCode || m.teamB)}
+                                  </span>
+                                  <span className="font-extrabold text-sm text-foreground truncate max-w-[130px]">
+                                    {m.teamB}
+                                  </span>
+                                </div>
+                                <span className="font-mono text-xs font-bold text-foreground sm:ml-auto">
+                                  {m.scoreB || (isLive ? "Yet to bat" : "—")}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Footer: Status / Venue + Action Button */}
+                            <div className="mt-3 pt-2.5 border-t border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                              <span className="text-muted-foreground truncate text-[11px]">
+                                {m.statusText || m.venue || "Edgbaston, Birmingham"}
+                              </span>
+                              <span className="inline-flex items-center gap-1.5 font-bold text-emerald-400 group-hover:text-emerald-300 text-xs shrink-0 self-end sm:self-auto">
+                                <span>{isLive ? "View Live Match" : isComp ? "View Match Summary" : "Enter Match Center"}</span>
+                                <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="text-center py-8 text-xs text-muted-foreground border border-dashed border-border rounded-xl">
+                        No {arenaTab.toLowerCase()} matches at the moment.
+                      </div>
+                    )}
                   </div>
                 </div>
 

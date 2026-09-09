@@ -25,6 +25,7 @@ import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
 import { getMe } from "@/lib/api-services";
 import type { User } from "@/lib/api-types";
+import { removeFlow, FLOW_KEYS } from "@/lib/flow";
 
 interface NotificationItem {
   id: string;
@@ -150,6 +151,12 @@ export function AppShell({
               <Link
                 key={to}
                 to={to}
+                onClick={() => {
+                  if (to === "/matches") {
+                    removeFlow(FLOW_KEYS.selectedMatchId);
+                    window.dispatchEvent(new CustomEvent("reset-home-match"));
+                  }
+                }}
                 className={cn(
                   "flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all",
                   active
@@ -384,6 +391,12 @@ export function AppShell({
                 <Link
                   key={to}
                   to={to}
+                  onClick={() => {
+                    if (to === "/matches") {
+                      removeFlow(FLOW_KEYS.selectedMatchId);
+                      window.dispatchEvent(new CustomEvent("reset-home-match"));
+                    }
+                  }}
                   className={cn(
                     "flex flex-col items-center gap-1 py-3 text-[10px] font-medium transition-colors",
                     active ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground",
@@ -414,6 +427,12 @@ export function PageHeader({
     <div className="mb-5 flex items-center justify-between gap-4">
       <Link
         to={back}
+        onClick={() => {
+          if (back === "/matches") {
+            removeFlow(FLOW_KEYS.selectedMatchId);
+            window.dispatchEvent(new CustomEvent("reset-home-match"));
+          }
+        }}
         className="flex items-center gap-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
       >
         <span className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface hover:bg-surface-2">

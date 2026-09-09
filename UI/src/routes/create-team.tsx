@@ -6,7 +6,7 @@ import { Card } from "@/components/fc/bits";
 import { Button } from "@/components/ui/button";
 import { TeamPitchPreview, type PitchPlayer } from "@/components/fc/TeamPitchPreview";
 import { LoadingState } from "@/components/fc/ListState";
-import { getMatchPlayers, getMyTeams, getMatch } from "@/lib/api-services";
+import { getMatchPlayers, getMyTeams, getMatch, getMatches } from "@/lib/api-services";
 import type { FantasyTeam, MatchPlayer, Match } from "@/lib/api-types";
 import { getFlow, setFlow, removeFlow, FLOW_KEYS } from "@/lib/flow";
 
@@ -16,6 +16,7 @@ function MyTeams() {
   const navigate = useNavigate();
   const matchId = getFlow<string | null>(FLOW_KEYS.selectedMatchId, null);
   const [match, setMatch] = useState<Match | null>(null);
+  const [matchList, setMatchList] = useState<Match[]>([]);
   const [teams, setTeams] = useState<FantasyTeam[]>([]);
   const [players, setPlayers] = useState<MatchPlayer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,19 +27,20 @@ function MyTeams() {
     async function loadData() {
       setLoading(true);
       try {
+        const [allMatches, allTeams] = await Promise.all([
+          getMatches().catch(() => []),
+          getMyTeams(matchId || undefined).catch(() => []),
+        ]);
+        setMatchList(allMatches);
+        setTeams(allTeams);
+
         if (matchId) {
-          const [matchData, teamList, matchPlayers] = await Promise.all([
+          const [matchData, matchPlayers] = await Promise.all([
             getMatch(matchId).catch(() => null),
-            getMyTeams(matchId).catch(() => []),
             getMatchPlayers(matchId).catch(() => []),
           ]);
           setMatch(matchData);
-          setTeams(teamList);
           setPlayers(matchPlayers);
-        } else {
-          // If no match is selected, load all user's teams
-          const allTeams = await getMyTeams().catch(() => []);
-          setTeams(allTeams);
         }
       } finally {
         setLoading(false);
@@ -48,11 +50,15 @@ function MyTeams() {
   }, [matchId]);
 
   function handleCreateNewTeam() {
+    if (!matchId) {
+      navigate({ to: "/matches" });
+      return;
+    }
     removeFlow(FLOW_KEYS.editingTeamId);
     removeFlow(FLOW_KEYS.selectedPlayerIds);
     removeFlow(FLOW_KEYS.captainId);
     removeFlow(FLOW_KEYS.viceCaptainId);
-    if (matchId) setFlow(FLOW_KEYS.selectedMatchId, matchId);
+    setFlow(FLOW_KEYS.selectedMatchId, matchId);
     setFlow(FLOW_KEYS.selectedTeamName, `Team ${teams.length + 1}`);
     navigate({ to: "/players" });
   }
@@ -96,38 +102,31 @@ function MyTeams() {
     <AppShell>
       <PageHeader
         back="/matches"
-        title={match ? `${match.teamA} vs ${match.teamB} · My Teams` : "My Teams"}
+        title={match ? `${match.teamA} vs ${match.teamB} · My Teams` : `My Teams (${teams.length})`}
       />
 
       {loading && <LoadingState label="Loading your teams..." />}
 
-      {!loading && !matchId && (
-        <Card className="text-center">
-          <p className="text-sm text-muted-foreground">Select a match to view or create teams.</p>
-          <Button asChild variant="hero" className="mt-4">
-            <Link to="/matches">SELECT A MATCH</Link>
-          </Button>
-        </Card>
-      )}
-
-      {!loading && matchId && teams.length === 0 && (
+      {!loading && teams.length === 0 && (
         <Card className="py-12 text-center">
           <Users className="mx-auto h-12 w-12 text-muted-foreground/60" />
           <h3 className="mt-3 font-display text-base font-bold">No Teams Created Yet</h3>
           <p className="mt-1 text-xs text-muted-foreground">
             Build your fantasy cricket team with 11 players and compete in contests!
           </p>
-          <Button onClick={handleCreateNewTeam} variant="hero" size="xl" className="mt-6 gap-2">
-            <Plus className="h-5 w-5" /> CREATE TEAM 1
+          <Button asChild variant="hero" size="xl" className="mt-6 gap-2">
+            <Link to="/matches">
+              <Plus className="h-5 w-5" /> SELECT A MATCH TO BUILD A TEAM
+            </Link>
           </Button>
         </Card>
       )}
 
-      {!loading && matchId && teams.length > 0 && (
+      {!loading && teams.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground">
-              {teams.length} {teams.length === 1 ? "Team" : "Teams"} Created
+              {teams.length} {teams.length === 1 ? "Team" : "Teams"} Saved
             </span>
             <Button
               onClick={handleCreateNewTeam}
@@ -135,7 +134,7 @@ function MyTeams() {
               size="sm"
               className="gap-1.5 font-bold"
             >
-              <Plus className="h-3.5 w-3.5" /> CREATE TEAM {teams.length + 1}
+              <Plus className="h-3.5 w-3.5" /> {matchId ? `CREATE TEAM ${teams.length + 1}` : "BUILD NEW TEAM"}
             </Button>
           </div>
 
@@ -145,6 +144,7 @@ function MyTeams() {
             const viceCaptainId = String((t.viceCaptainId as any)?._id ?? t.viceCaptainId ?? "");
             const capName = getPlayerName(t.captainId);
             const vcName = getPlayerName(t.viceCaptainId);
+            const teamMatch = matchList.find((m) => m._id === t.matchId) || match;
 
             const wkCount = squad.filter((p) => p.role === "Wicket-Keeper").length;
             const batCount = squad.filter((p) => p.role === "Batsman").length;
@@ -162,6 +162,11 @@ function MyTeams() {
                     <span className="font-display text-sm font-bold text-foreground">
                       {t.name || `Team ${idx + 1}`}
                     </span>
+                    {teamMatch && (
+                      <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
+                        {teamMatch.teamA} vs {teamMatch.teamB}
+                      </span>
+                    )}
                   </div>
                   <div className="text-right">
                     <span className="text-xs font-semibold text-primary">

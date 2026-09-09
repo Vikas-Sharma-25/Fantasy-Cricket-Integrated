@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import {
   CheckCircle2,
   Users,
@@ -22,6 +22,7 @@ import {
   getMatchPlayers,
   joinContest,
   getMatch,
+  getMatches,
   getLeaderboard,
 } from "@/lib/api-services";
 import type { Contest, FantasyTeam, MatchPlayer, Match } from "@/lib/api-types";
@@ -81,6 +82,7 @@ function Contests() {
   const [viewingContest, setViewingContest] = useState<Contest | null>(null);
   const [pitchPreviewTeam, setPitchPreviewTeam] = useState<FantasyTeam | null>(null);
   const [currentMatch, setCurrentMatch] = useState<Match | null>(null);
+  const [allMatches, setAllMatches] = useState<Match[]>([]);
   const [leaderboardContest, setLeaderboardContest] = useState<Contest | null>(null);
   const [leaderboardRows, setLeaderboardRows] = useState<any[]>([]);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
@@ -130,6 +132,8 @@ function Contests() {
   }
 
   useEffect(() => {
+    void getMatches().then(setAllMatches).catch(() => {});
+
     if (matchId) {
       void getMatch(matchId).then(setCurrentMatch).catch(() => {});
       void getMyTeams(matchId)
@@ -157,8 +161,15 @@ function Contests() {
       void getMatchPlayers(matchId)
         .then(setPlayers)
         .catch(() => {});
-      loadMyContests();
+    } else {
+      void getMyTeams()
+        .then(setTeams)
+        .catch(() => {});
+      void getContests()
+        .then(setItems)
+        .catch((e) => setError(e.message));
     }
+    loadMyContests();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId]);
 
@@ -195,9 +206,14 @@ function Contests() {
   }
 
   function handleCreateTeamForContest() {
-    if (!contestToJoin || !matchId) return;
+    if (!contestToJoin) return;
+    const targetMatchId = contestToJoin.matchId || matchId;
+    if (!targetMatchId) {
+      navigate({ to: "/matches" });
+      return;
+    }
     setFlow(FLOW_KEYS.returnToContestId, contestToJoin._id);
-    setFlow(FLOW_KEYS.selectedMatchId, matchId);
+    setFlow(FLOW_KEYS.selectedMatchId, targetMatchId);
     setFlow(FLOW_KEYS.selectedTeamName, `Team ${teams.length + 1}`);
     removeFlow(FLOW_KEYS.editingTeamId);
     removeFlow(FLOW_KEYS.selectedPlayerIds);
@@ -272,7 +288,10 @@ function Contests() {
 
   return (
     <AppShell>
-      <PageHeader back="/matches" title="Contests" />
+      <PageHeader
+        back="/matches"
+        title={currentMatch ? `${currentMatch.teamA} vs ${currentMatch.teamB} · Contests` : "Mega Contests Arena"}
+      />
       <Tabs
         items={["Contests", "My Contests"]}
         active={top}
@@ -315,13 +334,21 @@ function Contests() {
             const prizeNumber = parsePrizeNumber(c.prizePool ?? c.prize);
             const firstPrize = `₹${Math.round(prizeNumber * 0.3).toLocaleString()}`;
             const isFree = !c.entryFee || c.entryFee === 0;
+            const contestMatch = allMatches.find((m) => m._id === c.matchId) || currentMatch;
 
             return (
               <Card key={c._id} className="p-0 overflow-hidden border-border/80">
                 {/* Contest Card Top Bar */}
                 <div className="flex items-center justify-between border-b border-border bg-surface-2/40 px-4 py-2.5">
-                  <span className="font-display text-sm font-bold text-foreground">{c.name}</span>
-                  <span className="rounded-md border border-primary/30 bg-primary/15 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-primary">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-display text-sm font-bold text-foreground truncate">{c.name}</span>
+                    {contestMatch && (
+                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 shrink-0">
+                        {contestMatch.teamA} vs {contestMatch.teamB}
+                      </span>
+                    )}
+                  </div>
+                  <span className="rounded-md border border-primary/30 bg-primary/15 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-primary shrink-0">
                     {isFree ? "FREE" : `₹${c.entryFee}`}
                   </span>
                 </div>
@@ -447,11 +474,16 @@ function Contests() {
           })}
 
         {!list.length && (
-          <p className="py-16 text-center text-sm text-muted-foreground">
-            {top === "Contests"
-              ? "No contests available for this match."
-              : "You haven't joined any contests yet."}
-          </p>
+          <div className="py-16 text-center space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {top === "Contests"
+                ? "No contests available for this selection."
+                : "You haven't joined any contests yet."}
+            </p>
+            <Button asChild variant="outlineGreen" size="sm">
+              <Link to="/matches">EXPLORE MATCHES</Link>
+            </Button>
+          </div>
         )}
       </div>
 
