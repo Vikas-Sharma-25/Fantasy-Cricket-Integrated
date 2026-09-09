@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { Eye, Pencil, Plus, Users } from "lucide-react";
+import { Eye, Pencil, Plus, Users, X } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/fc/AppShell";
 import { Card } from "@/components/fc/bits";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ function MyTeams() {
   const [players, setPlayers] = useState<MatchPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [previewTeam, setPreviewTeam] = useState<FantasyTeam | null>(null);
+  const [previewMode, setPreviewMode] = useState<"readable" | "pitch">("readable");
 
   useEffect(() => {
     async function loadData() {
@@ -231,20 +232,181 @@ function MyTeams() {
         </div>
       )}
 
-      {/* Team Pitch Preview Modal */}
+      {/* Readable Team View Modal with Pitch and List toggles */}
       {previewTeam && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto">
-            <TeamPitchPreview
-              players={getSquadForTeam(previewTeam)}
-              captainId={String((previewTeam.captainId as any)?._id ?? previewTeam.captainId ?? "")}
-              viceCaptainId={String(
-                (previewTeam.viceCaptainId as any)?._id ?? previewTeam.viceCaptainId ?? ""
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-primary/40 bg-surface shadow-2xl">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-border bg-surface-2 px-5 py-4">
+              <div>
+                <h3 className="font-display text-base font-bold text-foreground">
+                  {previewTeam.name || "Fantasy Team"}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Credits: <b className="text-primary">{previewTeam.totalCredits ? previewTeam.totalCredits.toFixed(1) : "0.0"}/100</b> &bull; 11 Players
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setPreviewTeam(null)}
+                className="h-8 w-8 rounded-full border border-border"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              {/* View Toggle Bar */}
+              <div className="grid grid-cols-2 gap-2 rounded-xl bg-surface-2 p-1 border border-border">
+                <button
+                  type="button"
+                  onClick={() => setPreviewMode("readable")}
+                  className={`rounded-lg py-1.5 text-xs font-bold transition-colors ${
+                    previewMode === "readable"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  SQUAD LIST (11)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewMode("pitch")}
+                  className={`rounded-lg py-1.5 text-xs font-bold transition-colors ${
+                    previewMode === "pitch"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  PITCH VIEW
+                </button>
+              </div>
+
+              {previewMode === "readable" ? (
+                <div className="space-y-3">
+                  {/* Captain & Vice-Captain Banner */}
+                  {(() => {
+                    const capName = getPlayerName(previewTeam.captainId);
+                    const vcName = getPlayerName(previewTeam.viceCaptainId);
+                    return (
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-2.5">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500 text-xs font-black text-black">
+                            C
+                          </span>
+                          <div className="min-w-0">
+                            <span className="block truncate text-xs font-bold text-foreground">{capName}</span>
+                            <span className="block text-[10px] text-amber-300 font-semibold">2X Multiplier</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-2.5">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-500 text-xs font-black text-black">
+                            VC
+                          </span>
+                          <div className="min-w-0">
+                            <span className="block truncate text-xs font-bold text-foreground">{vcName}</span>
+                            <span className="block text-[10px] text-cyan-300 font-semibold">1.5X Multiplier</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 11 Players Table */}
+                  <div className="overflow-hidden rounded-xl border border-border bg-surface text-xs">
+                    <div className="grid grid-cols-[1fr_55px_55px_60px] border-b border-border bg-surface-2 px-3 py-2 font-bold uppercase text-[10px] text-muted-foreground">
+                      <span>Player</span>
+                      <span>Team</span>
+                      <span>Role</span>
+                      <span className="text-right">Credits</span>
+                    </div>
+
+                    {getSquadForTeam(previewTeam).map((p, idx) => {
+                      const isCap = String(p.playerId) === String((previewTeam.captainId as any)?._id ?? previewTeam.captainId);
+                      const isVC = String(p.playerId) === String((previewTeam.viceCaptainId as any)?._id ?? previewTeam.viceCaptainId);
+
+                      return (
+                        <div
+                          key={p.playerId || idx}
+                          className={`grid grid-cols-[1fr_55px_55px_60px] items-center border-b border-border/50 px-3 py-2.5 last:border-0 transition-colors ${
+                            isCap ? "bg-amber-500/5 font-semibold" : isVC ? "bg-cyan-500/5 font-semibold" : "hover:bg-surface-2/40"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            {isCap && (
+                              <span className="rounded bg-amber-500 px-1 py-0.2 text-[9px] font-black text-black">
+                                C
+                              </span>
+                            )}
+                            {isVC && (
+                              <span className="rounded bg-cyan-500 px-1 py-0.2 text-[9px] font-black text-black">
+                                VC
+                              </span>
+                            )}
+                            <span className="truncate text-foreground font-medium">{p.name}</span>
+                          </div>
+
+                          <span className="rounded bg-surface-2 px-1.5 py-0.5 text-center text-[10px] font-bold text-foreground">
+                            {p.realTeam || "-"}
+                          </span>
+
+                          <span className="text-[10px] text-muted-foreground truncate">
+                            {p.role === "Wicket-Keeper" ? "WK" : p.role === "All-Rounder" ? "AR" : p.role === "Bowler" ? "BOWL" : "BAT"}
+                          </span>
+
+                          <span className="text-right font-display font-bold text-primary">
+                            {p.credits != null ? p.credits.toFixed(1) : "-"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl overflow-hidden border border-border">
+                  <TeamPitchPreview
+                    players={getSquadForTeam(previewTeam)}
+                    captainId={String((previewTeam.captainId as any)?._id ?? previewTeam.captainId ?? "")}
+                    viceCaptainId={String(
+                      (previewTeam.viceCaptainId as any)?._id ?? previewTeam.viceCaptainId ?? ""
+                    )}
+                    teamName={previewTeam.name}
+                    totalCredits={previewTeam.totalCredits}
+                    onClose={() => setPreviewTeam(null)}
+                  />
+                </div>
               )}
-              teamName={previewTeam.name}
-              totalCredits={previewTeam.totalCredits}
-              onClose={() => setPreviewTeam(null)}
-            />
+
+              {/* Action Buttons: Edit Team and Close */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    const t = previewTeam;
+                    setPreviewTeam(null);
+                    handleEditTeam(t);
+                  }}
+                  disabled={previewTeam.isLocked}
+                  className="gap-2 border-border bg-surface text-foreground hover:bg-surface-2 text-xs font-bold"
+                >
+                  <Pencil className="h-3.5 w-3.5" /> EDIT TEAM
+                </Button>
+                <Button
+                  type="button"
+                  variant="hero"
+                  size="lg"
+                  onClick={() => setPreviewTeam(null)}
+                  className="text-xs font-bold"
+                >
+                  CLOSE
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}

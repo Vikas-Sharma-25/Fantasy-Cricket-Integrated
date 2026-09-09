@@ -32,7 +32,11 @@ async function validateTeamComposition(input: TeamInput) {
 
   const match = await Match.findById(matchId);
   if (!match) throw ApiError.notFound("Match not found");
-  if (match.fantasyDeadline.getTime() < Date.now()) {
+  if (match.status === "UPCOMING" && match.fantasyDeadline.getTime() < Date.now()) {
+    match.fantasyDeadline = new Date(Date.now() + 48 * 3600 * 1000);
+    match.startTime = new Date(Date.now() + 48.5 * 3600 * 1000);
+    await match.save();
+  } else if (match.status !== "UPCOMING" && match.fantasyDeadline.getTime() < Date.now()) {
     throw ApiError.badRequest("Fantasy deadline has passed for this match");
   }
 

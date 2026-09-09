@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Eye, Pencil, Save } from "lucide-react";
+import { Eye, Pencil, Save, CheckCircle2, Trophy, Users, X } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/fc/AppShell";
 import { Card } from "@/components/fc/bits";
 import { LoadingState } from "@/components/fc/ListState";
 import { Button } from "@/components/ui/button";
 import { TeamPitchPreview } from "@/components/fc/TeamPitchPreview";
-import { getMatchPlayers, createTeam, updateTeam } from "@/lib/api-services";
-import type { MatchPlayer } from "@/lib/api-types";
+import { getMatchPlayers, createTeam, updateTeam, getContests, joinContest } from "@/lib/api-services";
+import type { MatchPlayer, Contest } from "@/lib/api-types";
 import { getFlow, setFlow, removeFlow, FLOW_KEYS } from "@/lib/flow";
 import { ApiClientError } from "@/lib/api";
 
@@ -27,6 +27,15 @@ function Captain() {
   const [showPreview, setShowPreview] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Contest join confirmation prompt state
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [savedTeamId, setSavedTeamId] = useState<string>("");
+  const [availableContests, setAvailableContests] = useState<Contest[]>([]);
+  const [selectedContestId, setSelectedContestId] = useState<string>("");
+  const [joiningContest, setJoiningContest] = useState(false);
+  const [joinSuccess, setJoinSuccess] = useState(false);
+  const [joinError, setJoinError] = useState("");
 
   useEffect(() => {
     if (matchId) {
@@ -76,34 +85,66 @@ function Captain() {
           captainId: cap,
           viceCaptainId: vice,
         });
-      } else {
-        await createTeam({
-          matchId,
-          name,
-          playerIds: ids,
-          captainId: cap,
-          viceCaptainId: vice,
-        });
+
+        removeFlow(FLOW_KEYS.editingTeamId);
+        removeFlow(FLOW_KEYS.selectedPlayerIds);
+        removeFlow(FLOW_KEYS.captainId);
+        removeFlow(FLOW_KEYS.viceCaptainId);
+
+        navigate({ to: "/create-team" });
+        return;
       }
 
-      // Clear drafting state
+      const created = await createTeam({
+        matchId,
+        name,
+        playerIds: ids,
+        captainId: cap,
+        viceCaptainId: vice,
+      });
+
       removeFlow(FLOW_KEYS.editingTeamId);
       removeFlow(FLOW_KEYS.selectedPlayerIds);
       removeFlow(FLOW_KEYS.captainId);
       removeFlow(FLOW_KEYS.viceCaptainId);
 
+      // Check if user came from a specific contest
       const returnContestId = getFlow<string | null>(FLOW_KEYS.returnToContestId, null);
       if (returnContestId) {
         setFlow(FLOW_KEYS.autoOpenJoinContestId, returnContestId);
         removeFlow(FLOW_KEYS.returnToContestId);
-        navigate({ to: "/contests" });
-      } else {
-        navigate({ to: "/create-team" });
       }
+
+      // Fetch contests for this match to present Join Contest prompt
+      const contests = await getContests(matchId).catch(() => []);
+      setAvailableContests(contests);
+      setSavedTeamId(created._id);
+      if (returnContestId) {
+        setSelectedContestId(returnContestId);
+      } else if (contests.length > 0) {
+        setSelectedContestId(contests[0]._id);
+      }
+      setShowJoinModal(true);
     } catch (e) {
       setError(e instanceof ApiClientError ? e.message : "Unable to save team");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleConfirmJoinContest() {
+    if (!selectedContestId || !savedTeamId) return;
+    setJoiningContest(true);
+    setJoinError("");
+
+    try {
+      await joinContest(selectedContestId, savedTeamId);
+      setFlow(FLOW_KEYS.selectedContestId, selectedContestId);
+      setJoinSuccess(true);
+    } catch (e) {
+      setJoinError(e instanceof ApiClientError ? e.message : "Failed to join contest");
+    } finally {
+      setJoiningContest(false);
     }
   }
 
@@ -269,6 +310,148 @@ function Captain() {
               totalCredits={creditsUsed}
               onClose={() => setShowPreview(false)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Join Contest Confirmation Modal */}
+      {showJoinModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-primary/40 bg-surface shadow-2xl">
+            {joinSuccess ? (
+              <div className="p-6 text-center space-y-4">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/20 text-primary">
+                  <CheckCircle2 className="h-10 w-10" />
+                </div>
+                <h3 className="font-display text-xl font-bold text-foreground">
+                  Contest Joined Successfully! 🎉
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Your fantasy team <span className="font-bold text-primary">{name}</span> has been entered into the contest!
+                </p>
+                <div className="pt-3">
+                  <Button
+                    type="button"
+                    variant="hero"
+                    size="xl"
+                    className="w-full font-bold shadow-lg shadow-primary/25"
+                    onClick={() => {
+                      setShowJoinModal(false);
+                      navigate({ to: "/contests" });
+                    }}
+                  >
+                    VIEW IN MY CONTESTS
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between border-b border-border bg-surface-2 px-5 py-4">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
+                      ✓
+                    </span>
+                    <div>
+                      <h3 className="font-display text-sm font-bold text-foreground">
+                        Team Saved Successfully!
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground">Choose a contest to join</p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setShowJoinModal(false);
+                      navigate({ to: "/create-team" });
+                    }}
+                    className="h-8 w-8 rounded-full border border-border"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="p-5 space-y-4">
+                  <p className="text-xs text-muted-foreground">
+                    Would you like to enter a contest with <b className="text-foreground">{name}</b> right now?
+                  </p>
+
+                  {/* Contest Selection List */}
+                  <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                    {availableContests.map((c) => {
+                      const isSelected = selectedContestId === c._id;
+                      const isFree = !c.entryFee || c.entryFee === 0;
+                      const prizeStr = typeof c.prizePool === "number" ? `₹${c.prizePool.toLocaleString()}` : (c.prize || "₹10,00,000");
+
+                      return (
+                        <div
+                          key={c._id}
+                          onClick={() => setSelectedContestId(c._id)}
+                          className={`flex items-center justify-between rounded-xl border p-3 cursor-pointer transition-colors ${
+                            isSelected
+                              ? "border-primary bg-primary/10 shadow-sm"
+                              : "border-border bg-surface-2 hover:border-primary/50"
+                          }`}
+                        >
+                          <div>
+                            <span className="block font-display text-xs font-bold text-foreground">
+                              {c.name}
+                            </span>
+                            <span className="block text-[11px] text-muted-foreground">
+                              Prize Pool: <b className="text-primary">{prizeStr}</b>
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="rounded bg-surface px-2 py-0.5 text-xs font-bold text-primary border border-border">
+                              {isFree ? "FREE" : `₹${c.entryFee}`}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {availableContests.length === 0 && (
+                      <p className="text-center py-4 text-xs text-muted-foreground">
+                        Mega Contest will be available shortly.
+                      </p>
+                    )}
+                  </div>
+
+                  {joinError && (
+                    <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                      {joinError}
+                    </p>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      onClick={() => {
+                        setShowJoinModal(false);
+                        navigate({ to: "/create-team" });
+                      }}
+                      className="border-border bg-surface text-xs font-semibold hover:bg-surface-2"
+                    >
+                      SKIP FOR NOW
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="hero"
+                      size="lg"
+                      disabled={joiningContest || !selectedContestId}
+                      onClick={handleConfirmJoinContest}
+                      className="text-xs font-bold"
+                    >
+                      {joiningContest ? "JOINING..." : "JOIN CONTEST NOW"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

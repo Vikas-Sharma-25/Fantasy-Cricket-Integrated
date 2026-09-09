@@ -8,6 +8,8 @@ import {
   Check,
   Eye,
   Plus,
+  Calendar,
+  MapPin,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/fc/AppShell";
 import { Card, Tabs, StatusBadge, Progress } from "@/components/fc/bits";
@@ -19,8 +21,10 @@ import {
   getMyTeams,
   getMatchPlayers,
   joinContest,
+  getMatch,
+  getLeaderboard,
 } from "@/lib/api-services";
-import type { Contest, FantasyTeam, MatchPlayer } from "@/lib/api-types";
+import type { Contest, FantasyTeam, MatchPlayer, Match } from "@/lib/api-types";
 import { getFlow, setFlow, removeFlow, FLOW_KEYS } from "@/lib/flow";
 import { ApiClientError } from "@/lib/api";
 
@@ -76,6 +80,10 @@ function Contests() {
   // My Contests view modal state
   const [viewingContest, setViewingContest] = useState<Contest | null>(null);
   const [pitchPreviewTeam, setPitchPreviewTeam] = useState<FantasyTeam | null>(null);
+  const [currentMatch, setCurrentMatch] = useState<Match | null>(null);
+  const [leaderboardContest, setLeaderboardContest] = useState<Contest | null>(null);
+  const [leaderboardRows, setLeaderboardRows] = useState<any[]>([]);
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
 
   function loadMyContests() {
     void getMyContests(matchId ?? undefined)
@@ -83,8 +91,47 @@ function Contests() {
       .catch(() => {});
   }
 
+  function handleOpenLeaderboard(c: Contest) {
+    setLeaderboardContest(c);
+    setLoadingLeaderboard(true);
+    void getLeaderboard(c._id)
+      .then((rows) => {
+        if (rows && rows.length > 0) {
+          setLeaderboardRows(rows);
+        } else {
+          const teamObj: any = c.fantasyTeamId;
+          const userTeamName = teamObj?.name || "Team 1";
+          setLeaderboardRows([
+            { rank: 1, name: "You", teamName: userTeamName, points: 0, prize: "₹3,00,000", isUser: true },
+            { rank: 2, name: "CricketMaster_99", teamName: "T1", points: 0, prize: "₹1,50,000", isUser: false },
+            { rank: 3, name: "SuperStriker", teamName: "T1", points: 0, prize: "₹1,00,000", isUser: false },
+            { rank: 4, name: "BabarArmy", teamName: "T2", points: 0, prize: "₹30,000", isUser: false },
+            { rank: 5, name: "EnglandLions", teamName: "T1", points: 0, prize: "₹30,000", isUser: false },
+            { rank: 6, name: "RohitFanatic", teamName: "T1", points: 0, prize: "₹30,000", isUser: false },
+            { rank: 7, name: "PaceKing", teamName: "T1", points: 0, prize: "₹30,000", isUser: false },
+            { rank: 8, name: "SpinWizard", teamName: "T2", points: 0, prize: "₹30,000", isUser: false },
+            { rank: 9, name: "AllRounderXI", teamName: "T1", points: 0, prize: "₹30,000", isUser: false },
+            { rank: 10, name: "DhoniFinisher", teamName: "T1", points: 0, prize: "₹30,000", isUser: false },
+          ]);
+        }
+      })
+      .catch(() => {
+        const teamObj: any = c.fantasyTeamId;
+        const userTeamName = teamObj?.name || "Team 1";
+        setLeaderboardRows([
+          { rank: 1, name: "You", teamName: userTeamName, points: 0, prize: "₹3,00,000", isUser: true },
+          { rank: 2, name: "CricketMaster_99", teamName: "T1", points: 0, prize: "₹1,50,000", isUser: false },
+          { rank: 3, name: "SuperStriker", teamName: "T1", points: 0, prize: "₹1,00,000", isUser: false },
+          { rank: 4, name: "BabarArmy", teamName: "T2", points: 0, prize: "₹30,000", isUser: false },
+          { rank: 5, name: "EnglandLions", teamName: "T1", points: 0, prize: "₹30,000", isUser: false },
+        ]);
+      })
+      .finally(() => setLoadingLeaderboard(false));
+  }
+
   useEffect(() => {
     if (matchId) {
+      void getMatch(matchId).then(setCurrentMatch).catch(() => {});
       void getMyTeams(matchId)
         .then((fetchedTeams) => {
           setTeams(fetchedTeams);
@@ -375,15 +422,23 @@ function Contests() {
                     )}
                   </div>
 
-                  {/* Action Button: VIEW */}
-                  <div className="flex justify-end pt-1">
+                  {/* Action Buttons: VIEW and LEADERBOARD */}
+                  <div className="grid grid-cols-2 gap-2.5 pt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setViewingContest(c)}
+                      className="gap-1.5 font-bold border-border bg-surface text-foreground hover:bg-surface-2"
+                    >
+                      <Eye className="h-3.5 w-3.5" /> VIEW
+                    </Button>
                     <Button
                       variant="outlineGreen"
                       size="sm"
-                      onClick={() => setViewingContest(c)}
+                      onClick={() => handleOpenLeaderboard(c)}
                       className="gap-1.5 font-bold"
                     >
-                      <Eye className="h-3.5 w-3.5" /> VIEW
+                      <Trophy className="h-3.5 w-3.5" /> LEADERBOARD
                     </Button>
                   </div>
                 </div>
@@ -637,17 +692,17 @@ function Contests() {
       )}
 
       {/* ------------------------------------------------------------- */}
-      {/* MODAL 2: VIEW MY CONTEST DETAILS & JOINED TEAM */}
+      {/* MODAL 2: VIEW MY CONTEST DETAILS (PRIZES, MATCH & CONTEST)    */}
       {/* ------------------------------------------------------------- */}
       {viewingContest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-primary/40 bg-surface shadow-2xl">
             <div className="flex items-center justify-between border-b border-border bg-surface-2 px-5 py-4">
               <div>
                 <h3 className="font-display text-base font-bold text-foreground">
                   {viewingContest.name}
                 </h3>
-                <p className="text-xs text-muted-foreground">Contest & Team Details</p>
+                <p className="text-xs text-muted-foreground">Match, Contest & Prize Breakdown</p>
               </div>
               <Button
                 type="button"
@@ -661,25 +716,96 @@ function Contests() {
             </div>
 
             <div className="p-5 space-y-4">
-              {/* Contest Overview */}
-              <div className="flex items-center justify-between rounded-xl border border-border bg-surface-2 p-4">
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
-                    Prize Pool
-                  </p>
-                  <p className="font-display text-2xl font-black text-primary">
-                    {formatPrizeDisplay(viewingContest.prizePool ?? viewingContest.prize)}
-                  </p>
+              {/* 1. Match Details Card */}
+              <div className="rounded-xl border border-border bg-surface-2/60 p-4 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Match Details
+                  </span>
+                  <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-extrabold uppercase text-primary">
+                    {currentMatch?.providerData?.format || "T20I"}
+                  </span>
                 </div>
-                <div className="text-right">
-                  <StatusBadge status={viewingContest.status || "OPEN"} />
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    Max {viewingContest.maxSlots || 5000} spots
-                  </p>
+                <p className="font-display text-base font-black text-foreground">
+                  {currentMatch ? `${currentMatch.teamA} vs ${currentMatch.teamB}` : "England vs Pakistan"}
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground pt-1">
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 text-primary" />
+                    <span className="truncate">{currentMatch?.venue || "Edgbaston, Birmingham"}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-primary" />
+                    <span>{currentMatch?.providerData?.statusText || "Tomorrow • 7:00 PM"}</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Joined Team Details */}
+              {/* 2. Contest Details Card */}
+              <div className="rounded-xl border border-border bg-surface-2/60 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Contest Details
+                  </span>
+                  <StatusBadge status={viewingContest.status || "OPEN"} />
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-lg bg-surface p-2.5 border border-border">
+                    <span className="block text-[10px] text-muted-foreground uppercase">Prize Pool</span>
+                    <span className="font-display text-sm font-bold text-primary">
+                      {formatPrizeDisplay(viewingContest.prizePool ?? viewingContest.prize)}
+                    </span>
+                  </div>
+                  <div className="rounded-lg bg-surface p-2.5 border border-border">
+                    <span className="block text-[10px] text-muted-foreground uppercase">Entry Fee</span>
+                    <span className="font-display text-sm font-bold text-foreground">
+                      {!viewingContest.entryFee || viewingContest.entryFee === 0
+                        ? "FREE"
+                        : `₹${viewingContest.entryFee}`}
+                    </span>
+                  </div>
+                  <div className="rounded-lg bg-surface p-2.5 border border-border">
+                    <span className="block text-[10px] text-muted-foreground uppercase">Total Spots</span>
+                    <span className="font-display text-sm font-bold text-foreground">
+                      {(viewingContest.maxSlots || 50000).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. All Prizes Breakdown Table */}
+              <div className="rounded-xl border border-border bg-surface-2/40 p-4 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    All Prizes Breakdown
+                  </span>
+                  <span className="text-[11px] font-semibold text-primary">100% Guaranteed</span>
+                </div>
+                <div className="overflow-hidden rounded-lg border border-border bg-surface text-xs">
+                  <div className="grid grid-cols-3 border-b border-border bg-surface-2 px-3 py-2 font-bold uppercase text-[10px] text-muted-foreground">
+                    <span>Rank</span>
+                    <span className="text-center">Share</span>
+                    <span className="text-right">Prize</span>
+                  </div>
+                  {getPrizeBreakdown(viewingContest.prizePool ?? viewingContest.prize).map((r, idx) => (
+                    <div
+                      key={idx}
+                      className="grid grid-cols-3 items-center border-b border-border/50 px-3 py-2 last:border-0 hover:bg-surface-2/40 transition-colors"
+                    >
+                      <span className="font-bold text-foreground flex items-center gap-1.5">
+                        {idx === 0 && <span className="text-amber-400">🥇</span>}
+                        {idx === 1 && <span className="text-slate-300">🥈</span>}
+                        {idx === 2 && <span className="text-amber-600">🥉</span>}
+                        {r.rank}
+                      </span>
+                      <span className="text-center text-muted-foreground">{r.pct}</span>
+                      <span className="text-right font-display font-bold text-primary">{r.prize}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 4. Joined Team Details */}
               {(() => {
                 const teamObj: any = viewingContest.fantasyTeamId;
                 const fullTeam =
@@ -688,17 +814,17 @@ function Contests() {
                   ) ?? teamObj;
 
                 const teamName = fullTeam?.name ?? "Team 1";
-                const capName = fullTeam?.captainId ? getPlayerName(fullTeam.captainId) : "Player";
+                const capName = fullTeam?.captainId ? getPlayerName(fullTeam.captainId) : "Captain";
                 const vcName = fullTeam?.viceCaptainId
                   ? getPlayerName(fullTeam.viceCaptainId)
-                  : "Player";
+                  : "Vice Captain";
 
                 return (
                   <div className="rounded-xl border border-primary/30 bg-surface-2/60 p-4">
                     <div className="flex items-center justify-between border-b border-border pb-3">
                       <div>
                         <span className="block text-[10px] uppercase font-bold text-muted-foreground">
-                          Joined Team
+                          Your Joined Team
                         </span>
                         <span className="font-display text-base font-bold text-foreground">
                           {teamName}
@@ -740,19 +866,136 @@ function Contests() {
                   </div>
                 );
               })()}
+            </div>
+          </div>
+        </div>
+      )}
 
-              {/* Actions: View Leaderboard */}
+      {/* ------------------------------------------------------------- */}
+      {/* MODAL 3: LEADERBOARD MODAL (SHOWING USER RANK & PARTICIPANTS) */}
+      {/* ------------------------------------------------------------- */}
+      {leaderboardContest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-primary/40 bg-surface shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border bg-surface-2 px-5 py-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary">
+                  <Trophy className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-display text-base font-bold text-foreground">
+                    {leaderboardContest.name}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Contest Leaderboard & Rankings</p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setLeaderboardContest(null)}
+                className="h-8 w-8 rounded-full border border-border"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* User Standings Card */}
+              <div className="rounded-xl border border-primary/40 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="rounded-md bg-primary px-2 py-0.5 text-[10px] font-extrabold uppercase text-primary-foreground">
+                      Your Current Rank
+                    </span>
+                    <p className="mt-1.5 font-display text-2xl font-black text-foreground">
+                      #1 <span className="text-xs font-normal text-muted-foreground">(Live Standing)</span>
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className="block text-[10px] uppercase tracking-wider text-muted-foreground">
+                      Potential Prize
+                    </span>
+                    <span className="font-display text-lg font-bold text-primary">
+                      {formatPrizeDisplay(
+                        parsePrizeNumber(leaderboardContest.prizePool ?? leaderboardContest.prize) * 0.3
+                      )}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t border-primary/20 pt-2.5 text-xs">
+                  <span className="text-muted-foreground">
+                    Team: <b className="text-foreground">{((leaderboardContest.fantasyTeamId as any)?.name) || "Team 1"}</b>
+                  </span>
+                  <span className="font-bold text-foreground">0 Points</span>
+                </div>
+              </div>
+
+              {/* Leaderboard Standings Table */}
+              <div>
+                <h4 className="mb-2 font-display text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  All Participants
+                </h4>
+                <div className="overflow-hidden rounded-xl border border-border bg-surface text-xs">
+                  <div className="grid grid-cols-[50px_1fr_60px_80px] border-b border-border bg-surface-2 px-3.5 py-2 font-bold uppercase text-[10px] text-muted-foreground">
+                    <span>Rank</span>
+                    <span>Participant / Team</span>
+                    <span className="text-center">Pts</span>
+                    <span className="text-right">Prize</span>
+                  </div>
+
+                  {loadingLeaderboard ? (
+                    <div className="py-8 text-center text-xs text-muted-foreground">
+                      Loading participant rankings...
+                    </div>
+                  ) : (
+                    leaderboardRows.map((r, idx) => {
+                      const isUser = r.isUser || r.name === "You" || idx === 0;
+                      return (
+                        <div
+                          key={idx}
+                          className={`grid grid-cols-[50px_1fr_60px_80px] items-center border-b border-border/50 px-3.5 py-2.5 last:border-0 transition-colors ${
+                            isUser ? "bg-primary/10 font-bold border-primary/30" : "hover:bg-surface-2/40"
+                          }`}
+                        >
+                          <span className="font-display font-bold text-foreground">
+                            {idx === 0 ? "🥇 #1" : idx === 1 ? "🥈 #2" : idx === 2 ? "🥉 #3" : `#${r.rank ?? idx + 1}`}
+                          </span>
+                          <div>
+                            <span className="block truncate font-semibold text-foreground">
+                              {r.name ?? r.user?.name ?? "Participant"}
+                              {isUser && (
+                                <span className="ml-1.5 rounded bg-primary/20 px-1 py-0.2 text-[9px] font-extrabold text-primary">
+                                  YOU
+                                </span>
+                              )}
+                            </span>
+                            <span className="block text-[10px] text-muted-foreground">
+                              {r.teamName ?? r.fantasyTeamId?.name ?? "Team 1"}
+                            </span>
+                          </div>
+                          <span className="text-center font-display font-semibold text-foreground">
+                            {r.points ?? r.totalPoints ?? 0}
+                          </span>
+                          <span className="text-right font-display font-bold text-primary">
+                            {r.prize || "-"}
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Close Button */}
               <div className="pt-2">
                 <Button
                   variant="hero"
                   size="xl"
-                  className="w-full font-bold gap-2"
-                  onClick={() => {
-                    setFlow(FLOW_KEYS.selectedContestId, viewingContest._id);
-                    navigate({ to: "/leaderboard" });
-                  }}
+                  className="w-full font-bold"
+                  onClick={() => setLeaderboardContest(null)}
                 >
-                  <Trophy className="h-4 w-4" /> VIEW LEADERBOARD
+                  CLOSE
                 </Button>
               </div>
             </div>

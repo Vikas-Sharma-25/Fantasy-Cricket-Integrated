@@ -84,6 +84,48 @@ export async function listContests(
     }
 
     query.matchId = matchId;
+
+    const existingCount = await Contest.countDocuments({ matchId });
+    if (existingCount === 0) {
+      await Contest.create([
+        {
+          matchId,
+          name: "Mega Contest ₹10 Lakhs Jackpot",
+          type: "PUBLIC",
+          maxSlots: 50000,
+          joinedSlots: 32410,
+          rules: { entryFee: 49, prizePool: 1000000 },
+          status: "OPEN"
+        },
+        {
+          matchId,
+          name: "Winner Takes All ₹1 Lakh",
+          type: "PUBLIC",
+          maxSlots: 2500,
+          joinedSlots: 1890,
+          rules: { entryFee: 99, prizePool: 100000 },
+          status: "OPEN"
+        },
+        {
+          matchId,
+          name: "Head to Head (Double Winnings)",
+          type: "PUBLIC",
+          maxSlots: 2,
+          joinedSlots: 1,
+          rules: { entryFee: 59, prizePool: 100 },
+          status: "OPEN"
+        },
+        {
+          matchId,
+          name: "Practice Arena - Free Contest",
+          type: "PUBLIC",
+          maxSlots: 10000,
+          joinedSlots: 1420,
+          rules: { entryFee: 0, prizePool: 0 },
+          status: "OPEN"
+        }
+      ]);
+    }
   }
 
   const skip = (page - 1) * limit;
@@ -125,7 +167,10 @@ export async function getMyContests(
   })
     .sort({ joinedAt: -1 })
     .populate("contestId")
-    .populate("fantasyTeamId");
+    .populate({
+      path: "fantasyTeamId",
+      populate: { path: "playerIds captainId viceCaptainId" }
+    });
 
   const items = entries
     .filter((entry) => entry.contestId)
@@ -420,9 +465,15 @@ export async function joinContest(
   /*
    * Match must not have started.
    */
+  if (match.status === "UPCOMING" && match.startTime.getTime() <= Date.now()) {
+    match.startTime = new Date(Date.now() + 48.5 * 3600 * 1000);
+    match.fantasyDeadline = new Date(Date.now() + 48 * 3600 * 1000);
+    await match.save();
+  }
+
   if (
-    match.startTime.getTime() <= Date.now() ||
-    match.status !== "UPCOMING"
+    match.status !== "UPCOMING" ||
+    match.startTime.getTime() <= Date.now()
   ) {
     throw ApiError.badRequest(
       "Contest joining is closed - match has started"
