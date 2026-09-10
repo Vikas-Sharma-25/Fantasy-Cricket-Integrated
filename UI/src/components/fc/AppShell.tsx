@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
-import { getMe } from "@/lib/api-services";
+import { getMe, getCachedUser } from "@/lib/api-services";
 import type { User } from "@/lib/api-types";
 import { removeFlow, FLOW_KEYS } from "@/lib/flow";
 
@@ -93,7 +93,7 @@ export function AppShell({
   maxWidth?: string;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => getCachedUser());
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
   const notificationRef = useRef<HTMLDivElement>(null);

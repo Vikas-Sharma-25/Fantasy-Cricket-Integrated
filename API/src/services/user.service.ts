@@ -14,15 +14,18 @@ export async function updateMe(
   userId: string,
   updates: Partial<{ name: string; mobile: string; profileImage: string; preferences: Record<string, unknown> }>
 ) {
-  const user = await User.findById(userId);
+  const updateDoc: Record<string, unknown> = {};
+  if (updates.name !== undefined) updateDoc.name = updates.name;
+  if (updates.mobile !== undefined) updateDoc.mobile = updates.mobile;
+  if (updates.profileImage !== undefined) updateDoc.profileImage = updates.profileImage;
+  if (updates.preferences !== undefined) updateDoc.preferences = updates.preferences;
+
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { $set: updateDoc },
+    { new: true, runValidators: false }
+  );
   if (!user) throw ApiError.notFound("User not found");
-
-  if (updates.name !== undefined) user.name = updates.name;
-  if (updates.mobile !== undefined) user.mobile = updates.mobile;
-  if (updates.profileImage !== undefined) user.profileImage = updates.profileImage;
-  if (updates.preferences !== undefined) user.preferences = updates.preferences;
-
-  await user.save();
   return sanitizeUser(user);
 }
 

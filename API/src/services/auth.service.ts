@@ -202,13 +202,14 @@ export async function logoutSession(sessionId: string) {
 export function sanitizeUser(user: IUser) {
   return {
     id: user._id.toString(),
+    _id: user._id.toString(),
     name: user.name,
     email: user.email,
     mobile: user.mobile,
     role: user.role,
     status: user.status,
     isVerified: user.isVerified,
-    profileImage: user.profileImage,
+    profileImage: user.profileImage || "",
     preferences: user.preferences
   };
 }

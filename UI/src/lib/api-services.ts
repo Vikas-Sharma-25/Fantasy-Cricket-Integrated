@@ -13,9 +13,31 @@ export async function loginUser(input: { email: string; password: string }) {
   return api.post<{ message?: string; otpToken?: string; email?: string }>("/auth/login", input);
 }
 
+export function getCachedUser(): User | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("cached_user");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setCachedUser(user: User | null): void {
+  if (typeof window === "undefined") return;
+  if (user) {
+    localStorage.setItem("cached_user", JSON.stringify(user));
+  } else {
+    localStorage.removeItem("cached_user");
+  }
+}
+
 export async function verifyLoginOtp(otp: string, otpToken?: string) {
   const result = await api.post<{ accessToken: string; user: User }>("/auth/verify-otp", { otp, otpToken });
-  if (typeof window !== "undefined") localStorage.setItem("accessToken", result.accessToken);
+  if (typeof window !== "undefined") {
+    localStorage.setItem("accessToken", result.accessToken);
+    if (result.user) setCachedUser(result.user);
+  }
   return result;
 }
 
@@ -27,16 +49,23 @@ export async function logoutUser() {
   try {
     await api.post("/auth/logout", {});
   } finally {
-    if (typeof window !== "undefined") localStorage.removeItem("accessToken");
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("accessToken");
+      setCachedUser(null);
+    }
   }
 }
 
 export async function getMe() {
-  return api.get<User>("/users/me");
+  const user = await api.get<User>("/users/me");
+  if (user) setCachedUser(user);
+  return user;
 }
 
 export async function updateProfile(data: Partial<User>) {
-  return api.patch<User>("/users/me", data);
+  const user = await api.patch<User>("/users/me", data);
+  if (user) setCachedUser(user);
+  return user;
 }
 
 export async function getMatches(status?: string) {
