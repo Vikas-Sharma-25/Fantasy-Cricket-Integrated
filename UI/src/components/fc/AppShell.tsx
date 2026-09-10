@@ -99,8 +99,13 @@ export function AppShell({
   const notificationRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const cached = getCachedUser();
+    if (cached) setUser(cached);
+
     void getMe()
-      .then(setUser)
+      .then((data) => {
+        if (data) setUser(data);
+      })
       .catch(() => {});
 
     function onProfileUpdated(e: Event) {

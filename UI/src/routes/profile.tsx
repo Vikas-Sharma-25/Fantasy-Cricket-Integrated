@@ -46,15 +46,18 @@ function Profile() {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const cached = apiServices.getCachedUser();
+    if (cached) {
+      setUser(cached);
+      setAvatarUrl(cached.profileImage || "");
+    }
     void apiServices
       .getMe()
       .then((data) => {
         if (data) {
           setUser(data);
           apiServices.setCachedUser(data);
-          if (data.profileImage) {
-            setAvatarUrl(data.profileImage);
-          }
+          setAvatarUrl(data.profileImage || "");
         }
       })
       .catch(() => {
@@ -130,11 +133,19 @@ function Profile() {
       setUploading(true);
       setUploadMessage("Uploading to S3...");
       const s3Url = await apiServices.uploadFileToS3(file, "avatars");
+
+      // Instantly show image in profile and side navigation (< 1s)
       setAvatarUrl(s3Url);
+      const optimisticUser = user ? { ...user, profileImage: s3Url } : null;
+      if (optimisticUser) {
+        setUser(optimisticUser);
+        apiServices.setCachedUser(optimisticUser);
+        window.dispatchEvent(new CustomEvent("user-profile-updated", { detail: optimisticUser }));
+      }
 
       // Permanently save avatar in MongoDB database
       const updatedUser = await apiServices.updateProfile({ profileImage: s3Url });
-      const finalUser = updatedUser || (user ? { ...user, profileImage: s3Url } : null);
+      const finalUser = updatedUser || optimisticUser;
       if (finalUser) {
         setUser(finalUser);
         apiServices.setCachedUser(finalUser);
@@ -216,7 +227,7 @@ function Profile() {
                 className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-foreground hover:bg-surface transition-colors"
               >
                 <Eye className="h-4 w-4 text-primary" />
-                <span>View Profile Picture</span>
+                <span>View Profile Pic</span>
               </button>
 
               <button
@@ -225,7 +236,7 @@ function Profile() {
                 className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-foreground hover:bg-surface transition-colors"
               >
                 <RefreshCw className="h-4 w-4 text-emerald-400" />
-                <span>Change Profile Picture</span>
+                <span>Change Profile</span>
               </button>
 
               <div className="my-1 h-px bg-border/60" />
@@ -236,7 +247,7 @@ function Profile() {
                 className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-destructive hover:bg-destructive/10 transition-colors"
               >
                 <Trash2 className="h-4 w-4 text-destructive" />
-                <span>Delete Profile Picture</span>
+                <span>Delete Profile Pic</span>
               </button>
             </div>
           )}

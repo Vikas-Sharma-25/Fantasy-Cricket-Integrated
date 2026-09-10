@@ -1,4 +1,7 @@
-const API_BASE_URL = (import.meta.env["VITE_API_URL"] || "http://localhost:5000/api").replace(/\/$/, "");
+const API_BASE_URL = (
+  import.meta.env["VITE_API_URL"] ||
+  (typeof window !== "undefined" ? "/api" : "http://127.0.0.1:5000/api")
+).replace(/\/$/, "");
 
 export class ApiClientError extends Error {
   status: number;

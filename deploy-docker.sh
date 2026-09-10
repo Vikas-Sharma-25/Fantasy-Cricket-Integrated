@@ -9,14 +9,13 @@ echo "========================================="
 echo "📥 Pulling latest code from git..."
 git pull origin main
 
-# 2. Build backend and frontend assets
-echo "⚙️ Building API and UI production bundles..."
-cd API && npm run build && cd ..
-cd UI && npm run build && cd ..
+# 2. Build frontend production bundle for container
+echo "⚙️ Building UI production bundle..."
+(cd UI && npm run build)
 
 # 3. Rebuild and launch containers in background
 echo "🐳 Starting Docker containers..."
-docker compose up -d --build
+docker compose up -d --build --force-recreate
 
 # 4. Clean up dangling images and build cache to keep EC2 disk healthy
 echo "🧹 Pruning unused images and builder cache..."
