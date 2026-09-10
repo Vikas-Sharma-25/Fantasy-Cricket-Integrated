@@ -996,6 +996,453 @@ function getMatchMarketNews(teamA: string = "East Zone", teamB: string = "South 
   return getMatchSpecificNews(null, teamA, teamB);
 }
 
+const PLAYER_HEADSHOTS: Record<string, string> = {
+  "Ben Duckett": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Ben_Duckett_%28cropped%29.jpg/220px-Ben_Duckett_%28cropped%29.jpg",
+  "Joe Root": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Joe_Root_in_2023.jpg/220px-Joe_Root_in_2023.jpg",
+  "Harry Brook": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Harry_Brook_2023.jpg/220px-Harry_Brook_2023.jpg",
+  "Jofra Archer": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Jofra_Archer_in_2019.jpg/220px-Jofra_Archer_in_2019.jpg",
+  "Saim Ayub": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Saim_Ayub_in_2023.jpg/220px-Saim_Ayub_in_2023.jpg",
+  "Abdullah Shafique": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Abdullah_Shafique_2023.jpg/220px-Abdullah_Shafique_2023.jpg",
+  "Shan Masood": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Shan_Masood_2023.jpg/220px-Shan_Masood_2023.jpg",
+  "Babar Azam": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Babar_Azam_2023.jpg/220px-Babar_Azam_2023.jpg",
+  "Stephen Fleming": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Stephen_Fleming_2011.jpg/220px-Stephen_Fleming_2011.jpg",
+  "Marcus Trescothick": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Marcus_Trescothick_2012.jpg/220px-Marcus_Trescothick_2012.jpg",
+  "Paul Collingwood": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Paul_Collingwood_2009.jpg/220px-Paul_Collingwood_2009.jpg",
+  "Rohit Sharma": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Rohit_Sharma_November_2023_%28cropped%29.jpg/220px-Rohit_Sharma_November_2023_%28cropped%29.jpg",
+  "Virat Kohli": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Virat_Kohli_during_the_India_vs_Aus_4th_Test_match_at_Narendra_Modi_Stadium_05.jpg/220px-Virat_Kohli_during_the_India_vs_Aus_4th_Test_match_at_Narendra_Modi_Stadium_05.jpg",
+  "Jasprit Bumrah": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Jasprit_Bumrah_in_2023.jpg/220px-Jasprit_Bumrah_in_2023.jpg",
+  "Pat Cummins": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Pat_Cummins_in_2023.jpg/220px-Pat_Cummins_in_2023.jpg",
+  "Steven Smith": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Steve_Smith_in_2023.jpg/220px-Steve_Smith_in_2023.jpg",
+  "Travis Head": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Travis_Head_2023.jpg/220px-Travis_Head_2023.jpg",
+};
+
+function PlayerAvatar({ name }: { name: string }) {
+  const [hasError, setHasError] = useState(false);
+  const clean = name.replace(/\(c\)|\(wk\)/gi, "").trim();
+  const url = !hasError ? PLAYER_HEADSHOTS[clean] : null;
+
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt={clean}
+        onError={() => setHasError(true)}
+        className="w-10 h-10 rounded-full object-cover border border-border/80 shrink-0 bg-surface-2"
+        loading="lazy"
+      />
+    );
+  }
+
+  return (
+    <div className="w-10 h-10 rounded-full bg-surface-2 border border-border/70 flex items-center justify-center text-muted-foreground/60 shrink-0">
+      <UserIcon className="w-5 h-5" />
+    </div>
+  );
+}
+
+function getPlayerRole(name: string, index: number): string {
+  const lower = name.toLowerCase();
+  if (lower.includes("(wk)")) return "WK-Batter";
+  if (lower.includes("smith") && lower.includes("wk")) return "WK-Batter";
+  if (lower.includes("cox")) return "WK-Batter";
+  if (lower.includes("ghori")) return "WK-Batter";
+  if (lower.includes("pant") || lower.includes("kishan") || lower.includes("carey") || lower.includes("bhui") || lower.includes("baig")) return "WK-Batter";
+  
+  if (lower.includes("ayub")) return "Batting Allrounder";
+  if (lower.includes("lawrence")) return "Batting Allrounder";
+  if (lower.includes("shakeel")) return "Batting Allrounder";
+  if (lower.includes("randhawa")) return "Bowling Allrounder";
+  if (lower.includes("jadeja") || lower.includes("ashwin") || lower.includes("sundar") || lower.includes("marsh") || lower.includes("head") || lower.includes("parag") || lower.includes("minhas")) return "Allrounder";
+
+  if (lower.includes("atkinson") || lower.includes("robinson") || lower.includes("archer") || lower.includes("tongue") || lower.includes("abbas") || lower.includes("ali") || lower.includes("shami") || lower.includes("siraj") || lower.includes("bumrah") || lower.includes("starc") || lower.includes("lyon") || lower.includes("hazlewood") || lower.includes("sharma") || lower.includes("cummins") || lower.includes("bashir") || lower.includes("cook") || lower.includes("baker") || lower.includes("shah") || lower.includes("sajid")) return "Bowler";
+
+  if (index >= 7) return "Bowler";
+  if (index >= 4) return "Batter";
+  return "Batter";
+}
+
+function getStaffRole(name: string, index: number): string {
+  const lower = name.toLowerCase();
+  if (lower.includes("fleming")) return "Head Coach";
+  if (lower.includes("trescothick")) return "Interim Test Head Coach";
+  if (lower.includes("collingwood")) return "Assistant Coach";
+  if (lower.includes("patel")) return "Spin Bowling Coach";
+  if (lower.includes("saker")) return "Fast Bowling Coach";
+  if (lower.includes("hesson")) return "Head Coach";
+  if (lower.includes("shafiq")) return "Batting Coach";
+  if (lower.includes("noffke")) return "Bowling Coach";
+  if (lower.includes("mcdermott")) return "Fielding Coach";
+  if (lower.includes("gambhir") || lower.includes("mcdonald") || lower.includes("kulkarni")) return "Head Coach";
+  if (lower.includes("nayar") || lower.includes("badrinath") || lower.includes("venuto")) return "Batting Coach";
+  if (lower.includes("morkel") || lower.includes("joshi") || lower.includes("vettori")) return "Bowling Coach";
+  if (lower.includes("dilip") || lower.includes("sridhar") || lower.includes("borovec")) return "Fielding Coach";
+  
+  const defaults = ["Head Coach", "Batting Coach", "Bowling Coach", "Fielding Coach", "Fast Bowling Coach"];
+  return defaults[index] || "Support Staff";
+}
+
+function calculateMatchCountdown(match: any) {
+  let targetTime: number = 0;
+  const raw = match?.startTime || match?.date;
+  if (raw) {
+    const parsed = new Date(raw).getTime();
+    if (!isNaN(parsed) && parsed > Date.now()) {
+      targetTime = parsed;
+    }
+  }
+
+  if (!targetTime) {
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    tomorrow.setHours(19, 0, 0, 0);
+    targetTime = tomorrow.getTime();
+  }
+
+  const diff = Math.max(0, targetTime - Date.now());
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+  return { days, hours, minutes, seconds };
+}
+
+function getMatchDateAndTimeString(match: any) {
+  let dateStr = "Tomorrow";
+  let timeStr = "7:00 PM IST (1:30 PM GMT • 2:00 PM Local)";
+  const raw = match?.startTime || match?.date;
+  if (raw) {
+    try {
+      const d = new Date(raw);
+      if (!isNaN(d.getTime())) {
+        dateStr = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+        timeStr = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) + " IST";
+      }
+    } catch {}
+  }
+  if (match?.statusText && (match.statusText.includes("Tomorrow") || match.statusText.includes("Today"))) {
+    const parts = match.statusText.split("•");
+    if (parts.length > 1) {
+      dateStr = parts[0].trim();
+      timeStr = parts[1].trim() + " IST";
+    }
+  }
+  return { dateStr, timeStr };
+}
+
+function getMatchTimeDisplay(match: any): string {
+  const status = (match?.status || "UPCOMING").toUpperCase();
+  if (status === "LIVE") {
+    return "LIVE • In Progress";
+  }
+  if (status === "COMPLETED") {
+    return match?.statusText || "Match Completed";
+  }
+  if (match?.statusText && (match.statusText.includes("Tomorrow") || match.statusText.includes("Today"))) {
+    return match.statusText;
+  }
+  const raw = match?.startTime || match?.date;
+  if (raw) {
+    try {
+      const d = new Date(raw);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " • " + d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+      }
+    } catch {}
+  }
+  return "Tomorrow • 7:00 PM";
+}
+
+function MatchStartingSoonCard({
+  match,
+  sectionName,
+  onJoinContests,
+  onViewSquads,
+  onViewInfo,
+}: {
+  match: any;
+  sectionName: string;
+  onJoinContests: () => void;
+  onViewSquads: () => void;
+  onViewInfo: () => void;
+}) {
+  const teamA = match?.teamA || "Team A";
+  const teamB = match?.teamB || "Team B";
+  const teamAFlag = match?.teamAFlag || getTeamFlag(match?.teamACode || teamA);
+  const teamBFlag = match?.teamBFlag || getTeamFlag(match?.teamBCode || teamB);
+  const venue = match?.venue || "Edgbaston, Birmingham";
+
+  const [timeLeft, setTimeLeft] = useState(() => calculateMatchCountdown(match));
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(calculateMatchCountdown(match));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [match]);
+
+  const { dateStr, timeStr } = getMatchDateAndTimeString(match);
+
+  return (
+    <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-b from-[#072419] via-surface to-surface-2 p-6 sm:p-8 shadow-xl space-y-6 text-center animate-in fade-in-50 duration-150">
+      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-black uppercase tracking-wider">
+        <Clock className="h-3.5 w-3.5 animate-spin" style={{ animationDuration: "6s" }} />
+        <span>MATCH STARTING SOON • {match?.format || "T20"}</span>
+      </div>
+
+      <div className="flex items-center justify-center gap-4 sm:gap-8">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl sm:text-3xl">{teamAFlag}</span>
+          <span className="text-base sm:text-lg font-black text-foreground">{teamA}</span>
+        </div>
+        <span className="text-sm font-black text-muted-foreground/60">VS</span>
+        <div className="flex items-center gap-2">
+          <span className="text-base sm:text-lg font-black text-foreground">{teamB}</span>
+          <span className="text-2xl sm:text-3xl">{teamBFlag}</span>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-center gap-2 sm:gap-3 py-2">
+        {timeLeft.days > 0 && (
+          <div className="flex flex-col items-center bg-surface-2/90 border border-emerald-500/20 rounded-xl px-3 py-2 min-w-[64px]">
+            <span className="text-xl sm:text-2xl font-black font-mono text-emerald-400">{String(timeLeft.days).padStart(2, "0")}</span>
+            <span className="text-[10px] uppercase font-bold text-muted-foreground">Days</span>
+          </div>
+        )}
+        <div className="flex flex-col items-center bg-surface-2/90 border border-emerald-500/20 rounded-xl px-3 py-2 min-w-[64px]">
+          <span className="text-xl sm:text-2xl font-black font-mono text-emerald-400">{String(timeLeft.hours).padStart(2, "0")}</span>
+          <span className="text-[10px] uppercase font-bold text-muted-foreground">Hours</span>
+        </div>
+        <span className="text-emerald-500 font-mono font-bold text-xl">:</span>
+        <div className="flex flex-col items-center bg-surface-2/90 border border-emerald-500/20 rounded-xl px-3 py-2 min-w-[64px]">
+          <span className="text-xl sm:text-2xl font-black font-mono text-emerald-400">{String(timeLeft.minutes).padStart(2, "0")}</span>
+          <span className="text-[10px] uppercase font-bold text-muted-foreground">Mins</span>
+        </div>
+        <span className="text-emerald-500 font-mono font-bold text-xl">:</span>
+        <div className="flex flex-col items-center bg-surface-2/90 border border-emerald-500/20 rounded-xl px-3 py-2 min-w-[64px]">
+          <span className="text-xl sm:text-2xl font-black font-mono text-emerald-400 animate-pulse">{String(timeLeft.seconds).padStart(2, "0")}</span>
+          <span className="text-[10px] uppercase font-bold text-muted-foreground">Secs</span>
+        </div>
+      </div>
+
+      <div className="max-w-md mx-auto rounded-xl bg-surface-2/60 border border-border/80 p-3.5 space-y-1.5 text-xs text-left">
+        <div className="flex items-center justify-between text-muted-foreground">
+          <span className="font-semibold">Scheduled Date:</span>
+          <span className="font-bold text-foreground">{dateStr}</span>
+        </div>
+        <div className="flex items-center justify-between text-muted-foreground">
+          <span className="font-semibold">Start Time:</span>
+          <span className="font-bold text-emerald-400">{timeStr}</span>
+        </div>
+        <div className="flex items-center justify-between text-muted-foreground">
+          <span className="font-semibold">Match Status:</span>
+          <span className="font-bold text-foreground">UPCOMING • Toss scheduled 30m before play</span>
+        </div>
+        <div className="flex items-center justify-between text-muted-foreground">
+          <span className="font-semibold">Venue:</span>
+          <span className="font-bold text-foreground truncate max-w-[200px]">{venue}</span>
+        </div>
+      </div>
+
+      <div className="max-w-lg mx-auto space-y-1.5">
+        <h4 className="text-sm sm:text-base font-black text-foreground">
+          {sectionName} Will Activate Automatically
+        </h4>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          {teamA} vs {teamB} has not started yet. Real-time {sectionName.toLowerCase()}, over breakdowns, ball-by-ball commentary, and live scores will appear here automatically once play begins.
+        </p>
+      </div>
+
+      <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+        <Button
+          onClick={onJoinContests}
+          variant="hero"
+          className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white gap-2 shadow-lg hover:scale-[1.02] cursor-pointer"
+        >
+          <Trophy className="h-4 w-4" /> Join Contests &amp; Build Team
+        </Button>
+        <Button
+          onClick={onViewSquads}
+          variant="outline"
+          className="text-xs border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 gap-2 cursor-pointer"
+        >
+          <Users className="h-4 w-4" /> View Confirmed Squads
+        </Button>
+        <Button
+          onClick={onViewInfo}
+          variant="outline"
+          className="text-xs border-border hover:bg-surface-2 gap-2 cursor-pointer"
+        >
+          <Info className="h-4 w-4" /> Match Info
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function getMatchOversData(match: any, teamA: string, teamB: string) {
+  return [
+    {
+      overNumber: 20,
+      runs: 14,
+      wickets: 1,
+      bowler: "Jofra Archer",
+      balls: [
+        { ball: "20.1", text: "1", type: "single" },
+        { ball: "20.2", text: "4", type: "four" },
+        { ball: "20.3", text: "W", type: "wicket" },
+        { ball: "20.4", text: "1", type: "single" },
+        { ball: "20.5", text: "6", type: "six" },
+        { ball: "20.6", text: "2", type: "two" },
+      ],
+      totalScore: `${teamB} 187/5 (20.0 ov)`,
+      summary: "Archer to Babar, OUT! Caught at long on! High drama in the final over, but Pakistan finish with a competitive total."
+    },
+    {
+      overNumber: 19,
+      runs: 11,
+      wickets: 0,
+      bowler: "Gus Atkinson",
+      balls: [
+        { ball: "19.1", text: "2", type: "two" },
+        { ball: "19.2", text: "1", type: "single" },
+        { ball: "19.3", text: "4", type: "four" },
+        { ball: "19.4", text: "1", type: "single" },
+        { ball: "19.5", text: "1", type: "single" },
+        { ball: "19.6", text: "2", type: "two" },
+      ],
+      totalScore: `${teamB} 173/4 (19.0 ov)`,
+      summary: "Atkinson nails the yorker on ball 5, but batters manage to sneak two on the final delivery."
+    },
+    {
+      overNumber: 18,
+      runs: 16,
+      wickets: 0,
+      bowler: "Josh Tongue",
+      balls: [
+        { ball: "18.1", text: "6", type: "six" },
+        { ball: "18.2", text: "4", type: "four" },
+        { ball: "18.3", text: "1", type: "single" },
+        { ball: "18.4", text: "1", type: "single" },
+        { ball: "18.5", text: "0", type: "dot" },
+        { ball: "18.6", text: "4", type: "four" },
+      ],
+      totalScore: `${teamB} 162/4 (18.0 ov)`,
+      summary: "Expensive over from Tongue! 16 runs plundered with back-to-back boundaries."
+    },
+    {
+      overNumber: 17,
+      runs: 8,
+      wickets: 1,
+      bowler: "Ollie Robinson",
+      balls: [
+        { ball: "17.1", text: "0", type: "dot" },
+        { ball: "17.2", text: "1", type: "single" },
+        { ball: "17.3", text: "W", type: "wicket" },
+        { ball: "17.4", text: "1", type: "single" },
+        { ball: "17.5", text: "2", type: "two" },
+        { ball: "17.6", text: "4", type: "four" },
+      ],
+      totalScore: `${teamB} 146/4 (17.0 ov)`,
+      summary: "Robinson strikes! Clean bowled with an off-cutter before a boundary off the edge to third man."
+    },
+    {
+      overNumber: 16,
+      runs: 7,
+      wickets: 0,
+      bowler: "Jofra Archer",
+      balls: [
+        { ball: "16.1", text: "1", type: "single" },
+        { ball: "16.2", text: "1", type: "single" },
+        { ball: "16.3", text: "2", type: "two" },
+        { ball: "16.4", text: "0", type: "dot" },
+        { ball: "16.5", text: "1", type: "single" },
+        { ball: "16.6", text: "2", type: "two" },
+      ],
+      totalScore: `${teamB} 138/3 (16.0 ov)`,
+      summary: "Disciplined death-bowling line from Archer outside off stump."
+    },
+  ];
+}
+
+function getMatchFullCommentary(match: any, teamA: string, teamB: string) {
+  return [
+    {
+      ball: "20.6",
+      over: "20",
+      event: "2",
+      badgeType: "run",
+      headline: "Bowler to Batter, 2 runs",
+      desc: "Full on the pads, whipped away through mid-wicket with soft hands. Great sprint between wickets to finish the over with a brace!",
+      score: "187/5",
+    },
+    {
+      ball: "20.5",
+      over: "20",
+      event: "6",
+      badgeType: "six",
+      headline: "Bowler to Batter, SIX! Maximum over long-off!",
+      desc: "In the slot and dispatched! Batter stands tall and lofts it cleanly over the long-off fence into the second tier. What a shot!",
+      score: "185/5",
+    },
+    {
+      ball: "20.4",
+      over: "20",
+      event: "1",
+      badgeType: "single",
+      headline: "Bowler to Batter, 1 run",
+      desc: "Slower ball cutter outside off, tapped gently to cover-point for a quick single.",
+      score: "179/5",
+    },
+    {
+      ball: "20.3",
+      over: "20",
+      event: "W",
+      badgeType: "wicket",
+      headline: "Bowler to Batter, OUT! Caught in the deep!",
+      desc: "OUT c Fielder b Bowler! Tries to clear long-on but mistimes the back-of-a-length delivery. Fielder judges it cleanly on the boundary rope.",
+      score: "178/5",
+    },
+    {
+      ball: "20.2",
+      over: "20",
+      event: "4",
+      badgeType: "four",
+      headline: "Bowler to Batter, FOUR! Pierces the gap!",
+      desc: "Short and wide, Batter cuts it hard between backward point and short third man. Raced away to the boundary rope in a flash!",
+      score: "178/4",
+    },
+    {
+      ball: "20.1",
+      over: "20",
+      event: "1",
+      badgeType: "single",
+      headline: "Bowler to Batter, 1 run",
+      desc: "Yorker right on the base of off stump, dug out safely to mid-on.",
+      score: "174/4",
+    },
+    {
+      ball: "19.6",
+      over: "19",
+      event: "2",
+      badgeType: "run",
+      headline: "Bowler to Batter, 2 runs",
+      desc: "Driven firmly into the gap at sweeper cover. Easy couple of runs taken.",
+      score: "173/4",
+    },
+    {
+      ball: "19.3",
+      over: "19",
+      event: "4",
+      badgeType: "four",
+      headline: "Bowler to Batter, FOUR! Glorious cover drive!",
+      desc: "Half volley outside off, Batter leans into it with supreme balance and threads the gap between extra cover and mid-off. Textbook boundary!",
+      score: "170/4",
+    },
+  ];
+}
+
 let memoryCachedWorldMatches: any[] = [];
 let memoryCachedSelectedMatch: any = null;
 let memoryCachedNews: any[] = [];
@@ -1259,11 +1706,11 @@ function Matches() {
     }
 
     // Set appropriate initial tab based on match status
-    const status = (wm.status || "LIVE").toUpperCase();
+    const status = (wm.status || "UPCOMING").toUpperCase();
     if (status === "UPCOMING") {
-      setMatchTab("Contests");
+      setMatchTab("Info"); // Opens Info tab with teal indicator as in Pic 2
     } else if (status === "COMPLETED") {
-      setMatchTab("Result");
+      setMatchTab("Scorecard");
     } else {
       setMatchTab("Live");
     }
@@ -1526,54 +1973,29 @@ function Matches() {
 
   const matchStatus = (selectedHomeMatch?.status || "LIVE").toUpperCase();
 
-  // Cricbuzz Tab Ordering strictly adhering to user requirements:
-  // - UPCOMING: Contests (with Create Team), Info, Squads, Pitch & Weather, News
-  // - LIVE: Live, Scorecard, Contests, Squads, Pitch & Weather, Leaderboard, Highlights, Graphs, Info, News
-  // - COMPLETED: Result, Scorecard, Leaderboard, Highlights, Graphs, Squads, Pitch & Weather, Info, News
+  // Cricbuzz Tab Ordering strictly adhering to user requirements (Pic 2):
+  // Info | Live | Scorecard | Squads | Overs | Graphs | Highlights | Full Commentary | News | Contests
   const availableTabs = useMemo(() => {
-    if (matchStatus === "UPCOMING") {
-      return [
-        "Contests",
-        "Info",
-        "Squads",
-        "Pitch & Weather",
-        "News",
-      ];
-    }
-    if (matchStatus === "COMPLETED") {
-      return [
-        "Result",
-        "Scorecard",
-        "Leaderboard",
-        "Highlights",
-        "Graphs",
-        "Squads",
-        "Pitch & Weather",
-        "Info",
-        "News",
-      ];
-    }
-    // LIVE Match
     return [
+      "Info",
       "Live",
       "Scorecard",
-      "Contests",
       "Squads",
-      "Pitch & Weather",
-      "Leaderboard",
-      "Highlights",
+      "Overs",
       "Graphs",
-      "Info",
+      "Highlights",
+      "Full Commentary",
       "News",
+      "Contests",
     ];
-  }, [matchStatus]);
+  }, []);
 
-  // Sync active tab whenever match or available tabs change (e.g. upcoming matches cannot access Live/Scorecard)
+  // Sync active tab whenever match or available tabs change
   useEffect(() => {
     if (availableTabs.length > 0 && !availableTabs.includes(matchTab)) {
-      setMatchTab(availableTabs[0] || "Contests");
+      setMatchTab(matchStatus === "UPCOMING" ? "Info" : "Live");
     }
-  }, [availableTabs, matchTab]);
+  }, [availableTabs, matchTab, matchStatus]);
 
   const filteredHighlights = useMemo(() => {
     return MOCK_HIGHLIGHTS.filter((h) => {
@@ -2407,35 +2829,13 @@ function Matches() {
             {/* TAB CONTENT: LIVE */}
             {matchTab === "Live" && (
               matchStatus === "UPCOMING" ? (
-                <div className="rounded-2xl border border-emerald-500/20 bg-surface/90 p-8 sm:p-12 text-center space-y-4 shadow-md animate-in fade-in-50 duration-150">
-                  <div className="h-16 w-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400">
-                    <Clock className="h-8 w-8 animate-pulse" />
-                  </div>
-                  <div className="space-y-1.5 max-w-md mx-auto">
-                    <h3 className="text-lg sm:text-xl font-black text-foreground">
-                      Match Has Not Started Yet
-                    </h3>
-                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                      {teamA} vs {teamB} is scheduled to begin shortly. Real-time scores, ball-by-ball commentary, and live scorecard will activate automatically once play starts.
-                    </p>
-                  </div>
-                  <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
-                    <Button
-                      onClick={() => setMatchTab("Contests")}
-                      variant="hero"
-                      className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5 shadow"
-                    >
-                      <Trophy className="h-3.5 w-3.5" /> Join Contests &amp; Build Team
-                    </Button>
-                    <Button
-                      onClick={() => setMatchTab("Pitch & Weather")}
-                      variant="outline"
-                      className="text-xs border-border/80 hover:border-emerald-500/50 gap-1.5"
-                    >
-                      <Flame className="h-3.5 w-3.5 text-emerald-400" /> Pitch &amp; Weather Report
-                    </Button>
-                  </div>
-                </div>
+                <MatchStartingSoonCard
+                  match={selectedHomeMatch}
+                  sectionName="Live Match Feed"
+                  onJoinContests={() => setMatchTab("Contests")}
+                  onViewSquads={() => setMatchTab("Squads")}
+                  onViewInfo={() => setMatchTab("Info")}
+                />
               ) : (() => {
                 const sqA = getTeamSquadDetails(teamA);
                 const sqB = getTeamSquadDetails(teamB);
@@ -2680,35 +3080,13 @@ function Matches() {
             {/* TAB CONTENT: HIGHLIGHTS */}
             {matchTab === "Highlights" && (
               matchStatus === "UPCOMING" ? (
-                <div className="rounded-2xl border border-emerald-500/20 bg-surface/90 p-8 sm:p-12 text-center space-y-4 shadow-md animate-in fade-in-50 duration-150">
-                  <div className="h-16 w-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400">
-                    <Clock className="h-8 w-8 animate-pulse" />
-                  </div>
-                  <div className="space-y-1.5 max-w-md mx-auto">
-                    <h3 className="text-lg sm:text-xl font-black text-foreground">
-                      Highlights Not Available Yet
-                    </h3>
-                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                      Video snippets, boundary reels, and wicket moments will be published once the match starts.
-                    </p>
-                  </div>
-                  <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
-                    <Button
-                      onClick={() => setMatchTab("Contests")}
-                      variant="hero"
-                      className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5 shadow"
-                    >
-                      <Trophy className="h-3.5 w-3.5" /> Join Contests &amp; Build Team
-                    </Button>
-                    <Button
-                      onClick={() => setMatchTab("Pitch & Weather")}
-                      variant="outline"
-                      className="text-xs border-border/80 hover:border-emerald-500/50 gap-1.5"
-                    >
-                      <Flame className="h-3.5 w-3.5 text-emerald-400" /> Pitch &amp; Weather Report
-                    </Button>
-                  </div>
-                </div>
+                <MatchStartingSoonCard
+                  match={selectedHomeMatch}
+                  sectionName="Match Highlights"
+                  onJoinContests={() => setMatchTab("Contests")}
+                  onViewSquads={() => setMatchTab("Squads")}
+                  onViewInfo={() => setMatchTab("Info")}
+                />
               ) : (
                 <div className="space-y-5 animate-in fade-in-50 duration-150">
                   {/* Highlights List */}
@@ -2747,35 +3125,13 @@ function Matches() {
             {/* TAB CONTENT: GRAPHS */}
             {matchTab === "Graphs" && (
               matchStatus === "UPCOMING" ? (
-                <div className="rounded-2xl border border-emerald-500/20 bg-surface/90 p-8 sm:p-12 text-center space-y-4 shadow-md animate-in fade-in-50 duration-150">
-                  <div className="h-16 w-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400">
-                    <Clock className="h-8 w-8 animate-pulse" />
-                  </div>
-                  <div className="space-y-1.5 max-w-md mx-auto">
-                    <h3 className="text-lg sm:text-xl font-black text-foreground">
-                      Run-Rate &amp; Manhattan Graphs Not Available Yet
-                    </h3>
-                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                      Comparative worm charts and over-by-over run analysis will start generating automatically once play begins.
-                    </p>
-                  </div>
-                  <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
-                    <Button
-                      onClick={() => setMatchTab("Contests")}
-                      variant="hero"
-                      className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5 shadow"
-                    >
-                      <Trophy className="h-3.5 w-3.5" /> Join Contests &amp; Build Team
-                    </Button>
-                    <Button
-                      onClick={() => setMatchTab("Pitch & Weather")}
-                      variant="outline"
-                      className="text-xs border-border/80 hover:border-emerald-500/50 gap-1.5"
-                    >
-                      <Flame className="h-3.5 w-3.5 text-emerald-400" /> Pitch &amp; Weather Report
-                    </Button>
-                  </div>
-                </div>
+                <MatchStartingSoonCard
+                  match={selectedHomeMatch}
+                  sectionName="Run-Rate & Manhattan Graphs"
+                  onJoinContests={() => setMatchTab("Contests")}
+                  onViewSquads={() => setMatchTab("Squads")}
+                  onViewInfo={() => setMatchTab("Info")}
+                />
               ) : (
                 <div className="space-y-6 animate-in fade-in-50 duration-150">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -2952,35 +3308,13 @@ function Matches() {
             {/* TAB CONTENT: SCORECARD */}
             {matchTab === "Scorecard" && (
               matchStatus === "UPCOMING" ? (
-                <div className="rounded-2xl border border-emerald-500/20 bg-surface/90 p-8 sm:p-12 text-center space-y-4 shadow-md animate-in fade-in-50 duration-150">
-                  <div className="h-16 w-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400">
-                    <Clock className="h-8 w-8 animate-pulse" />
-                  </div>
-                  <div className="space-y-1.5 max-w-md mx-auto">
-                    <h3 className="text-lg sm:text-xl font-black text-foreground">
-                      Scorecard Not Available Yet
-                    </h3>
-                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                      Detailed batting scorecard, bowling analysis, and fall of wickets will update ball-by-ball once {teamA} vs {teamB} gets underway.
-                    </p>
-                  </div>
-                  <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
-                    <Button
-                      onClick={() => setMatchTab("Contests")}
-                      variant="hero"
-                      className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5 shadow"
-                    >
-                      <Trophy className="h-3.5 w-3.5" /> Join Contests &amp; Build Team
-                    </Button>
-                    <Button
-                      onClick={() => setMatchTab("Pitch & Weather")}
-                      variant="outline"
-                      className="text-xs border-border/80 hover:border-emerald-500/50 gap-1.5"
-                    >
-                      <Flame className="h-3.5 w-3.5 text-emerald-400" /> Pitch &amp; Weather Report
-                    </Button>
-                  </div>
-                </div>
+                <MatchStartingSoonCard
+                  match={selectedHomeMatch}
+                  sectionName="Full Match Scorecard"
+                  onJoinContests={() => setMatchTab("Contests")}
+                  onViewSquads={() => setMatchTab("Squads")}
+                  onViewInfo={() => setMatchTab("Info")}
+                />
               ) : (() => {
                 const sqA = getTeamSquadDetails(teamA);
                 return (
@@ -3235,185 +3569,353 @@ function Matches() {
               );
             })()}
 
-            {/* TAB CONTENT: SQUADS */}
+            {/* TAB CONTENT: SQUADS (Exact Pics 3 & 4 Layout) */}
             {matchTab === "Squads" && (() => {
               const sqA = getTeamSquadDetails(teamA);
               const sqB = getTeamSquadDetails(teamB);
-              return (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in-50 duration-150">
-                  <div className="rounded-2xl border border-border/80 bg-surface/90 p-5 space-y-4 shadow-md">
-                    <div className="border-b border-border/60 pb-3 flex items-center justify-between">
-                      <h4 className="font-black text-foreground text-sm flex items-center gap-2">
-                        <span className="text-base">{selectedHomeMatch?.teamAFlag || getTeamFlag(teamA)}</span>
-                        {teamA} Playing XI
-                      </h4>
-                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                        CONFIRMED
-                      </span>
-                    </div>
-                    <ul className="text-xs space-y-2 text-muted-foreground">
-                      {sqA.players.map((p, idx) => (
-                        <li key={idx} className="flex items-center justify-between py-0.5 border-b border-border/30 last:border-0">
-                          <span className="flex items-center gap-2">
-                            <span className="text-muted-foreground/60 w-5 font-mono">{idx + 1}.</span>
-                            <span className="text-foreground font-semibold">{p}</span>
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                    {sqA.bench && sqA.bench.length > 0 && (
-                      <div className="pt-3 border-t border-border/60">
-                        <span className="text-[11px] font-bold text-muted-foreground block mb-1">Bench / Reserves</span>
-                        <p className="text-xs text-muted-foreground leading-relaxed">{sqA.bench.join(", ")}</p>
-                      </div>
-                    )}
-                  </div>
+              const teamACode = selectedHomeMatch?.teamACode || (teamA.toUpperCase().includes("ENG") ? "ENG" : teamA.slice(0, 3).toUpperCase());
+              const teamBCode = selectedHomeMatch?.teamBCode || (teamB.toUpperCase().includes("PAK") ? "PAK" : teamB.slice(0, 3).toUpperCase());
+              const teamAFlag = selectedHomeMatch?.teamAFlag || getTeamFlag(teamACode || teamA);
+              const teamBFlag = selectedHomeMatch?.teamBFlag || getTeamFlag(teamBCode || teamB);
 
-                  <div className="rounded-2xl border border-border/80 bg-surface/90 p-5 space-y-4 shadow-md">
-                    <div className="border-b border-border/60 pb-3 flex items-center justify-between">
-                      <h4 className="font-black text-foreground text-sm flex items-center gap-2">
-                        <span className="text-base">{selectedHomeMatch?.teamBFlag || getTeamFlag(teamB)}</span>
-                        {teamB} Playing XI
-                      </h4>
-                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                        CONFIRMED
-                      </span>
-                    </div>
-                    <ul className="text-xs space-y-2 text-muted-foreground">
-                      {sqB.players.map((p, idx) => (
-                        <li key={idx} className="flex items-center justify-between py-0.5 border-b border-border/30 last:border-0">
-                          <span className="flex items-center gap-2">
-                            <span className="text-muted-foreground/60 w-5 font-mono">{idx + 1}.</span>
-                            <span className="text-foreground font-semibold">{p}</span>
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                    {sqB.bench && sqB.bench.length > 0 && (
-                      <div className="pt-3 border-t border-border/60">
-                        <span className="text-[11px] font-bold text-muted-foreground block mb-1">Bench / Reserves</span>
-                        <p className="text-xs text-muted-foreground leading-relaxed">{sqB.bench.join(", ")}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })()}
+              const maxPlayers = Math.max(sqA.players.length, sqB.players.length);
+              const maxStaff = Math.max(sqA.staff?.length || 0, sqB.staff?.length || 0);
+              const maxBench = Math.max(sqA.bench?.length || 0, sqB.bench?.length || 0);
 
-            {/* TAB CONTENT: PITCH & WEATHER (Req 4) */}
-            {matchTab === "Pitch & Weather" && (() => {
-              const pw = getVenuePitchAndWeather(venue, teamA, teamB, selectedHomeMatch?.providerData);
               return (
                 <div className="space-y-6 animate-in fade-in-50 duration-150">
-                  {/* CARD 1: PITCH REPORT */}
-                  <div className="rounded-xl border border-emerald-500/20 bg-surface/90 overflow-hidden shadow-sm">
-                    <div className="bg-gradient-to-r from-emerald-950 via-[#073625] to-emerald-950 border-b border-emerald-500/30 px-4 py-3">
-                      <h3 className="font-black text-emerald-300 text-xs sm:text-sm tracking-wider uppercase flex items-center gap-2">
-                        <Flame className="h-4 w-4 text-emerald-400" />
-                        PITCH REPORT • {pw.stadium.toUpperCase()}
-                      </h3>
+                  {/* Top Mint Header Bar (Pic 3) */}
+                  <div className="bg-[#133d2e] border border-emerald-500/30 rounded-xl px-6 py-3.5 flex items-center justify-between text-sm sm:text-base font-black text-foreground shadow-sm">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-2xl">{teamAFlag}</span>
+                      <span className="tracking-wider">{teamACode}</span>
                     </div>
-                    <div className="p-4 sm:p-6 space-y-4">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold text-xs">
-                          {pw.pitchType}
-                        </span>
-                        <span className="px-3 py-1 rounded-full bg-surface-2 border border-border text-muted-foreground font-medium text-xs">
-                          Venue: {pw.stadium}, {pw.city}
-                        </span>
-                      </div>
-
-                      <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed">
-                        {pw.pitchSummary}
-                      </p>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                        <div className="rounded-xl border border-border/80 bg-surface-2/60 p-3 text-center">
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground block">Avg 1st Innings</span>
-                          <span className="text-lg sm:text-xl font-mono font-black text-emerald-400">{pw.avg1st}</span>
-                          <span className="text-[10px] text-muted-foreground block">Runs</span>
-                        </div>
-                        <div className="rounded-xl border border-border/80 bg-surface-2/60 p-3 text-center">
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground block">Avg 2nd Innings</span>
-                          <span className="text-lg sm:text-xl font-mono font-black text-foreground">{pw.avg2nd}</span>
-                          <span className="text-[10px] text-muted-foreground block">Runs</span>
-                        </div>
-                        <div className="rounded-xl border border-border/80 bg-surface-2/60 p-3 text-center">
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground block">Toss Advantage</span>
-                          <span className="text-xs sm:text-sm font-bold text-emerald-300 mt-1 block">{pw.tossAdvantage}</span>
-                        </div>
-                        <div className="rounded-xl border border-border/80 bg-surface-2/60 p-3 text-center">
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground block">Boundary Dimensions</span>
-                          <span className="text-xs sm:text-sm font-mono font-bold text-foreground mt-1 block">Straight 72m • Sq 65m</span>
-                        </div>
-                      </div>
-
-                      {/* PACERS VS SPINNERS BREAKDOWN BAR */}
-                      <div className="pt-3 border-t border-border/60 space-y-2">
-                        <div className="flex items-center justify-between text-xs font-bold">
-                          <span className="text-emerald-400">Pacers: {pw.pacersPct}% Wickets</span>
-                          <span className="text-cyan-400">Spinners: {pw.spinnersPct}% Wickets</span>
-                        </div>
-                        <div className="h-3 w-full rounded-full bg-surface-2 overflow-hidden flex">
-                          <div className="bg-emerald-500 h-full transition-all" style={{ width: `${pw.pacersPct}%` }} />
-                          <div className="bg-cyan-500 h-full transition-all" style={{ width: `${pw.spinnersPct}%` }} />
-                        </div>
-                        <p className="text-[11px] text-muted-foreground">
-                          Pacers dominate the early powerplay overs with seam movement, while spinners get grip during the middle overs (7-15).
-                        </p>
-                      </div>
+                    <div className="flex items-center gap-2.5">
+                      <span className="tracking-wider">{teamBCode}</span>
+                      <span className="text-2xl">{teamBFlag}</span>
                     </div>
                   </div>
 
-                  {/* CARD 2: WEATHER CONDITIONS */}
-                  <div className="rounded-xl border border-emerald-500/20 bg-surface/90 overflow-hidden shadow-sm">
-                    <div className="bg-gradient-to-r from-emerald-950 via-[#073625] to-emerald-950 border-b border-emerald-500/30 px-4 py-3">
-                      <h3 className="font-black text-emerald-300 text-xs sm:text-sm tracking-wider uppercase flex items-center gap-2">
-                        <CloudRain className="h-4 w-4 text-emerald-400" />
-                        WEATHER REPORT • {pw.city.toUpperCase()}
-                      </h3>
-                    </div>
-                    <div className="p-4 sm:p-6 space-y-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-border/60">
-                        <div className="flex items-center gap-4">
-                          <span className="text-3xl sm:text-4xl">⛅</span>
-                          <div>
-                            <span className="text-2xl sm:text-3xl font-black text-foreground font-mono">{pw.temp}</span>
-                            <span className="text-xs text-muted-foreground ml-2">(Feels like {pw.feelsLike})</span>
-                            <p className="text-xs sm:text-sm text-emerald-400 font-semibold">{pw.condition}</p>
+                  {/* Playing XI Subheader (Pic 3) */}
+                  <div className="text-center py-2.5 border-y border-border/80">
+                    <h4 className="text-sm sm:text-base font-black text-foreground tracking-wide">
+                      Playing XI
+                    </h4>
+                  </div>
+
+                  {/* Playing XI 2-Column Grid */}
+                  <div className="rounded-2xl border border-border/80 bg-surface/90 overflow-hidden divide-y divide-border/60 shadow-md">
+                    {Array.from({ length: maxPlayers }).map((_, idx) => {
+                      const pA = sqA.players[idx];
+                      const pB = sqB.players[idx];
+                      const roleA = pA ? getPlayerRole(pA, idx) : "";
+                      const roleB = pB ? getPlayerRole(pB, idx) : "";
+                      const isAyub = pB?.toLowerCase().includes("ayub");
+
+                      return (
+                        <div key={`playing-${idx}`} className="grid grid-cols-2">
+                          {/* Left Column: Team A (Avatar on Left) */}
+                          <div className="p-3 sm:p-4 flex items-center gap-3 border-r border-border/70 min-w-0">
+                            {pA ? (
+                              <>
+                                <PlayerAvatar name={pA} />
+                                <div className="min-w-0">
+                                  <div className="font-bold text-xs sm:text-sm text-foreground truncate">
+                                    {pA}
+                                  </div>
+                                  <div className="text-[11px] text-muted-foreground">{roleA}</div>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-xs text-muted-foreground/40 italic">—</div>
+                            )}
+                          </div>
+
+                          {/* Right Column: Team B (Avatar on Right, Name on Left) */}
+                          <div className={cn("p-3 sm:p-4 flex items-center justify-between gap-3 text-right min-w-0", isAyub && "bg-emerald-950/20")}>
+                            {pB ? (
+                              <>
+                                <div className="min-w-0 flex-1">
+                                  <div className="font-bold text-xs sm:text-sm text-foreground truncate flex items-center justify-end gap-1">
+                                    {isAyub && <span className="text-emerald-400 text-xs">▲</span>}
+                                    <span>{pB}</span>
+                                  </div>
+                                  <div className="text-[11px] text-muted-foreground">{roleB}</div>
+                                </div>
+                                <PlayerAvatar name={pB} />
+                              </>
+                            ) : (
+                              <div className="text-xs text-muted-foreground/40 italic sm:ml-auto">—</div>
+                            )}
                           </div>
                         </div>
-                        <div className="text-xs text-muted-foreground bg-surface-2/70 px-3 py-2 rounded-xl border border-border/60">
-                          <span>Updated live for matchday</span>
-                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Support Staff Subheader (Pic 4) */}
+                  {maxStaff > 0 && (
+                    <>
+                      <div className="text-center py-2.5 border-y border-border/80">
+                        <h4 className="text-sm sm:text-base font-black text-foreground tracking-wide">
+                          Support Staff
+                        </h4>
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div className="rounded-xl border border-border/80 bg-surface-2/60 p-3">
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground block">Precipitation</span>
-                          <span className="text-sm sm:text-base font-mono font-bold text-foreground mt-0.5 block">{pw.rainProb}</span>
-                          <span className="text-[10px] text-emerald-400">Low rain risk</span>
-                        </div>
-                        <div className="rounded-xl border border-border/80 bg-surface-2/60 p-3">
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground block">Humidity</span>
-                          <span className="text-sm sm:text-base font-mono font-bold text-foreground mt-0.5 block">{pw.humidity}</span>
-                          <span className="text-[10px] text-muted-foreground">Moderate</span>
-                        </div>
-                        <div className="rounded-xl border border-border/80 bg-surface-2/60 p-3">
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground block">Wind Speed</span>
-                          <span className="text-sm sm:text-base font-mono font-bold text-foreground mt-0.5 block">{pw.wind}</span>
-                          <span className="text-[10px] text-muted-foreground">Breeze aids swing</span>
-                        </div>
-                        <div className="rounded-xl border border-border/80 bg-surface-2/60 p-3">
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground block">Dew Factor</span>
-                          <span className="text-xs sm:text-sm font-bold text-emerald-300 mt-0.5 block">{pw.dewFactor}</span>
-                        </div>
+                      <div className="rounded-2xl border border-border/80 bg-surface/90 overflow-hidden divide-y divide-border/60 shadow-md">
+                        {Array.from({ length: maxStaff }).map((_, idx) => {
+                          const sA = sqA.staff?.[idx];
+                          const sB = sqB.staff?.[idx];
+                          const roleA = sA ? getStaffRole(sA, idx) : "";
+                          const roleB = sB ? getStaffRole(sB, idx) : "";
+
+                          return (
+                            <div key={`staff-${idx}`} className="grid grid-cols-2">
+                              {/* Left Column: Team A Staff */}
+                              <div className="p-3 sm:p-4 flex items-center gap-3 border-r border-border/70 min-w-0">
+                                {sA ? (
+                                  <>
+                                    <PlayerAvatar name={sA} />
+                                    <div className="min-w-0">
+                                      <div className="font-bold text-xs sm:text-sm text-foreground truncate">
+                                        {sA}
+                                      </div>
+                                      <div className="text-[11px] text-muted-foreground">{roleA}</div>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="text-xs text-muted-foreground/40 italic">—</div>
+                                )}
+                              </div>
+
+                              {/* Right Column: Team B Staff */}
+                              <div className="p-3 sm:p-4 flex items-center justify-between gap-3 text-right min-w-0">
+                                {sB ? (
+                                  <>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="font-bold text-xs sm:text-sm text-foreground truncate">
+                                        {sB}
+                                      </div>
+                                      <div className="text-[11px] text-muted-foreground">{roleB}</div>
+                                    </div>
+                                    <PlayerAvatar name={sB} />
+                                  </>
+                                ) : (
+                                  <div className="text-xs text-muted-foreground/40 italic sm:ml-auto">—</div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    </div>
-                  </div>
+                    </>
+                  )}
+
+                  {/* Bench Subheader */}
+                  {maxBench > 0 && (
+                    <>
+                      <div className="text-center py-2.5 border-y border-border/80">
+                        <h4 className="text-sm sm:text-base font-black text-foreground tracking-wide">
+                          Bench
+                        </h4>
+                      </div>
+
+                      <div className="rounded-2xl border border-border/80 bg-surface/90 overflow-hidden divide-y divide-border/60 shadow-md">
+                        {Array.from({ length: maxBench }).map((_, idx) => {
+                          const bA = sqA.bench?.[idx];
+                          const bB = sqB.bench?.[idx];
+                          const roleA = bA ? getPlayerRole(bA, idx + 11) : "";
+                          const roleB = bB ? getPlayerRole(bB, idx + 11) : "";
+
+                          return (
+                            <div key={`bench-${idx}`} className="grid grid-cols-2">
+                              {/* Left Column: Team A Bench */}
+                              <div className="p-3 sm:p-4 flex items-center gap-3 border-r border-border/70 min-w-0">
+                                {bA ? (
+                                  <>
+                                    <PlayerAvatar name={bA} />
+                                    <div className="min-w-0">
+                                      <div className="font-bold text-xs sm:text-sm text-foreground truncate">
+                                        {bA}
+                                      </div>
+                                      <div className="text-[11px] text-muted-foreground">{roleA}</div>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="text-xs text-muted-foreground/40 italic">—</div>
+                                )}
+                              </div>
+
+                              {/* Right Column: Team B Bench */}
+                              <div className="p-3 sm:p-4 flex items-center justify-between gap-3 text-right min-w-0">
+                                {bB ? (
+                                  <>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="font-bold text-xs sm:text-sm text-foreground truncate">
+                                        {bB}
+                                      </div>
+                                      <div className="text-[11px] text-muted-foreground">{roleB}</div>
+                                    </div>
+                                    <PlayerAvatar name={bB} />
+                                  </>
+                                ) : (
+                                  <div className="text-xs text-muted-foreground/40 italic sm:ml-auto">—</div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             })()}
+
+            {/* TAB CONTENT: OVERS */}
+            {matchTab === "Overs" && (
+              matchStatus === "UPCOMING" ? (
+                <MatchStartingSoonCard
+                  match={selectedHomeMatch}
+                  sectionName="Over Summaries"
+                  onJoinContests={() => setMatchTab("Contests")}
+                  onViewSquads={() => setMatchTab("Squads")}
+                  onViewInfo={() => setMatchTab("Info")}
+                />
+              ) : (() => {
+                const oversList = getMatchOversData(selectedHomeMatch, teamA, teamB);
+                return (
+                  <div className="space-y-4 animate-in fade-in-50 duration-150">
+                    <div className="flex items-center justify-between pb-2 border-b border-border/70">
+                      <h3 className="font-black text-sm text-foreground uppercase tracking-wider flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-emerald-400" />
+                        Over-By-Over Breakdown
+                      </h3>
+                      <span className="text-xs font-mono text-emerald-400 font-bold">
+                        {selectedHomeMatch?.scoreB || selectedHomeMatch?.scoreA || "Live Feed"}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {oversList.map((ov) => (
+                        <div
+                          key={ov.overNumber}
+                          className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-sm space-y-3"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-border/50 text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="font-black text-sm text-foreground">
+                                Over {ov.overNumber}
+                              </span>
+                              <span className="text-muted-foreground font-semibold">
+                                ({ov.runs} runs{ov.wickets > 0 ? `, ${ov.wickets} wicket` : ""})
+                              </span>
+                              <span className="text-muted-foreground">•</span>
+                              <span className="text-emerald-400 font-bold">{ov.bowler}</span>
+                            </div>
+                            <span className="font-mono font-bold text-foreground text-xs">
+                              {ov.totalScore}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 font-mono text-xs">
+                            <span className="text-muted-foreground text-[11px] font-sans mr-1">Balls:</span>
+                            {ov.balls.map((b, bIdx) => (
+                              <span
+                                key={bIdx}
+                                className={cn(
+                                  "w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shadow-sm",
+                                  b.type === "wicket"
+                                    ? "bg-red-500/20 text-red-400 border border-red-500/40"
+                                    : b.type === "four"
+                                    ? "bg-blue-500/20 text-blue-400 border border-blue-500/40"
+                                    : b.type === "six"
+                                    ? "bg-purple-500/20 text-purple-400 border border-purple-500/40"
+                                    : b.type === "dot"
+                                    ? "bg-surface-2 text-muted-foreground border border-border/60"
+                                    : "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
+                                )}
+                              >
+                                {b.text}
+                              </span>
+                            ))}
+                          </div>
+
+                          <p className="text-xs text-muted-foreground leading-relaxed pt-1">
+                            {ov.summary}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+
+            {/* TAB CONTENT: FULL COMMENTARY */}
+            {matchTab === "Full Commentary" && (
+              matchStatus === "UPCOMING" ? (
+                <MatchStartingSoonCard
+                  match={selectedHomeMatch}
+                  sectionName="Full Ball-by-Ball Commentary"
+                  onJoinContests={() => setMatchTab("Contests")}
+                  onViewSquads={() => setMatchTab("Squads")}
+                  onViewInfo={() => setMatchTab("Info")}
+                />
+              ) : (() => {
+                const commentaryList = getMatchFullCommentary(selectedHomeMatch, teamA, teamB);
+                return (
+                  <div className="space-y-4 animate-in fade-in-50 duration-150">
+                    <div className="flex items-center justify-between pb-2 border-b border-border/70">
+                      <h3 className="font-black text-sm text-foreground uppercase tracking-wider flex items-center gap-2">
+                        <Radio className="h-4 w-4 text-emerald-400" />
+                        Ball-by-Ball Live Commentary
+                      </h3>
+                      <span className="text-xs font-mono text-emerald-400 font-bold">
+                        {selectedHomeMatch?.scoreB || selectedHomeMatch?.scoreA || "Live Feed"}
+                      </span>
+                    </div>
+
+                    <div className="rounded-2xl border border-border/80 bg-surface/90 divide-y divide-border/60 overflow-hidden shadow-sm">
+                      {commentaryList.map((c, cIdx) => (
+                        <div key={cIdx} className="p-4 sm:p-5 flex items-start gap-3 sm:gap-4 hover:bg-surface-2/40 transition-colors">
+                          <div className="flex flex-col items-center gap-1.5 shrink-0 min-w-[48px]">
+                            <span className="font-mono text-xs font-bold text-foreground">{c.ball}</span>
+                            <span
+                              className={cn(
+                                "w-6 h-6 rounded-md flex items-center justify-center font-black text-[11px] shadow-sm",
+                                c.badgeType === "wicket"
+                                  ? "bg-red-500 text-white"
+                                  : c.badgeType === "four"
+                                  ? "bg-blue-500 text-white"
+                                  : c.badgeType === "six"
+                                  ? "bg-purple-600 text-white"
+                                  : c.event === "0"
+                                  ? "bg-surface-2 text-muted-foreground border border-border"
+                                  : "bg-emerald-600 text-white"
+                              )}
+                            >
+                              {c.event}
+                            </span>
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <h5 className="text-xs sm:text-sm font-bold text-foreground">
+                              {c.headline}
+                            </h5>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {c.desc}
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right font-mono text-xs font-bold text-muted-foreground hidden sm:block">
+                            {c.score}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()
+            )}
 
             {/* TAB CONTENT: NEWS (Req 5) */}
             {matchTab === "News" && (() => {
@@ -3785,11 +4287,21 @@ function Matches() {
                               </div>
                             </div>
 
-                            {/* Footer: Status / Venue + Action Button */}
+                            {/* Footer: Match status/time + Contest Information + Action (Req 1) */}
                             <div className="mt-3 pt-2.5 border-t border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                              <span className="text-muted-foreground truncate text-[11px]">
-                                {m.statusText || m.venue || "Edgbaston, Birmingham"}
-                              </span>
+                              <div className="flex flex-wrap items-center gap-2.5">
+                                {/* Match status / time */}
+                                <span className="text-muted-foreground text-[11px] font-medium flex items-center gap-1">
+                                  <Clock className="h-3 w-3 text-emerald-400/80" />
+                                  <span>{getMatchTimeDisplay(m)}</span>
+                                </span>
+                                {/* Contest Information */}
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                                  <Trophy className="h-3 w-3 text-amber-400" />
+                                  <span>{isLive ? "Contests Locked • Live Standings" : isComp ? "Contests Completed" : "Mega Contest ₹10 Lakhs • Contests Open"}</span>
+                                </span>
+                              </div>
+
                               <span className="inline-flex items-center gap-1.5 font-bold text-emerald-400 group-hover:text-emerald-300 text-xs shrink-0 self-end sm:self-auto">
                                 <span>{isLive ? "View Live Match" : isComp ? "View Match Summary" : "Enter Match Center"}</span>
                                 <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
