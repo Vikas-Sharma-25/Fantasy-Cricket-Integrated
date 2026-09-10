@@ -26,3 +26,4 @@ docker builder prune -a -f
 # 5. Display status
 echo "✅ Deployment successful! Active containers:"
 docker compose ps
+

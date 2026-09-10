@@ -160,3 +160,4 @@ export function getCDNUrl(key: string): string {
   }
   return `/${key}`;
 }
+

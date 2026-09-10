@@ -35,6 +35,10 @@ export async function getMe() {
   return api.get<User>("/users/me");
 }
 
+export async function updateProfile(data: Partial<User>) {
+  return api.patch<User>("/users/me", data);
+}
+
 export async function getMatches(status?: string) {
   const params = new URLSearchParams({ page: "1", limit: "50" });
   if (status) params.set("status", status);

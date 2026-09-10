@@ -3,7 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { LogOut, Bell, ChevronRight, Users, Trophy, Receipt, Gift, Settings, LifeBuoy, Camera, Loader2, CloudUpload } from "lucide-react";
 import { AppShell } from "@/components/fc/AppShell";
 import { Card } from "@/components/fc/bits";
-import { getMe, logoutUser, uploadFileToS3 } from "@/lib/api-services";
+import * as apiServices from "@/lib/api-services";
 import type { User } from "@/lib/api-types";
 
 export const Route = createFileRoute("/profile")({ component: Profile });
@@ -27,7 +27,12 @@ function Profile() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    void getMe().then(setUser).catch(() => {});
+    void apiServices.getMe().then((data) => {
+      setUser(data);
+      if (data?.profileImage) {
+        setAvatarUrl(data.profileImage);
+      }
+    }).catch(() => {});
   }, []);
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -36,9 +41,18 @@ function Profile() {
 
     try {
       setUploading(true);
-      setUploadMessage("Uploading to S3 / CloudFront...");
-      const s3Url = await uploadFileToS3(file, "avatars");
+      setUploadMessage("Uploading to S3...");
+      const s3Url = await apiServices.uploadFileToS3(file, "avatars");
       setAvatarUrl(s3Url);
+
+      // Permanently save avatar in MongoDB database
+      const updatedUser = await apiServices.updateProfile({ profileImage: s3Url });
+      if (updatedUser) {
+        setUser(updatedUser);
+      }
+      // Broadcast to update AppShell sidebar avatar immediately
+      window.dispatchEvent(new CustomEvent("user-profile-updated", { detail: updatedUser || { ...user, profileImage: s3Url } }));
+
       setUploadMessage("Uploaded successfully!");
       setTimeout(() => setUploadMessage(""), 4000);
     } catch (err: any) {
@@ -49,7 +63,7 @@ function Profile() {
   }
 
   async function logout() {
-    await logoutUser();
+    await apiServices.logoutUser();
     navigate({ to: "/login" });
   }
 
@@ -57,9 +71,9 @@ function Profile() {
     <AppShell>
       <Card className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="relative inline-block">
-          {avatarUrl ? (
+          {avatarUrl || user?.profileImage ? (
             <img
-              src={avatarUrl}
+              src={avatarUrl || user?.profileImage}
               alt="Avatar"
               className="h-16 w-16 rounded-full border-2 border-primary object-cover"
             />

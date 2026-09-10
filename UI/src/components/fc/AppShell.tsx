@@ -102,6 +102,15 @@ export function AppShell({
     void getMe()
       .then(setUser)
       .catch(() => {});
+
+    function onProfileUpdated(e: Event) {
+      const customEvent = e as CustomEvent<User>;
+      if (customEvent.detail) setUser(customEvent.detail);
+    }
+    window.addEventListener("user-profile-updated", onProfileUpdated);
+    return () => {
+      window.removeEventListener("user-profile-updated", onProfileUpdated);
+    };
   }, []);
 
   // Close notifications on outside click
@@ -219,9 +228,17 @@ export function AppShell({
             className="flex items-center justify-between rounded-xl border border-border bg-surface p-2.5 transition-colors hover:border-primary/50"
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary font-display text-xs font-bold text-primary-foreground">
-                {user?.name ? user.name.slice(0, 2).toUpperCase() : "VK"}
-              </span>
+              {user?.profileImage ? (
+                <img
+                  src={user.profileImage}
+                  alt={user?.name || "User"}
+                  className="h-9 w-9 shrink-0 rounded-full border border-primary/40 object-cover"
+                />
+              ) : (
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary font-display text-xs font-bold text-primary-foreground">
+                  {user?.name ? user.name.slice(0, 2).toUpperCase() : "VK"}
+                </span>
+              )}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-bold text-foreground">
                   {user?.name || "Vikas Kumar"}

@@ -6,6 +6,7 @@ export interface User {
   role?: string;
   status?: string;
   isVerified?: boolean;
+  profileImage?: string;
 }
 
 export interface Match {
