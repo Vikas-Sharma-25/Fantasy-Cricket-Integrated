@@ -223,32 +223,41 @@ export function AppShell({
 
         {/* Bottom User Profile Section */}
         <div className="p-4 border-t border-border/80 space-y-3 bg-surface-2/40">
-          <Link
-            to="/profile"
-            className="flex items-center justify-between rounded-xl border border-border bg-surface p-2.5 transition-colors hover:border-primary/50"
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              {user?.profileImage ? (
-                <img
-                  src={user.profileImage}
-                  alt={user?.name || "User"}
-                  className="h-9 w-9 shrink-0 rounded-full border border-primary/40 object-cover"
-                />
-              ) : (
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary font-display text-xs font-bold text-primary-foreground">
-                  {user?.name ? user.name.slice(0, 2).toUpperCase() : "VK"}
-                </span>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-bold text-foreground">
-                  {user?.name || "Vikas Kumar"}
-                </p>
-                <p className="truncate text-[10px] text-muted-foreground">
-                  {user?.email || "vikaskumarsharma2106@gmail..."}
-                </p>
+          {user ? (
+            <Link
+              to="/profile"
+              className="flex items-center justify-between rounded-xl border border-border bg-surface p-2.5 transition-colors hover:border-primary/50"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                {user.profileImage ? (
+                  <img
+                    src={user.profileImage}
+                    alt={user.name}
+                    className="h-9 w-9 shrink-0 rounded-full border border-primary/40 object-cover"
+                  />
+                ) : (
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary font-display text-xs font-bold text-primary-foreground">
+                    {user.name ? user.name.slice(0, 2).toUpperCase() : "U"}
+                  </span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-bold text-foreground">
+                    {user.name}
+                  </p>
+                  <p className="truncate text-[10px] text-muted-foreground">
+                    {user.email}
+                  </p>
+                </div>
               </div>
-            </div>
-          </Link>
+            </Link>
+          ) : (
+            <Link
+              to="/login"
+              className="flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/10 py-2.5 text-xs font-bold text-primary hover:bg-primary/20 transition-colors"
+            >
+              Login to Account
+            </Link>
+          )}
         </div>
       </aside>
 

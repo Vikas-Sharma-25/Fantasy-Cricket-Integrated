@@ -27,13 +27,19 @@ function Profile() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    void apiServices.getMe().then((data) => {
-      setUser(data);
-      if (data?.profileImage) {
-        setAvatarUrl(data.profileImage);
-      }
-    }).catch(() => {});
-  }, []);
+    void apiServices
+      .getMe()
+      .then((data) => {
+        setUser(data);
+        if (data?.profileImage) {
+          setAvatarUrl(data.profileImage);
+        }
+      })
+      .catch(() => {
+        // User session expired or logged out -> redirect to login
+        navigate({ to: "/login" });
+      });
+  }, [navigate]);
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
