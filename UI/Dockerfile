@@ -5,6 +5,8 @@ FROM node:20-slim AS builder
 
 WORKDIR /app
 
+ENV NITRO_PRESET=node-server
+
 # Copy dependency manifests and configs
 COPY package*.json tsconfig.json vite.config.ts components.json ./
 
@@ -15,8 +17,8 @@ RUN npm ci
 COPY src ./src
 COPY public ./public
 
-# Build TanStack Start / Vite SSR application
-RUN npm run build
+# Build TanStack Start / Vite SSR application with explicit node-server preset
+RUN NITRO_PRESET=node-server npm run build
 
 # ==========================================
 # 2. Production Runner Stage
@@ -26,7 +28,11 @@ FROM node:20-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV NITRO_PRESET=node-server
+ENV HOST=0.0.0.0
+ENV NITRO_HOST=0.0.0.0
 ENV PORT=3000
+ENV NITRO_PORT=3000
 
 # Copy built server output and manifests
 COPY --from=builder /app/.output ./.output

@@ -1,6 +1,7 @@
 node_modules
 .output
 .wrangler
+wrangler.json
 dist
 .env
 .env.*
