@@ -457,130 +457,133 @@ const MOCK_POINTS_TABLE = [
 interface TeamSquadDetails {
   players: string[];
   bench: string[];
+  staff: string[];
 }
 
 function getTeamSquadDetails(teamName: string = ""): TeamSquadDetails {
   const t = teamName.toUpperCase();
-  if (t.includes("EAST") || t.includes("EZONE")) {
-    return {
-      players: [
-        "Abhimanyu Easwaran",
-        "Vaibhav Sooryavanshi",
-        "Kumar Kushagra (wk)",
-        "Sudip Kumar Gharami",
-        "Shikhar Mohan",
-        "Ishan Kishan (c)",
-        "Md Kounain Quraishi",
-        "Anukul Roy",
-        "Mohammed Shami",
-        "Abhijit K Sarkar",
-        "Mukesh Kumar",
-      ],
-      bench: [
-        "Virat Singh",
-        "Subhranshu Senapati",
-        "Shahbaz Ahmed",
-        "Denish Das",
-        "Suraj Sindhu Jaiswal",
-      ],
-    };
-  }
-  if (t.includes("SOUTH") || t.includes("SZONE")) {
-    return {
-      players: [
-        "Ricky Bhui",
-        "Narayan Jagadeesan (wk)",
-        "Devdutt Padikkal",
-        "Shaik Rasheed",
-        "Tilak Varma (c)",
-        "Smaran Ravichandran",
-        "Shreyas Gopal",
-        "Tripurana Vijay",
-        "Mohammed Siraj",
-        "Chama V Milind",
-        "MD Nidheesh",
-      ],
-      bench: [
-        "Kodimela Himateja",
-        "Tanay Thyagarajan",
-        "Vidhwath Kaverappa",
-        "Kavuri Saiteja",
-        "Karun Nair",
-        "Aman Khan",
-        "Abhinav Tejrana",
-      ],
-    };
-  }
   if (t.includes("ENG") || t.includes("ENGLAND")) {
     return {
       players: [
-        "Jos Buttler (c, wk)",
-        "Phil Salt",
-        "Will Jacks",
+        "Ben Duckett",
+        "Emilio Gay",
+        "Jordan Cox",
+        "Joe Root (c)",
         "Harry Brook",
-        "Liam Livingstone",
-        "Moeen Ali",
-        "Sam Curran",
-        "Chris Jordan",
+        "Dan Lawrence",
+        "Jamie Smith (wk)",
+        "Gus Atkinson",
+        "Ollie Robinson",
         "Jofra Archer",
-        "Adil Rashid",
-        "Reece Topley",
+        "Josh Tongue",
       ],
-      bench: ["Ben Duckett", "Tom Hartley", "Mark Wood", "Luke Wood"],
+      bench: ["Shoaib Bashir", "Sonny Baker", "Sam Cook", "Ollie Pope", "Theo Wylie"],
+      staff: ["Stephen Fleming", "Marcus Trescothick", "Paul Collingwood", "Jeetan Patel", "David Saker"],
     };
   }
   if (t.includes("PAK") || t.includes("PAKISTAN")) {
     return {
       players: [
-        "Babar Azam (c)",
-        "Mohammad Rizwan (wk)",
+        "Azan Awais",
         "Saim Ayub",
-        "Fakhar Zaman",
-        "Iftikhar Ahmed",
-        "Shadab Khan",
-        "Imad Wasim",
-        "Shaheen Afridi",
-        "Naseem Shah",
-        "Haris Rauf",
-        "Mohammad Amir",
+        "Abdullah Shafique",
+        "Shan Masood",
+        "Babar Azam (c)",
+        "Saud Shakeel",
+        "Ghazi Ghori (wk)",
+        "Mohammad Imran Randhawa",
+        "Razaullah",
+        "Mohammad Abbas",
+        "Mohammad Ali",
       ],
-      bench: ["Usman Khan", "Azam Khan", "Abbas Afridi", "Abrar Ahmed"],
+      bench: ["Arafat Minhas", "Ubaid Shah", "Sajid Khan", "Mohammad Imran", "Saad Baig", "Abdullah Fazal"],
+      staff: ["Mike Hesson", "Asad Shafiq", "Ashley Noffke", "Shane McDermott"],
+    };
+  }
+  if (t.includes("EAST") || t.includes("EZONE")) {
+    return {
+      players: [
+        "Abhimanyu Easwaran (c)",
+        "Ishan Kishan (wk)",
+        "Sudip Kumar Gharami",
+        "Kumar Kushagra",
+        "Shahbaz Ahmed",
+        "Riyan Parag",
+        "Akash Deep",
+        "Mukesh Kumar",
+        "Mohammed Shami",
+        "Md Kounain Quraishi",
+        "Abhijit K Sarkar",
+      ],
+      bench: [
+        "Virat Singh",
+        "Manisankar Murasingh",
+        "Anukul Roy",
+        "Suraj Sindhu Jaiswal",
+      ],
+      staff: ["Debangshu Mukherjee", "Sourasish Lahiri", "Ranadeb Bose"],
+    };
+  }
+  if (t.includes("SOUTH") || t.includes("SZONE")) {
+    return {
+      players: [
+        "Mayank Agarwal (c)",
+        "Rohan Kunnummal",
+        "Hanuma Vihari",
+        "Tilak Varma",
+        "Ricky Bhui (wk)",
+        "Smaran Ravichandran",
+        "Washington Sundar",
+        "Shreyas Gopal",
+        "Chama V Milind",
+        "Vijaykumar Vyshak",
+        "R Sai Kishore",
+      ],
+      bench: [
+        "N Jagadeesan",
+        "Tanmay Agarwal",
+        "Basil Thampi",
+        "Pradosh Ranjan Paul",
+      ],
+      staff: ["Sulakshan Kulkarni", "S Badrinath", "Sunil Joshi", "R Sridhar"],
     };
   }
   if (t.includes("IND") || t.includes("INDIA")) {
     return {
       players: [
         "Rohit Sharma (c)",
+        "Yashasvi Jaiswal",
+        "Shubman Gill",
         "Virat Kohli",
         "Rishabh Pant (wk)",
-        "Suryakumar Yadav",
-        "Hardik Pandya",
-        "Shivam Dube",
+        "KL Rahul",
         "Ravindra Jadeja",
-        "Axar Patel",
-        "Kuldeep Yadav",
-        "Arshdeep Singh",
+        "Ravichandran Ashwin",
         "Jasprit Bumrah",
+        "Mohammed Shami",
+        "Mohammed Siraj",
       ],
-      bench: ["Sanju Samson", "Mohammed Siraj", "Yuzvendra Chahal", "Yashasvi Jaiswal"],
+      bench: ["Sarfaraz Khan", "Dhruv Jurel", "Axar Patel", "Akash Deep", "Kuldeep Yadav"],
+      staff: ["Gautam Gambhir", "Abhishek Nayar", "Ryan ten Doeschate", "Morne Morkel", "T Dilip"],
     };
   }
   if (t.includes("AUS") || t.includes("AUSTRALIA")) {
     return {
       players: [
+        "Usman Khawaja",
+        "Nathan McSweeney",
+        "Marnus Labuschagne",
+        "Steven Smith",
         "Travis Head",
-        "David Warner",
-        "Mitchell Marsh (c)",
-        "Glenn Maxwell",
-        "Marcus Stoinis",
-        "Tim David",
-        "Matthew Wade (wk)",
-        "Pat Cummins",
+        "Mitchell Marsh",
+        "Alex Carey (wk)",
+        "Pat Cummins (c)",
         "Mitchell Starc",
-        "Adam Zampa",
+        "Nathan Lyon",
         "Josh Hazlewood",
       ],
-      bench: ["Josh Inglis", "Ashton Agar", "Cameron Green", "Nathan Ellis"],
+      bench: ["Scott Boland", "Josh Inglis", "Beau Webster", "Sean Abbott"],
+      staff: ["Andrew McDonald", "Daniel Vettori", "Andre Borovec", "Michael Di Venuto"],
     };
   }
   return {
@@ -598,6 +601,35 @@ function getTeamSquadDetails(teamName: string = ""): TeamSquadDetails {
       "Pace Specialist",
     ],
     bench: ["Bench Batter", "Reserve Pacer", "Reserve Spinner", "Substitute Fielder"],
+    staff: ["Head Coach", "Batting Coach", "Bowling Coach", "Fielding Coach", "Physiotherapist"],
+  };
+}
+
+function getMatchOfficials() {
+  return {
+    umpires: "Chris Gaffaney, Paul Reiffel",
+    thirdUmpire: "Allahudien Paleker",
+    referee: "Ranjan Madugalle",
+  };
+}
+
+function getMatchBroadcast(tournamentName: string = "", teamA: string = "", teamB: string = "") {
+  const t = (tournamentName + " " + teamA + " " + teamB).toLowerCase();
+  if (t.includes("england") || t.includes("pakistan") || t.includes("eng") || t.includes("pak")) {
+    return {
+      streaming: "SonyLIV",
+      tv: "Sony Sports Network",
+    };
+  }
+  if (t.includes("india") || t.includes("ipl") || t.includes("duleep")) {
+    return {
+      streaming: "JioHotstar / FanCode",
+      tv: "Star Sports Network / Sports18",
+    };
+  }
+  return {
+    streaming: "SonyLIV",
+    tv: "Sony Sports Network",
   };
 }
 
@@ -626,11 +658,11 @@ function getVenueGuide(venueName: string = "") {
   }
   if (v.includes("edgbaston") || v.includes("birmingham")) {
     return {
-      stadium: "Edgbaston Cricket Ground",
+      stadium: "Edgbaston",
       city: "Birmingham, England",
-      capacity: "25,000",
-      ends: "Pavilion End, Birmingham End",
-      hostsTo: "Warwickshire, Birmingham Phoenix, England",
+      capacity: "21,000",
+      ends: "City End, Pavilion End",
+      hostsTo: "Warwickshire",
       pitchType: "Batting Friendly • True carry & fast outfield",
       avg1st: 184,
       avg2nd: 169,
@@ -899,17 +931,26 @@ function Matches() {
     };
   }, [currentMatchId]);
 
-  // Listen for reset event from navigation (e.g. clicking Home in sidebar)
+  // Listen for reset event from navigation (e.g. clicking Home in sidebar) or browser Back button (popstate)
   useEffect(() => {
     function onResetHomeMatch() {
       setSelectedHomeMatch(null);
       removeFlow(FLOW_KEYS.selectedMatchId);
     }
+    function onPopState() {
+      // Intercept browser back button when match center is open: close match & return to Home feed
+      if (selectedHomeMatch) {
+        setSelectedHomeMatch(null);
+        removeFlow(FLOW_KEYS.selectedMatchId);
+      }
+    }
     window.addEventListener("reset-home-match", onResetHomeMatch);
+    window.addEventListener("popstate", onPopState);
     return () => {
       window.removeEventListener("reset-home-match", onResetHomeMatch);
+      window.removeEventListener("popstate", onPopState);
     };
-  }, []);
+  }, [selectedHomeMatch]);
 
   // Restore pending match selection if returning from team creation or captain flow
   useEffect(() => {
@@ -990,6 +1031,13 @@ function Matches() {
     const clickedId = wm.id || wm.dbId;
     setFlow(FLOW_KEYS.selectedMatchId, clickedId);
 
+    // Push browser history state so browser Back button returns to Home feed instead of navigating away
+    if (typeof window !== "undefined") {
+      try {
+        window.history.pushState({ matchView: true, matchId: clickedId }, "", window.location.href);
+      } catch {}
+    }
+
     // Set appropriate initial tab based on match status
     const status = (wm.status || "LIVE").toUpperCase();
     if (status === "UPCOMING") {
@@ -998,6 +1046,15 @@ function Matches() {
       setMatchTab("Result");
     } else {
       setMatchTab("Live");
+    }
+  }
+
+  // Close match center cleanly and sync browser history
+  function handleBackToHome() {
+    setSelectedHomeMatch(null);
+    removeFlow(FLOW_KEYS.selectedMatchId);
+    if (typeof window !== "undefined" && window.history.state?.matchView) {
+      window.history.back();
     }
   }
 
@@ -1561,10 +1618,7 @@ function Matches() {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedHomeMatch(null);
-                    removeFlow(FLOW_KEYS.selectedMatchId);
-                  }}
+                  onClick={handleBackToHome}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-2 hover:bg-surface border border-border text-xs font-bold text-foreground hover:text-primary transition-colors cursor-pointer shadow-sm"
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -1606,10 +1660,7 @@ function Matches() {
                 )}
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedHomeMatch(null);
-                    removeFlow(FLOW_KEYS.selectedMatchId);
-                  }}
+                  onClick={handleBackToHome}
                   title="Close match view"
                   aria-label="Close match view"
                   className="h-8 w-8 rounded-full bg-surface-2 hover:bg-surface border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
@@ -2701,32 +2752,200 @@ function Matches() {
               </div>
             )}
 
-            {/* TAB CONTENT: INFO */}
-            {matchTab === "Info" && (
-              <div className="rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-md space-y-4 animate-in fade-in-50 duration-150">
-                <h3 className="font-black text-foreground text-sm border-b border-border/60 pb-2">
-                  Match &amp; Venue Details
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div>
-                    <span className="text-muted-foreground block">Stadium:</span>
-                    <span className="font-bold text-foreground">MA Chidambaram Stadium, Chepauk</span>
+            {/* TAB CONTENT: INFO (Exact Pics 4 & 5 Layout: Cricbuzz Match Info) */}
+            {matchTab === "Info" && (() => {
+              const squadA = getTeamSquadDetails(teamA);
+              const squadB = getTeamSquadDetails(teamB);
+              const vg = getVenueGuide(venue);
+              const officials = getMatchOfficials();
+              const broadcast = getMatchBroadcast(tournament, teamA, teamB);
+
+              const teamACode = selectedHomeMatch?.teamACode || (teamA.toUpperCase().includes("ENG") ? "ENG" : teamA.slice(0, 3).toUpperCase());
+              const teamBCode = selectedHomeMatch?.teamBCode || (teamB.toUpperCase().includes("PAK") ? "PAK" : teamB.slice(0, 3).toUpperCase());
+              const formatStr = selectedHomeMatch?.format || "3rd Test";
+              const matchTitle = `${teamACode} vs ${teamBCode} • ${formatStr} • ${tournament}`;
+              
+              let dateStr = "Wednesday, September 9";
+              const rawDate = selectedHomeMatch?.date || selectedHomeMatch?.startTime;
+              if (rawDate) {
+                try {
+                  const d = new Date(rawDate);
+                  if (!isNaN(d.getTime())) {
+                    dateStr = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+                  }
+                } catch {}
+              }
+
+              const timeStr = "11:00 AM LOCAL, 10:00 AM GMT, 3:30 PM IST";
+              const tossStr = (teamA.toUpperCase().includes("ENG") || teamB.toUpperCase().includes("PAK"))
+                ? "England won the toss and opt to Bowl"
+                : `${teamA} won the toss and opt to Bowl`;
+
+              return (
+                <div className="space-y-6 animate-in fade-in-50 duration-150">
+                  {/* CARD 1: INFO */}
+                  <div className="rounded-xl border border-border/80 bg-surface/90 overflow-hidden shadow-sm">
+                    <div className="bg-[#eaf5ef] dark:bg-emerald-950/40 border-b border-[#cbe4d6] dark:border-emerald-500/20 px-4 py-2.5">
+                      <h3 className="font-bold text-[#446b54] dark:text-emerald-300 text-xs sm:text-sm tracking-wide uppercase">
+                        INFO
+                      </h3>
+                    </div>
+
+                    <div className="divide-y divide-border/60 text-xs sm:text-sm">
+                      {/* Match */}
+                      <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                        <span className="w-44 sm:w-52 font-bold text-foreground shrink-0">Match</span>
+                        <span className="flex-1 text-foreground/90 font-medium">{matchTitle}</span>
+                      </div>
+
+                      {/* Series */}
+                      <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                        <span className="w-44 sm:w-52 font-bold text-foreground shrink-0">Series</span>
+                        <div className="flex-1 flex items-center justify-between">
+                          <span className="text-foreground/90 font-medium">{tournament}</span>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
+                        </div>
+                      </div>
+
+                      {/* Date */}
+                      <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                        <span className="w-44 sm:w-52 font-bold text-foreground shrink-0">Date</span>
+                        <span className="flex-1 text-foreground/90">{dateStr}</span>
+                      </div>
+
+                      {/* Time */}
+                      <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                        <span className="w-44 sm:w-52 font-bold text-foreground shrink-0">Time</span>
+                        <span className="flex-1 text-foreground/90">{timeStr}</span>
+                      </div>
+
+                      {/* Toss */}
+                      <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                        <span className="w-44 sm:w-52 font-bold text-foreground shrink-0">Toss</span>
+                        <span className="flex-1 text-foreground/90">{tossStr}</span>
+                      </div>
+
+                      {/* Venue */}
+                      <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                        <span className="w-44 sm:w-52 font-bold text-foreground shrink-0">Venue</span>
+                        <div className="flex-1 flex items-center justify-between">
+                          <span className="text-foreground/90 font-medium">{vg.stadium}{vg.city ? `, ${vg.city}` : ""}</span>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
+                        </div>
+                      </div>
+
+                      {/* Umpires */}
+                      <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                        <span className="w-44 sm:w-52 font-bold text-foreground shrink-0">Umpires</span>
+                        <span className="flex-1 text-foreground/90">{officials.umpires}</span>
+                      </div>
+
+                      {/* 3rd Umpire */}
+                      <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                        <span className="w-44 sm:w-52 font-bold text-foreground shrink-0">3rd Umpire</span>
+                        <span className="flex-1 text-foreground/90">{officials.thirdUmpire}</span>
+                      </div>
+
+                      {/* Referee */}
+                      <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                        <span className="w-44 sm:w-52 font-bold text-foreground shrink-0">Referee</span>
+                        <span className="flex-1 text-foreground/90">{officials.referee}</span>
+                      </div>
+
+                      {/* Team A squad */}
+                      <div className="px-4 py-3.5 flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
+                        <span className="w-44 sm:w-52 font-bold text-foreground shrink-0">{teamA} squad</span>
+                        <div className="flex-1 space-y-2.5 text-xs sm:text-sm">
+                          <div>
+                            <span className="font-bold text-foreground block mb-0.5">Players</span>
+                            <p className="text-muted-foreground leading-relaxed">{squadA.players.join(", ")}</p>
+                          </div>
+                          <div>
+                            <span className="font-bold text-foreground block mb-0.5">Bench</span>
+                            <p className="text-muted-foreground leading-relaxed">{squadA.bench.join(", ")}</p>
+                          </div>
+                          <div>
+                            <span className="font-bold text-foreground block mb-0.5">Support Staff</span>
+                            <p className="text-muted-foreground leading-relaxed">{squadA.staff.join(", ")}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Team B squad */}
+                      <div className="px-4 py-3.5 flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
+                        <span className="w-44 sm:w-52 font-bold text-foreground shrink-0">{teamB} squad</span>
+                        <div className="flex-1 space-y-2.5 text-xs sm:text-sm">
+                          <div>
+                            <span className="font-bold text-foreground block mb-0.5">Players</span>
+                            <p className="text-muted-foreground leading-relaxed">{squadB.players.join(", ")}</p>
+                          </div>
+                          <div>
+                            <span className="font-bold text-foreground block mb-0.5">Bench</span>
+                            <p className="text-muted-foreground leading-relaxed">{squadB.bench.join(", ")}</p>
+                          </div>
+                          <div>
+                            <span className="font-bold text-foreground block mb-0.5">Support Staff</span>
+                            <p className="text-muted-foreground leading-relaxed">{squadB.staff.join(", ")}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground block">City:</span>
-                    <span className="font-bold text-foreground">Chennai, Tamil Nadu</span>
+
+                  {/* CARD 2: VENUE GUIDE */}
+                  <div className="rounded-xl border border-border/80 bg-surface/90 overflow-hidden shadow-sm">
+                    <div className="bg-[#eaf5ef] dark:bg-emerald-950/40 border-b border-[#cbe4d6] dark:border-emerald-500/20 px-4 py-2.5">
+                      <h3 className="font-bold text-[#446b54] dark:text-emerald-300 text-xs sm:text-sm tracking-wide uppercase">
+                        VENUE GUIDE
+                      </h3>
+                    </div>
+
+                    <div className="divide-y divide-border/60 text-xs sm:text-sm">
+                      <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                        <span className="w-44 sm:w-52 font-bold text-foreground shrink-0">Stadium</span>
+                        <span className="flex-1 text-foreground/90 font-medium">{vg.stadium}</span>
+                      </div>
+                      <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                        <span className="w-44 sm:w-52 font-bold text-foreground shrink-0">City</span>
+                        <span className="flex-1 text-foreground/90">{vg.city}</span>
+                      </div>
+                      <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                        <span className="w-44 sm:w-52 font-bold text-foreground shrink-0">Capacity</span>
+                        <span className="flex-1 text-foreground/90 font-mono">{vg.capacity}</span>
+                      </div>
+                      <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                        <span className="w-44 sm:w-52 font-bold text-foreground shrink-0">Ends</span>
+                        <span className="flex-1 text-foreground/90">{vg.ends}</span>
+                      </div>
+                      <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                        <span className="w-44 sm:w-52 font-bold text-foreground shrink-0">Hosts To</span>
+                        <span className="flex-1 text-foreground/90">{vg.hostsTo}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground block">Pitch Behavior:</span>
-                    <span className="font-bold text-foreground">Dry, turns from Day 2, high wear and tear</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground block">Broadcast:</span>
-                    <span className="font-bold text-foreground">JioHotstar, Star Sports Network</span>
+
+                  {/* CARD 3: BROADCAST GUIDE - IN */}
+                  <div className="rounded-xl border border-border/80 bg-surface/90 overflow-hidden shadow-sm">
+                    <div className="bg-[#eaf5ef] dark:bg-emerald-950/40 border-b border-[#cbe4d6] dark:border-emerald-500/20 px-4 py-2.5">
+                      <h3 className="font-bold text-[#446b54] dark:text-emerald-300 text-xs sm:text-sm tracking-wide uppercase">
+                        BROADCAST GUIDE - IN
+                      </h3>
+                    </div>
+
+                    <div className="divide-y divide-border/60 text-xs sm:text-sm">
+                      <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                        <span className="w-44 sm:w-52 font-bold text-foreground shrink-0">Streaming</span>
+                        <span className="flex-1 text-foreground/90 font-medium">{broadcast.streaming}</span>
+                      </div>
+                      <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                        <span className="w-44 sm:w-52 font-bold text-foreground shrink-0">TV</span>
+                        <span className="flex-1 text-foreground/90 font-medium">{broadcast.tv}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* TAB CONTENT: SQUADS */}
             {matchTab === "Squads" && (
@@ -3146,45 +3365,202 @@ function Matches() {
               </div>
 
               {/* ------------------------------------------------------------- */}
-              {/* RIGHT COLUMN: FEATURED VIDEOS (w-3/12 on large screens-Sticky)*/}
+              {/* RIGHT COLUMN: WORLD CRICKET UPDATES (w-3/12 on large screens-Sticky)*/}
+              {/* Replaces Video section with attractive live worldwide cricket updates */}
               {/* ------------------------------------------------------------- */}
               <div className="lg:col-span-3 space-y-4 lg:sticky lg:top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto pr-1 scrollbar-none">
+                {/* Header */}
                 <div className="flex items-center justify-between pb-2 border-b border-border/80">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-red-500 flex items-center gap-1.5">
-                    <Video className="h-4 w-4 fill-red-500" />
-                    FEATURED VIDEOS
+                  <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                    <Globe2 className="h-4 w-4 text-emerald-400" />
+                    WORLD CRICKET UPDATES
                   </h3>
-                  <span className="text-[10px] font-bold text-muted-foreground">HIGHLIGHTS</span>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-400 bg-red-500/10 border border-red-500/30 px-2 py-0.5 rounded-full animate-pulse">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                    LIVE RADAR
+                  </span>
                 </div>
 
-                <div className="space-y-4">
-                  {FEATURED_VIDEOS.map((vid) => (
-                    <div
-                      key={vid.id}
-                      onClick={() => setActiveVideo(vid)}
-                      className="rounded-xl border border-border/80 bg-surface/90 overflow-hidden group cursor-pointer hover:border-emerald-500/40 transition-all shadow-sm"
-                    >
-                      <div className="relative aspect-video bg-gradient-to-br from-emerald-950/80 to-surface-2 flex items-center justify-center">
-                        <div className="h-10 w-10 rounded-full bg-emerald-600/90 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                          <Play className="h-5 w-5 fill-current ml-0.5" />
+                {/* Worldwide Live & Recent Matches List */}
+                <div className="space-y-3">
+                  {(worldMatches.length > 0 ? worldMatches.slice(0, 5) : [
+                    {
+                      id: "wm-live-1",
+                      series: "Duleep Trophy 2026, Final",
+                      format: "FC",
+                      teamA: "East Zone",
+                      teamB: "South Zone",
+                      teamACode: "EZONE",
+                      teamBCode: "SZONE",
+                      teamAFlag: "🏏",
+                      teamBFlag: "🏏",
+                      scoreA: "708/8d",
+                      scoreB: "176/5 (56 ov)",
+                      status: "LIVE",
+                      statusText: "Day 3: SZONE trail by 532 runs",
+                    },
+                    {
+                      id: "wm-live-2",
+                      series: "Women's Asia Cup T20I",
+                      format: "T20I",
+                      teamA: "Pakistan Women",
+                      teamB: "Hong Kong Women",
+                      teamACode: "PAKW",
+                      teamBCode: "HKW",
+                      teamAFlag: "🇵🇰",
+                      teamBFlag: "🇭🇰",
+                      scoreA: "143/8 (20 ov)",
+                      scoreB: "71 (17.3 ov)",
+                      status: "COMPLETED",
+                      statusText: "PAKW won by 72 runs",
+                    },
+                    {
+                      id: "wm-live-3",
+                      series: "Big Bash League 2026",
+                      format: "T20",
+                      teamA: "Adelaide Strikers",
+                      teamB: "Melbourne Stars",
+                      teamACode: "ADS",
+                      teamBCode: "MLS",
+                      teamAFlag: "⚡",
+                      teamBFlag: "⭐",
+                      scoreA: "189/4 (20 ov)",
+                      scoreB: "89/3 (11.2 ov)",
+                      status: "LIVE",
+                      statusText: "MLS need 101 runs in 52 balls",
+                    },
+                    {
+                      id: "wm-live-4",
+                      series: "Caribbean Premier League",
+                      format: "T20",
+                      teamA: "Guyana Warriors",
+                      teamB: "Antigua Falcons",
+                      teamACode: "GAW",
+                      teamBCode: "ABF",
+                      teamAFlag: "🌴",
+                      teamBFlag: "🦅",
+                      scoreA: "Upcoming",
+                      scoreB: "Preview",
+                      status: "UPCOMING",
+                      statusText: "Match starts at 7:30 PM",
+                    },
+                  ]).map((wm: any) => {
+                    const st = (wm.status || "LIVE").toUpperCase();
+                    const isLive = st === "LIVE";
+                    const isComp = st === "COMPLETED";
+
+                    return (
+                      <div
+                        key={wm.id || wm.dbId}
+                        onClick={() => handleSelectMatch(wm)}
+                        className="rounded-xl border border-border/80 bg-surface/90 p-3 hover:border-emerald-500/50 hover:bg-surface-2/70 transition-all cursor-pointer group shadow-sm"
+                      >
+                        <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1.5">
+                          <span className="font-bold truncate max-w-[140px] text-foreground/80">
+                            {wm.series || "International Match"}
+                          </span>
+                          <span
+                            className={cn(
+                              "px-1.5 py-0.5 rounded font-bold uppercase text-[9px]",
+                              isLive
+                                ? "bg-red-500/15 text-red-400 border border-red-500/30 animate-pulse"
+                                : isComp
+                                ? "bg-surface-2 text-muted-foreground border border-border"
+                                : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                            )}
+                          >
+                            {wm.status || "LIVE"}
+                          </span>
                         </div>
-                        <span className="absolute bottom-2 right-2 text-[10px] font-mono bg-black/80 text-white px-1.5 py-0.5 rounded">
-                          {vid.duration}
-                        </span>
-                        <span className="absolute top-2 left-2 text-[9px] font-bold bg-black/60 text-emerald-300 px-1.5 py-0.5 rounded">
-                          {vid.tag}
-                        </span>
+
+                        {/* Team A */}
+                        <div className="flex items-center justify-between text-xs py-0.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-sm">{wm.teamAFlag || getTeamFlag(wm.teamACode || wm.teamA)}</span>
+                            <span className="font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                              {wm.teamACode || wm.teamA}
+                            </span>
+                          </div>
+                          <span className="font-mono text-xs font-bold text-foreground">
+                            {wm.scoreA || (isLive ? "Yet to bat" : "—")}
+                          </span>
+                        </div>
+
+                        {/* Team B */}
+                        <div className="flex items-center justify-between text-xs py-0.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-sm">{wm.teamBFlag || getTeamFlag(wm.teamBCode || wm.teamB)}</span>
+                            <span className="font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                              {wm.teamBCode || wm.teamB}
+                            </span>
+                          </div>
+                          <span className="font-mono text-xs font-bold text-foreground">
+                            {wm.scoreB || (isLive ? "Innings break" : "—")}
+                          </span>
+                        </div>
+
+                        {/* Status text */}
+                        <div className="mt-2 pt-1.5 border-t border-border/50 flex items-center justify-between text-[10px]">
+                          <span
+                            className={cn(
+                              "truncate font-medium",
+                              isLive ? "text-emerald-400" : isComp ? "text-muted-foreground" : "text-amber-400"
+                            )}
+                          >
+                            {wm.statusText || (isLive ? "Match in progress" : isComp ? "Match Completed" : "Starts soon")}
+                          </span>
+                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0 ml-1" />
+                        </div>
                       </div>
-                      <div className="p-3">
-                        <h4 className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
-                          {vid.title}
-                        </h4>
-                        <span className="text-[10px] text-muted-foreground mt-1 block">
-                          {vid.views}
-                        </span>
-                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Quick Cricket Pulse Widget */}
+                <div className="rounded-xl border border-border/80 bg-gradient-to-b from-surface/90 to-surface-2/60 p-3.5 shadow-sm space-y-2.5">
+                  <div className="flex items-center gap-1.5 pb-1.5 border-b border-border/60">
+                    <Zap className="h-3.5 w-3.5 text-amber-400" />
+                    <span className="text-[11px] font-black uppercase tracking-wider text-foreground">
+                      CRICKET PULSE • BREAKING
+                    </span>
+                  </div>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-start gap-2 group cursor-default">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
+                      <p className="text-[11px] text-muted-foreground group-hover:text-foreground transition-colors leading-snug">
+                        <span className="font-bold text-foreground">India Squad:</span> Jasprit Bumrah fit and named captain for upcoming tri-series.
+                      </p>
                     </div>
-                  ))}
+                    <div className="flex items-start gap-2 group cursor-default">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
+                      <p className="text-[11px] text-muted-foreground group-hover:text-foreground transition-colors leading-snug">
+                        <span className="font-bold text-foreground">Duleep Trophy:</span> East Zone declare at 708/8d; Ishan Kishan bags 250*.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2 group cursor-default">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
+                      <p className="text-[11px] text-muted-foreground group-hover:text-foreground transition-colors leading-snug">
+                        <span className="font-bold text-foreground">ICC Update:</span> New FTP cycle allocates exclusive 4-week window for franchise T20 leagues.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Trending Series Tags */}
+                <div className="rounded-xl border border-border/80 bg-surface/90 p-3 shadow-sm space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block">
+                    TRENDING SERIES
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {["#DuleepTrophy", "#ChampionsTrophy27", "#BigBash16", "#WomensAsiaCup", "#IPL2027Auction"].map((tag) => (
+                      <span
+                        key={tag}
+                        className="text-[10px] font-semibold px-2 py-1 rounded-md bg-surface-2 hover:bg-emerald-500/10 hover:text-emerald-400 text-muted-foreground border border-border/80 transition-colors cursor-pointer"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
