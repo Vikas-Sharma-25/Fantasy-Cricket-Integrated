@@ -10,6 +10,7 @@ import supportRoutes from "./support.routes";
 import adminRoutes from "./admin.routes";
 import playerRoutes from "./player.routes";
 import cricketApiRoutes from "./cricketApi.routes";
+import mediaRoutes from "./media.routes";
 
 const router = Router();
 
@@ -71,5 +72,6 @@ router.use("/support", supportRoutes);
 router.use("/admin", adminRoutes);
 router.use("/players", playerRoutes);
 router.use("/cricket", cricketApiRoutes);
+router.use("/media", mediaRoutes);
 
 export default router;

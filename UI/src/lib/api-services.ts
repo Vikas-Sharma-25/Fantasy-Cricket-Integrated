@@ -105,3 +105,40 @@ export async function getMyContests(matchId?: string) {
 export async function getLeaderboard(contestId: string) {
   return api.get<any[]>(`/leaderboards/${contestId}`);
 }
+
+export interface PresignedUploadResponse {
+  uploadUrl: string;
+  key: string;
+  fileUrl: string;
+  expiresIn: number;
+  isMock?: boolean;
+}
+
+export async function getPresignedUploadUrl(
+  fileName: string,
+  fileType: string,
+  folder = "avatars"
+): Promise<PresignedUploadResponse> {
+  return api.post<PresignedUploadResponse>("/media/upload-url", {
+    fileName,
+    fileType,
+    folder
+  });
+}
+
+export async function uploadFileToS3(file: File, folder = "avatars"): Promise<string> {
+  const data = await getPresignedUploadUrl(file.name, file.type, folder);
+  if (!data.isMock) {
+    const uploadRes = await fetch(data.uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": file.type
+      },
+      body: file
+    });
+    if (!uploadRes.ok) {
+      throw new Error(`Failed to upload file to S3: ${uploadRes.statusText}`);
+    }
+  }
+  return data.fileUrl;
+}
