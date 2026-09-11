@@ -72,6 +72,31 @@ export const restoreUser = asyncHandler(async (req: Request, res: Response) => {
   return sendSuccess(res, user, "User restored");
 });
 
+export const updateUserRole = asyncHandler(async (req: Request, res: Response) => {
+  const { role } = req.body;
+  const validRoles: Array<"user" | "admin" | "super_admin"> = ["user", "admin", "super_admin"];
+  if (!role || !validRoles.includes(role)) {
+    throw ApiError.badRequest(`Invalid role. Must be one of: ${validRoles.join(", ")}`);
+  }
+
+  const user = await User.findById(req.params.userId);
+  if (!user) throw ApiError.notFound("User not found");
+
+  // Prevent demoting self if user is the only super_admin
+  if (req.user?.userId === user._id.toString() && role !== "super_admin") {
+    const superAdminCount = await User.countDocuments({ role: "super_admin" });
+    if (superAdminCount <= 1) {
+      throw ApiError.forbidden("Cannot demote the only remaining Super Admin");
+    }
+  }
+
+  const before = { role: user.role };
+  user.role = role;
+  await user.save();
+  await writeAudit(req, "UPDATE_USER_ROLE", "User", user._id.toString(), before, { role: user.role });
+  return sendSuccess(res, user, `User role updated to ${role}`);
+});
+
 // ---- Matches ----
 export const createMatch = asyncHandler(async (req: Request, res: Response) => {
   const match = await Match.create(req.body);

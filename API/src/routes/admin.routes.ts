@@ -2,6 +2,7 @@ import { Router } from "express";
 import * as adminController from "../controllers/admin.controller";
 import { requireAuth } from "../middleware/auth.middleware";
 import { requireAdmin } from "../middleware/rbac.middleware";
+import { requireAdmin, requireSuperAdmin } from "../middleware/rbac.middleware";
 
 const router = Router();
 
@@ -12,6 +13,7 @@ router.get("/dashboard", adminController.getDashboard);
 router.get("/users", adminController.listUsers);
 router.patch("/users/:userId/suspend", adminController.suspendUser);
 router.patch("/users/:userId/restore", adminController.restoreUser);
+router.patch("/users/:userId/role", requireSuperAdmin, adminController.updateUserRole);
 
 router.post("/matches", adminController.createMatch);
 router.patch("/matches/:matchId", adminController.updateMatch);

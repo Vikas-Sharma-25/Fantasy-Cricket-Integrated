@@ -1,6 +1,8 @@
 import { Router } from "express";
 
 import * as matchController from "../controllers/match.controller";
+import { requireAuth } from "../middleware/auth.middleware";
+import { requireAdmin } from "../middleware/rbac.middleware";
 
 const router = Router();
 
@@ -10,16 +12,22 @@ const router = Router();
 
 router.post(
   "/",
+  requireAuth,
+  requireAdmin,
   matchController.createMatch
 );
 
 router.patch(
   "/:matchId",
+  requireAuth,
+  requireAdmin,
   matchController.updateMatch
 );
 
 router.delete(
   "/:matchId",
+  requireAuth,
+  requireAdmin,
   matchController.deleteMatch
 );
 

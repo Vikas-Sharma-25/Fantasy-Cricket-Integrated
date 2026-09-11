@@ -28,6 +28,10 @@ export const requireAuth = asyncHandler(
     if (user.status === "deleted") throw ApiError.forbidden("Account deleted");
 
     req.user = payload;
+    req.user = {
+      ...payload,
+      role: user.role
+    };
     next();
   }
 );
@@ -41,6 +45,14 @@ export const optionalAuth = asyncHandler(
     if (token) {
       try {
         req.user = verifyAccessToken(token);
+        const payload = verifyAccessToken(token);
+        const user = await User.findById(payload.userId).select("status role isVerified");
+        if (user && user.status === "active") {
+          req.user = {
+            ...payload,
+            role: user.role
+          };
+        }
       } catch {
         /* ignore invalid token for optional auth */
       }

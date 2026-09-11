@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, type ReactNode } from "react";
+import { useEffect, useState, useRef, useMemo, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Bell,
@@ -20,6 +20,8 @@ import {
   CalendarDays,
   BarChart2,
   HelpCircle,
+  LayoutDashboard,
+  ShieldAlert,
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
@@ -207,6 +209,32 @@ export function AppShell({
               </Link>
             ))}
           </div>
+
+          {/* Admin / Management Navigation for authorized roles */}
+          {(user?.role === "admin" || user?.role === "super_admin") && (
+            <div className="pt-3">
+              <p className="px-3 py-1 text-[10px] font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                <ShieldAlert className="h-3 w-3" /> Management
+              </p>
+              <Link
+                to="/admin"
+                className={cn(
+                  "flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-bold transition-all border",
+                  pathname === "/admin"
+                    ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm"
+                    : "text-emerald-400/90 hover:bg-emerald-500/10 border-emerald-500/20 hover:border-emerald-500/40"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <LayoutDashboard className="h-4.5 w-4.5 text-emerald-400" />
+                  <span>Admin Portal</span>
+                </div>
+                <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-300">
+                  {user?.role === "super_admin" ? "Super" : "Admin"}
+                </span>
+              </Link>
+            </div>
+          )}
 
           {/* User Fantasy Account & Wallet Status (Informational only - NO ADS) */}
           <div className="mt-4 rounded-xl border border-border/80 bg-surface/70 p-3 space-y-2.5">
@@ -415,7 +443,7 @@ export function AppShell({
 
         {/* Bottom Mobile Navigation (on small screens < md) */}
         <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur">
-          <div className="grid grid-cols-5 px-2">
+          <div className={cn("grid px-2", (user?.role === "admin" || user?.role === "super_admin") ? "grid-cols-5" : "grid-cols-4")}>
             {mobileNavItems.map(({ to, label, icon: Icon }) => {
               const active = pathname === to;
               return (
@@ -438,6 +466,18 @@ export function AppShell({
                 </Link>
               );
             })}
+            {(user?.role === "admin" || user?.role === "super_admin") && (
+              <Link
+                to="/admin"
+                className={cn(
+                  "flex flex-col items-center gap-1 py-3 text-[10px] font-medium transition-colors",
+                  pathname === "/admin" ? "text-emerald-400 font-bold" : "text-emerald-400/70 hover:text-emerald-300",
+                )}
+              >
+                <ShieldAlert className="h-5 w-5" />
+                Admin
+              </Link>
+            )}
           </div>
         </nav>
       </div>

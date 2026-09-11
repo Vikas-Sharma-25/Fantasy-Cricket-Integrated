@@ -5,6 +5,8 @@ import * as contestController
 
 import { requireAuth }
   from "../middleware/auth.middleware";
+import { requireAdmin }
+  from "../middleware/rbac.middleware";
 
 import { validate }
   from "../middleware/validate.middleware";
@@ -59,11 +61,13 @@ router.use(requireAuth);
 /*
 |--------------------------------------------------------------------------
 | CREATE
+| CREATE (ADMIN ONLY for public contests)
 |--------------------------------------------------------------------------
 */
 
 router.post(
   "/",
+  requireAdmin,
   validate(createContestSchema),
   contestController.createContest
 );

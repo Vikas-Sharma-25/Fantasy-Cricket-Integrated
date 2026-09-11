@@ -175,3 +175,15 @@ export async function uploadFileToS3(file: File, folder = "avatars"): Promise<st
   }
   return data.fileUrl;
 }
+
+export async function updateUserRole(userId: string, role: "user" | "admin" | "super_admin") {
+  return api.patch<User>(`/admin/users/${userId}/role`, { role });
+}
+
+export async function suspendUser(userId: string) {
+  return api.patch<User>(`/admin/users/${userId}/suspend`, {});
+}
+
+export async function restoreUser(userId: string) {
+  return api.patch<User>(`/admin/users/${userId}/restore`, {});
+}
