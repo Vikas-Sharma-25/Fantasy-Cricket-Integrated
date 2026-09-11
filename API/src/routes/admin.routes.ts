@@ -1,7 +1,6 @@
 import { Router } from "express";
 import * as adminController from "../controllers/admin.controller";
 import { requireAuth } from "../middleware/auth.middleware";
-import { requireAdmin } from "../middleware/rbac.middleware";
 import { requireAdmin, requireSuperAdmin } from "../middleware/rbac.middleware";
 
 const router = Router();
