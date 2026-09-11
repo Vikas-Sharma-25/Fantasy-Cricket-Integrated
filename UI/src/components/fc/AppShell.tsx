@@ -75,9 +75,9 @@ const sidebarNavItems = [
 ];
 
 const cricketNavItems = [
-  { to: "/matches", label: "Series & Fixtures", icon: CalendarDays },
-  { to: "/matches", label: "Points Table", icon: BarChart2 },
-  { to: "/matches", label: "Fantasy Point Rules", icon: HelpCircle },
+  { to: "/matches", label: "Series & Fixtures", icon: CalendarDays, action: "upcoming" },
+  { to: "/live-match", label: "Live Match Center", icon: Radio, isLive: true },
+  { to: "/rules", label: "Fantasy Point Rules", icon: HelpCircle },
 ];
 
 const mobileNavItems = [
@@ -99,6 +99,16 @@ export function AppShell({
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const [walletTotal, setWalletTotal] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem("fc_user_wallet");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return (parsed.deposited || 0) + (parsed.winnings || 0) + (parsed.bonus || 0);
+      }
+    } catch {}
+    return 1550;
+  });
 
   useEffect(() => {
     const cached = getCachedUser();
@@ -113,10 +123,19 @@ export function AppShell({
     function onProfileUpdated(e: Event) {
       const customEvent = e as CustomEvent<User>;
       if (customEvent.detail) setUser(customEvent.detail);
+      try {
+        const saved = localStorage.getItem("fc_user_wallet");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setWalletTotal((parsed.deposited || 0) + (parsed.winnings || 0) + (parsed.bonus || 0));
+        }
+      } catch {}
     }
     window.addEventListener("user-profile-updated", onProfileUpdated);
+    window.addEventListener("storage", onProfileUpdated);
     return () => {
       window.removeEventListener("user-profile-updated", onProfileUpdated);
+      window.removeEventListener("storage", onProfileUpdated);
     };
   }, []);
 
@@ -198,16 +217,39 @@ export function AppShell({
             <p className="px-3 py-1 text-[10px] font-black text-muted-foreground uppercase tracking-wider">
               Cricket Desk
             </p>
-            {cricketNavItems.map(({ to, label, icon: Icon }) => (
-              <Link
-                key={label}
-                to={to}
-                className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-xs font-semibold text-muted-foreground hover:bg-surface-2 hover:text-foreground transition-all"
-              >
-                <Icon className="h-4 w-4 text-muted-foreground" />
-                <span>{label}</span>
-              </Link>
-            ))}
+            {cricketNavItems.map(({ to, label, icon: Icon, action, isLive }) => {
+              const active = pathname === to && (!action || (typeof window !== "undefined" && window.location.search.includes("tab=upcoming")));
+              return (
+                <Link
+                  key={label}
+                  to={to}
+                  onClick={() => {
+                    if (action === "upcoming") {
+                      removeFlow(FLOW_KEYS.selectedMatchId);
+                      window.dispatchEvent(new CustomEvent("switch-matches-tab", { detail: "UPCOMING" }));
+                      window.dispatchEvent(new CustomEvent("reset-home-match"));
+                    }
+                  }}
+                  className={cn(
+                    "flex items-center justify-between rounded-xl px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer",
+                    active
+                      ? "bg-primary/15 text-primary border border-primary/30 font-bold"
+                      : "text-muted-foreground hover:bg-surface-2 hover:text-foreground"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon className={cn("h-4 w-4", isLive ? "text-red-500 animate-pulse" : active ? "text-primary" : "text-muted-foreground")} />
+                    <span>{label}</span>
+                  </div>
+                  {isLive && (
+                    <span className="flex items-center gap-1 rounded-full bg-red-500/15 border border-red-500/30 px-1.5 py-0.2 text-[9px] font-black text-red-400 animate-pulse">
+                      <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                      LIVE
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
           </div>
 
           {/* Admin / Management Navigation for authorized roles */}
@@ -242,7 +284,9 @@ export function AppShell({
               <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1.5">
                 <Wallet className="h-3.5 w-3.5 text-primary" /> Wallet Cash
               </span>
-              <span className="text-xs font-mono font-bold text-emerald-400">₹{user?.walletBalance ?? 0}</span>
+              <span className="text-xs font-mono font-bold text-emerald-400">
+                ₹{(user?.walletBalance ?? walletTotal).toLocaleString("en-IN")}
+              </span>
             </div>
             <div className="h-px bg-border/60" />
             <div className="flex items-center justify-between text-[10px] text-muted-foreground">

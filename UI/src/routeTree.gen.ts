@@ -24,6 +24,7 @@ import { Route as PlayersRouteImport } from './routes/players'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ResultsRouteImport } from './routes/results'
+import { Route as RulesRouteImport } from './routes/rules'
 import { Route as VerifyOtpRouteImport } from './routes/verify-otp'
 import { Route as VerifyOtpLoginRouteImport } from './routes/verify-otp-login'
 
@@ -102,6 +103,11 @@ const ResultsRoute = ResultsRouteImport.update({
   path: '/results',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RulesRoute = RulesRouteImport.update({
+  id: '/rules',
+  path: '/rules',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VerifyOtpRoute = VerifyOtpRouteImport.update({
   id: '/verify-otp',
   path: '/verify-otp',
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/results': typeof ResultsRoute
+  '/rules': typeof RulesRoute
   '/verify-otp': typeof VerifyOtpRoute
   '/verify-otp-login': typeof VerifyOtpLoginRoute
 }
@@ -148,6 +155,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/results': typeof ResultsRoute
+  '/rules': typeof RulesRoute
   '/verify-otp': typeof VerifyOtpRoute
   '/verify-otp-login': typeof VerifyOtpLoginRoute
 }
@@ -168,6 +176,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/results': typeof ResultsRoute
+  '/rules': typeof RulesRoute
   '/verify-otp': typeof VerifyOtpRoute
   '/verify-otp-login': typeof VerifyOtpLoginRoute
 }
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/register'
     | '/results'
+    | '/rules'
     | '/verify-otp'
     | '/verify-otp-login'
   fileRoutesByTo: FileRoutesByTo
@@ -208,6 +218,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/register'
     | '/results'
+    | '/rules'
     | '/verify-otp'
     | '/verify-otp-login'
   id:
@@ -227,6 +238,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/register'
     | '/results'
+    | '/rules'
     | '/verify-otp'
     | '/verify-otp-login'
   fileRoutesById: FileRoutesById
@@ -247,6 +259,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   RegisterRoute: typeof RegisterRoute
   ResultsRoute: typeof ResultsRoute
+  RulesRoute: typeof RulesRoute
   VerifyOtpRoute: typeof VerifyOtpRoute
   VerifyOtpLoginRoute: typeof VerifyOtpLoginRoute
 }
@@ -358,6 +371,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResultsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rules': {
+      id: '/rules'
+      path: '/rules'
+      fullPath: '/rules'
+      preLoaderRoute: typeof RulesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/verify-otp': {
       id: '/verify-otp'
       path: '/verify-otp'
@@ -391,6 +411,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   RegisterRoute: RegisterRoute,
   ResultsRoute: ResultsRoute,
+  RulesRoute: RulesRoute,
   VerifyOtpRoute: VerifyOtpRoute,
   VerifyOtpLoginRoute: VerifyOtpLoginRoute,
 }

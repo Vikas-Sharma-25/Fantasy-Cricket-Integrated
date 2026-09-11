@@ -1604,6 +1604,15 @@ function Matches() {
       setSelectedHomeMatch(null);
       removeFlow(FLOW_KEYS.selectedMatchId);
     }
+    function onSwitchMatchesTab(e: Event) {
+      const customEvent = e as CustomEvent<string>;
+      const tabName = (customEvent.detail || "UPCOMING").toUpperCase();
+      if (tabName === "UPCOMING" || tabName === "LIVE" || tabName === "COMPLETED") {
+        setArenaTab(tabName as any);
+      }
+      setSelectedHomeMatch(null);
+      removeFlow(FLOW_KEYS.selectedMatchId);
+    }
     function onPopState() {
       // Intercept browser back button when match center is open: close match & return to Home feed
       if (selectedHomeMatch) {
@@ -1611,10 +1620,23 @@ function Matches() {
         removeFlow(FLOW_KEYS.selectedMatchId);
       }
     }
+
+    // Check URL parameters on mount / update
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab")?.toUpperCase();
+      if (tabParam === "UPCOMING" || tabParam === "LIVE" || tabParam === "COMPLETED") {
+        setArenaTab(tabParam as any);
+        setSelectedHomeMatch(null);
+      }
+    }
+
     window.addEventListener("reset-home-match", onResetHomeMatch);
+    window.addEventListener("switch-matches-tab", onSwitchMatchesTab);
     window.addEventListener("popstate", onPopState);
     return () => {
       window.removeEventListener("reset-home-match", onResetHomeMatch);
+      window.removeEventListener("switch-matches-tab", onSwitchMatchesTab);
       window.removeEventListener("popstate", onPopState);
     };
   }, [selectedHomeMatch]);
