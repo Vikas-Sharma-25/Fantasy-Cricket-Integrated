@@ -12,6 +12,7 @@ import { AuditLog } from "../models/AuditLog";
 import { SupportTicket } from "../models/SupportTicket";
 import { PlayerEvent } from "../models/PlayerEvent";
 import { Notification } from "../models/Notification";
+import { SystemConfig } from "../models/SystemConfig";
 import * as scoringService from "../services/scoring.service";
 import * as leaderboardService from "../services/leaderboard.service";
 import * as teamService from "../services/team.service";
@@ -345,4 +346,44 @@ export const broadcastNotification = asyncHandler(async (req: Request, res: Resp
   }
   await writeAudit(req, "BROADCAST_NOTIFICATION", "Notification", undefined, undefined, { title, recipientCount: docs.length });
   return sendSuccess(res, { count: docs.length }, `Notification sent to ${docs.length} users`, 201);
+});
+
+// ---- Platform Settings ----
+const DEFAULT_PLATFORM_SETTINGS = {
+  maintenanceMode: false,
+  teamLockBufferMinutes: 0,
+  maxTeamsPerMatch: 11,
+  otpExpiryMinutes: 5,
+  maxOtpResends: 5,
+  autoProcessEvents: true
+};
+
+export const getPlatformSettings = asyncHandler(async (_req: Request, res: Response) => {
+  const doc = await SystemConfig.findOne({ configKey: "platform_settings" });
+  const settings = doc?.configValue
+    ? { ...DEFAULT_PLATFORM_SETTINGS, ...(doc.configValue as Record<string, unknown>) }
+    : DEFAULT_PLATFORM_SETTINGS;
+  return sendSuccess(res, settings);
+});
+
+export const updatePlatformSettings = asyncHandler(async (req: Request, res: Response) => {
+  const existing = await SystemConfig.findOne({ configKey: "platform_settings" });
+  const current = existing?.configValue
+    ? { ...DEFAULT_PLATFORM_SETTINGS, ...(existing.configValue as Record<string, unknown>) }
+    : DEFAULT_PLATFORM_SETTINGS;
+  const updated = { ...current, ...req.body };
+
+  await SystemConfig.findOneAndUpdate(
+    { configKey: "platform_settings" },
+    {
+      configKey: "platform_settings",
+      configValue: updated,
+      description: "Platform governance and fantasy parameters",
+      updatedBy: req.user?.userId
+    },
+    { upsert: true, new: true }
+  );
+
+  await writeAudit(req, "UPDATE_PLATFORM_SETTINGS", "SystemConfig", undefined, current, updated);
+  return sendSuccess(res, updated, "Platform settings updated successfully");
 });

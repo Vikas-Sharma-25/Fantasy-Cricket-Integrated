@@ -25,8 +25,8 @@ router.post("/players", adminController.createPlayer);
 router.post("/match-players", adminController.upsertMatchPlayer);
 
 router.get("/scoring-rules", adminController.listScoringRules);
-router.post("/scoring-rules", adminController.createScoringRule);
-router.patch("/scoring-rules/:ruleId", adminController.updateScoringRule);
+router.post("/scoring-rules", requireSuperAdmin, adminController.createScoringRule);
+router.patch("/scoring-rules/:ruleId", requireSuperAdmin, adminController.updateScoringRule);
 
 router.post("/events/ingest", adminController.ingestEvent);
 router.get("/events", adminController.listPlayerEvents);
@@ -44,5 +44,8 @@ router.get("/support/tickets", adminController.listAllTickets);
 router.patch("/support/tickets/:ticketId/reply", adminController.replyToTicket);
 
 router.get("/audit-logs", adminController.listAuditLogs);
+
+router.get("/settings", adminController.getPlatformSettings);
+router.patch("/settings", requireSuperAdmin, adminController.updatePlatformSettings);
 
 export default router;
