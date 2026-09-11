@@ -2,7 +2,7 @@ import { Schema, model, Document, Types } from "mongoose";
 
 export interface INotification extends Document {
   _id: Types.ObjectId;
-  userId: Types.ObjectId;
+  userId?: Types.ObjectId | null;
   type: string;
   title: string;
   message: string;
@@ -13,7 +13,7 @@ export interface INotification extends Document {
 
 const notificationSchema = new Schema<INotification>(
   {
-    userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: false, index: true, default: null },
     type: { type: String, required: true },
     title: { type: String, required: true },
     message: { type: String, required: true },

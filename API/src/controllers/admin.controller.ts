@@ -16,6 +16,7 @@ import { SystemConfig } from "../models/SystemConfig";
 import * as scoringService from "../services/scoring.service";
 import * as leaderboardService from "../services/leaderboard.service";
 import * as teamService from "../services/team.service";
+import { broadcastAnnouncement } from "../sockets";
 
 async function writeAudit(req: Request, action: string, entityType: string, entityId?: string, before?: unknown, after?: unknown) {
   await AuditLog.create({
@@ -331,6 +332,16 @@ export const broadcastNotification = asyncHandler(async (req: Request, res: Resp
   const { title, message, type = "SYSTEM_BROADCAST" } = req.body;
   if (!title || !message) throw ApiError.badRequest("Title and message are required");
 
+  // Create global broadcast announcement record (userId: null)
+  const broadcastDoc = await Notification.create({
+    userId: null,
+    type,
+    title,
+    message,
+    isRead: false,
+    createdAt: new Date()
+  });
+
   const users = await User.find({ status: "active" }).select("_id");
   const docs = users.map((u) => ({
     userId: u._id,
@@ -345,7 +356,17 @@ export const broadcastNotification = asyncHandler(async (req: Request, res: Resp
     await Notification.insertMany(docs);
   }
   await writeAudit(req, "BROADCAST_NOTIFICATION", "Notification", undefined, undefined, { title, recipientCount: docs.length });
-  return sendSuccess(res, { count: docs.length }, `Notification sent to ${docs.length} users`, 201);
+
+  // Instant real-time WebSocket broadcast to all connected clients
+  broadcastAnnouncement({
+    id: broadcastDoc._id,
+    type,
+    title,
+    message,
+    createdAt: broadcastDoc.createdAt
+  });
+
+  return sendSuccess(res, { count: docs.length, id: broadcastDoc._id }, `Notification sent to ${docs.length} users`, 201);
 });
 
 // ---- Platform Settings ----

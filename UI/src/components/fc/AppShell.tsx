@@ -22,10 +22,19 @@ import {
   HelpCircle,
   LayoutDashboard,
   ShieldAlert,
+  Megaphone,
+  AlertCircle,
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
-import { getMe, getCachedUser } from "@/lib/api-services";
+import {
+  getMe,
+  getCachedUser,
+  getUserNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead
+} from "@/lib/api-services";
+import { getSocket } from "@/lib/socket";
 import type { User } from "@/lib/api-types";
 import { removeFlow, FLOW_KEYS } from "@/lib/flow";
 
@@ -36,6 +45,24 @@ interface NotificationItem {
   time: string;
   read: boolean;
   type: "contest" | "wallet" | "live" | "promo";
+  createdAt?: string;
+}
+
+function formatRelativeTime(dateStr?: string): string {
+  if (!dateStr) return "Just now";
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "Recently";
+  const diffMs = Date.now() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return "Just now";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
 const initialNotifications: NotificationItem[] = [
@@ -97,7 +124,8 @@ export function AppShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [user, setUser] = useState<User | null>(() => getCachedUser());
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [toastAlert, setToastAlert] = useState<{ title: string; message: string } | null>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
   const [walletTotal, setWalletTotal] = useState<number>(() => {
     try {
@@ -110,32 +138,98 @@ export function AppShell({
     return 1550;
   });
 
-  useEffect(() => {
-    const cached = getCachedUser();
-    if (cached) setUser(cached);
-
-    void getMe()
-      .then((data) => {
-        if (data) setUser(data);
-      })
-      .catch(() => {});
-
-    function onProfileUpdated(e: Event) {
-      const customEvent = e as CustomEvent<User>;
-      if (customEvent.detail) setUser(customEvent.detail);
+  // Load live notifications from backend API
+  const loadLiveNotifications = async () => {
+    try {
+      const items = await getUserNotifications();
+      let readSet = new Set<string>();
       try {
-        const saved = localStorage.getItem("fc_user_wallet");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          setWalletTotal((parsed.deposited || 0) + (parsed.winnings || 0) + (parsed.bonus || 0));
-        }
+        const savedRead = localStorage.getItem("fc_read_notification_ids");
+        if (savedRead) readSet = new Set(JSON.parse(savedRead));
       } catch {}
+
+      if (Array.isArray(items) && items.length > 0) {
+        const mapped: NotificationItem[] = items.map((item: any) => {
+          const id = String(item._id || item.id || `notif-${Date.now()}`);
+          const isRead = Boolean(item.isRead) || readSet.has(id);
+          const typeLower = (item.type || "system").toLowerCase();
+          return {
+            id,
+            title: item.title,
+            description: item.message || item.description || "",
+            time: formatRelativeTime(item.createdAt),
+            read: isRead,
+            type: typeLower.includes("contest")
+              ? "contest"
+              : typeLower.includes("wallet")
+              ? "wallet"
+              : typeLower.includes("live")
+              ? "live"
+              : "promo",
+            createdAt: item.createdAt,
+          };
+        });
+
+        // If there's an unread notification from admin and toast hasn't shown yet in this session
+        const unreadList = mapped.filter((n) => !n.read);
+        if (unreadList.length > 0 && typeof window !== "undefined" && !sessionStorage.getItem("fc_alert_shown")) {
+          const topUnread = unreadList[0];
+          setToastAlert({ title: topUnread.title, message: topUnread.description });
+          sessionStorage.setItem("fc_alert_shown", "true");
+        }
+
+        setNotifications(mapped);
+      } else {
+        // Fallback default notifications
+        setNotifications(initialNotifications);
+      }
+    } catch {
+      setNotifications(initialNotifications);
     }
-    window.addEventListener("user-profile-updated", onProfileUpdated);
-    window.addEventListener("storage", onProfileUpdated);
+  };
+
+  useEffect(() => {
+    void loadLiveNotifications();
+
+    // Poll every 15 seconds so returning after minutes or days updates immediately
+    const pollTimer = setInterval(() => {
+      void loadLiveNotifications();
+    }, 15000);
+
+    // Refresh immediately when window/tab is focused
+    const onWindowFocus = () => {
+      void loadLiveNotifications();
+    };
+    window.addEventListener("focus", onWindowFocus);
+
+    // Real-time Socket.IO listener for immediate live notification delivery
+    const socket = getSocket();
+    const handleLiveAnnouncement = (data: any) => {
+      if (!data) return;
+      const id = String(data.id || data._id || `notif-${Date.now()}`);
+      const newNotif: NotificationItem = {
+        id,
+        title: data.title || "Admin Broadcast",
+        description: data.message || "",
+        time: "Just now",
+        read: false,
+        type: ((data.type || "system").toLowerCase().includes("contest") ? "contest" : "promo") as any,
+        createdAt: new Date().toISOString(),
+      };
+
+      setNotifications((prev) => [newNotif, ...prev.filter((n) => n.id !== id)]);
+      setToastAlert({ title: newNotif.title, message: newNotif.description });
+      setTimeout(() => setToastAlert(null), 8000);
+    };
+
+    socket.on("admin:announcement", handleLiveAnnouncement);
+    socket.on("notification:new", handleLiveAnnouncement);
+
     return () => {
-      window.removeEventListener("user-profile-updated", onProfileUpdated);
-      window.removeEventListener("storage", onProfileUpdated);
+      clearInterval(pollTimer);
+      window.removeEventListener("focus", onWindowFocus);
+      socket.off("admin:announcement", handleLiveAnnouncement);
+      socket.off("notification:new", handleLiveAnnouncement);
     };
   }, []);
 
@@ -157,10 +251,31 @@ export function AppShell({
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const markAllAsRead = () => {
+    try {
+      const readIds = notifications.map((n) => n.id);
+      let existingSet = new Set<string>();
+      try {
+        const saved = localStorage.getItem("fc_read_notification_ids");
+        if (saved) existingSet = new Set(JSON.parse(saved));
+      } catch {}
+      readIds.forEach((id) => existingSet.add(id));
+      localStorage.setItem("fc_read_notification_ids", JSON.stringify(Array.from(existingSet)));
+      void markAllNotificationsAsRead();
+    } catch {}
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
   const clearNotification = (id: string) => {
+    try {
+      let existingSet = new Set<string>();
+      try {
+        const saved = localStorage.getItem("fc_read_notification_ids");
+        if (saved) existingSet = new Set(JSON.parse(saved));
+      } catch {}
+      existingSet.add(id);
+      localStorage.setItem("fc_read_notification_ids", JSON.stringify(Array.from(existingSet)));
+      void markNotificationAsRead(id);
+    } catch {}
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
@@ -371,29 +486,33 @@ export function AppShell({
             <div className="flex items-center gap-3 relative" ref={notificationRef}>
               <Link
                 to="/profile"
-                className="flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold hover:border-primary/40 transition-colors"
+                className="flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold hover:border-primary/40 transition-colors cursor-pointer"
               >
                 <Wallet className="h-3.5 w-3.5 text-primary" />
-                ₹0
+                <span className="font-mono font-bold text-emerald-400">
+                  ₹{(user?.walletBalance ?? walletTotal).toLocaleString("en-IN")}
+                </span>
               </Link>
 
               {/* Notification Bell Button */}
               <button
                 type="button"
                 aria-label="Notifications"
-                onClick={() => setShowNotifications((prev) => !prev)}
+                onClick={() => {
+                  setShowNotifications((prev) => !prev);
+                  if (toastAlert) setToastAlert(null);
+                }}
                 className={cn(
-                  "relative flex h-9 w-9 items-center justify-center rounded-full border transition-all",
+                  "relative flex h-9 w-9 items-center justify-center rounded-full border transition-all cursor-pointer",
                   showNotifications
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-border bg-surface hover:border-primary/40 text-muted-foreground hover:text-foreground"
                 )}
               >
-                <Bell className="h-4 w-4" />
+                <Bell className={cn("h-4 w-4", unreadCount > 0 ? "text-emerald-400 animate-pulse" : "text-muted-foreground")} />
                 {unreadCount > 0 && (
-                  <span className="absolute right-1.5 top-1.5 flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                  <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-black text-white shadow-md animate-bounce">
+                    {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
               </button>
@@ -474,19 +593,29 @@ export function AppShell({
                           )}
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              {n.type === "contest" && <Trophy className="h-4 w-4 text-amber-400 shrink-0" />}
-                              {n.type === "wallet" && <Wallet className="h-4 w-4 text-emerald-400 shrink-0" />}
-                              {n.type === "live" && <Radio className="h-4 w-4 text-destructive shrink-0" />}
-                              {n.type === "promo" && <ShieldCheck className="h-4 w-4 text-primary shrink-0" />}
-                              <p className="text-xs font-bold text-foreground">{n.title}</p>
+                            <div className="flex items-center gap-2 min-w-0">
+                              {n.type === "contest" ? (
+                                <Trophy className="h-4 w-4 text-amber-400 shrink-0" />
+                              ) : n.type === "wallet" ? (
+                                <Wallet className="h-4 w-4 text-emerald-400 shrink-0" />
+                              ) : n.type === "live" ? (
+                                <Radio className="h-4 w-4 text-destructive shrink-0" />
+                              ) : (
+                                <Megaphone className="h-4 w-4 text-emerald-400 shrink-0" />
+                              )}
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <p className="text-xs font-bold text-foreground truncate">{n.title}</p>
+                                {!n.read && (
+                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0 animate-ping" />
+                                )}
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 shrink-0">
                               <span className="text-[10px] text-muted-foreground">{n.time}</span>
                               <button
                                 type="button"
                                 onClick={() => clearNotification(n.id)}
-                                className="text-muted-foreground hover:text-foreground"
+                                className="text-muted-foreground hover:text-foreground cursor-pointer"
                               >
                                 <X className="h-3 w-3" />
                               </button>
@@ -504,7 +633,7 @@ export function AppShell({
                     <Link
                       to="/matches"
                       onClick={() => setShowNotifications(false)}
-                      className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1"
+                      className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1 cursor-pointer"
                     >
                       View Live Matches <ArrowRight className="h-3 w-3" />
                     </Link>
@@ -514,6 +643,41 @@ export function AppShell({
             </div>
           </div>
         </header>
+
+        {/* Floating Real-Time Toast Alert for Admin Announcements */}
+        {toastAlert && (
+          <div className="fixed top-20 right-4 sm:right-6 z-50 flex items-start gap-3 rounded-2xl border border-emerald-500/50 bg-surface/98 p-4 shadow-2xl backdrop-blur-md max-w-sm sm:max-w-md animate-in slide-in-from-top-4 fade-in duration-300">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400 shrink-0 border border-emerald-500/40 shadow">
+              <Megaphone className="h-4 w-4 animate-pulse" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                  New Announcement
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setToastAlert(null)}
+                  className="text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <p className="font-display font-bold text-xs text-foreground truncate mt-1">{toastAlert.title}</p>
+              <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5 leading-relaxed">{toastAlert.message}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNotifications(true);
+                  setToastAlert(null);
+                }}
+                className="mt-2 text-[11px] font-bold text-emerald-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+              >
+                <span>View Full Notification</span> &rarr;
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Main Content */}
         <main className={cn("mx-auto w-full flex-1 px-4 sm:px-6 pb-12 pt-6", maxWidth)}>

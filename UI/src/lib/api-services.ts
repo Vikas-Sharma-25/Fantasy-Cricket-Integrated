@@ -187,3 +187,50 @@ export async function suspendUser(userId: string) {
 export async function restoreUser(userId: string) {
   return api.patch<User>(`/admin/users/${userId}/restore`, {});
 }
+
+export interface AppNotification {
+  _id: string;
+  id?: string;
+  type: string;
+  title: string;
+  message: string;
+  description?: string;
+  isRead: boolean;
+  read?: boolean;
+  createdAt: string;
+  time?: string;
+}
+
+export async function getUserNotifications(): Promise<AppNotification[]> {
+  try {
+    const res = await api.get<any>("/users/me/notifications?page=1&limit=30");
+    const data = res?.items || res?.data || res;
+    if (Array.isArray(data) && data.length > 0) {
+      return data;
+    }
+  } catch {
+    // If not authenticated or error, fall back to announcements
+  }
+
+  try {
+    const res2 = await api.get<any>("/users/announcements?limit=30");
+    const data2 = res2?.data || res2;
+    if (Array.isArray(data2)) {
+      return data2;
+    }
+  } catch {}
+
+  return [];
+}
+
+export async function markNotificationAsRead(notificationId: string): Promise<void> {
+  try {
+    await api.patch(`/users/me/notifications/${notificationId}/read`);
+  } catch {}
+}
+
+export async function markAllNotificationsAsRead(): Promise<void> {
+  try {
+    await api.patch("/users/me/notifications/read-all");
+  } catch {}
+}

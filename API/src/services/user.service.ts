@@ -29,8 +29,31 @@ export async function updateMe(
   return sanitizeUser(user);
 }
 
+export async function getRecentAnnouncements(limit = 20) {
+  const items = await Notification.find({})
+    .sort({ createdAt: -1 })
+    .limit(limit);
+
+  const seen = new Set<string>();
+  const uniqueItems = [];
+  for (const item of items) {
+    const key = `${item.title}::${item.message}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniqueItems.push(item);
+    }
+  }
+  return uniqueItems;
+}
+
 export async function getMyNotifications(userId: string, page = 1, limit = 20) {
-  const filter = { userId: new Types.ObjectId(userId) };
+  const filter = {
+    $or: [
+      { userId: new Types.ObjectId(userId) },
+      { userId: null },
+      { userId: { $exists: false } }
+    ]
+  };
   const [items, total] = await Promise.all([
     Notification.find(filter)
       .sort({ createdAt: -1 })
@@ -38,5 +61,30 @@ export async function getMyNotifications(userId: string, page = 1, limit = 20) {
       .limit(limit),
     Notification.countDocuments(filter)
   ]);
-  return { items, total };
+
+  const seen = new Set<string>();
+  const uniqueItems = [];
+  for (const item of items) {
+    const key = `${item.title}::${item.message}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniqueItems.push(item);
+    }
+  }
+
+  return { items: uniqueItems, total };
+}
+
+export async function markNotificationRead(userId: string, notificationId: string) {
+  await Notification.updateOne(
+    { _id: notificationId, $or: [{ userId: new Types.ObjectId(userId) }, { userId: null }] },
+    { $set: { isRead: true } }
+  );
+}
+
+export async function markAllNotificationsRead(userId: string) {
+  await Notification.updateMany(
+    { $or: [{ userId: new Types.ObjectId(userId) }, { userId: null }] },
+    { $set: { isRead: true } }
+  );
 }
