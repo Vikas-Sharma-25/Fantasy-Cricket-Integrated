@@ -37,6 +37,7 @@ import {
 import { getSocket } from "@/lib/socket";
 import type { User } from "@/lib/api-types";
 import { removeFlow, FLOW_KEYS } from "@/lib/flow";
+import { ThemeToggle } from "@/context/ThemeContext";
 
 interface NotificationItem {
   id: string;
@@ -310,9 +311,9 @@ export function AppShell({
       {/* ------------------------------------------------------------- */}
       {/* LEFT VERTICAL SIDEBAR (Desktop & Tablet)                       */}
       {/* ------------------------------------------------------------- */}
-      <aside className="hidden md:flex w-64 flex-col border-r border-border bg-surface/95 backdrop-blur shrink-0 sticky top-0 h-screen z-30">
+      <aside className="hidden md:flex w-64 flex-col border-r border-slate-800 bg-[#0a0f1d] text-slate-100 shrink-0 sticky top-0 h-screen z-30 shadow-xl">
         {/* Top Logo */}
-        <div className="flex h-16 items-center px-6 border-b border-border/80">
+        <div className="flex h-16 items-center px-6 border-b border-slate-800">
           <Logo size="sm" />
         </div>
 
@@ -484,7 +485,7 @@ export function AppShell({
       {/* ------------------------------------------------------------- */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Top Navbar */}
-        <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+        <header className="sticky top-0 z-40 border-b border-slate-800 bg-[#0a0f1d]/95 backdrop-blur text-slate-100">
           <div className="mx-auto flex h-16 items-center justify-between gap-4 px-4 sm:px-6 w-full">
             {/* Mobile Logo */}
             <div className="md:hidden">
@@ -493,7 +494,7 @@ export function AppShell({
 
             {/* Desktop Brand Badge with Logo Icon */}
             <div className="hidden md:flex items-center gap-3">
-              <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-primary/30 bg-surface/80 backdrop-blur shadow-sm">
+              <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-primary/40 bg-slate-900/90 backdrop-blur shadow-sm">
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-tr from-primary to-emerald-400 text-primary-foreground shadow-sm">
                   <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
                     <circle cx="16.5" cy="3.6" r="2.1" />
@@ -501,18 +502,21 @@ export function AppShell({
                     <rect x="2.5" y="1.5" width="1.6" height="9" rx="0.8" transform="rotate(-24 3.3 6)" />
                   </svg>
                 </div>
-                <span className="font-display text-xs font-black tracking-wider text-foreground">
+                <span className="font-display text-xs font-black tracking-wider text-slate-100">
                   FANTASY CRICKET <span className="text-primary">ARENA</span>
                 </span>
                 <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
               </div>
             </div>
 
-            {/* Right Quick Actions (Wallet & Interactive Notifications) */}
-            <div className="flex items-center gap-3 relative" ref={notificationRef}>
+            {/* Right Quick Actions (Theme Toggle, Wallet & Interactive Notifications) */}
+            <div className="flex items-center gap-2.5 sm:gap-3 relative" ref={notificationRef}>
+              {/* Theme Toggle (Dim Light / Dark) */}
+              <ThemeToggle />
+
               <Link
                 to="/profile"
-                className="flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold hover:border-primary/40 transition-colors cursor-pointer"
+                className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/90 px-3 py-1.5 text-xs font-semibold hover:border-primary/50 transition-colors cursor-pointer text-slate-200"
               >
                 <Wallet className="h-3.5 w-3.5 text-primary" />
                 <span className="font-mono font-bold text-emerald-400">
@@ -711,7 +715,7 @@ export function AppShell({
         </main>
 
         {/* Bottom Mobile Navigation (on small screens < md) */}
-        <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur">
+        <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 border-t border-slate-800 bg-[#0a0f1d]/95 backdrop-blur text-slate-100">
           <div className={cn("grid px-2", (user?.role === "admin" || user?.role === "super_admin") ? "grid-cols-5" : "grid-cols-4")}>
             {mobileNavItems.map(({ to, label, icon: Icon }) => {
               const active = pathname === to;

@@ -40,6 +40,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { setFlow, FLOW_KEYS } from "@/lib/flow";
+import { ThemeToggle } from "@/context/ThemeContext";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -391,6 +392,7 @@ function Landing() {
           </div>
 
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Button asChild variant="outlineGreen" size="sm" className="gap-2 tracking-wide font-bold sm:size-lg">
               <Link to="/login">
                 <LogIn className="h-4 w-4" /> LOGIN

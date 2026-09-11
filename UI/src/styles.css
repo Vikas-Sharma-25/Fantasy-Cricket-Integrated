@@ -111,6 +111,29 @@
   --shadow-card: 0 8px 30px -12px oklch(0 0 0 / 0.7);
 }
 
+:root[data-theme="light"],
+.theme-light {
+  color-scheme: light;
+  /* Dim Light Palette (Soft Slate / Gentle Warm Gray - never blinding stark white) */
+  --background: oklch(0.955 0.008 250); /* #eff2f6 soft dim light canvas */
+  --foreground: oklch(0.20 0.02 260); /* #0f172a deep slate/charcoal text */
+  --surface: oklch(0.995 0.002 250); /* #ffffff / #fafbfd clean surface cards */
+  --surface-2: oklch(0.925 0.01 250); /* #e2e8f0 soft muted containers */
+  --card: oklch(0.995 0.002 250);
+  --card-foreground: oklch(0.20 0.02 260);
+  --popover: oklch(0.995 0.002 250);
+  --popover-foreground: oklch(0.20 0.02 260);
+  --muted: oklch(0.935 0.01 250);
+  --muted-foreground: oklch(0.46 0.02 260); /* #475569 readable slate */
+  --border: oklch(0.885 0.012 250); /* #cbd5e1 clean soft border */
+  --input: oklch(0.885 0.012 250);
+  --ring: oklch(0.55 0.176 148);
+  --primary: oklch(0.52 0.176 148); /* Richer emerald for high contrast on light */
+  --primary-foreground: oklch(0.99 0.002 250);
+  --primary-dim: oklch(0.42 0.14 148);
+  --shadow-card: 0 4px 20px -4px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+}
+
 .dark {
   color-scheme: dark;
 }
