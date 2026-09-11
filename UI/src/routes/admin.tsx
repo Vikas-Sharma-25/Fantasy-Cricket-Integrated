@@ -12,7 +12,6 @@ import {
   FileBarChart,
   Settings,
   LogOut,
-  ShieldAlert,
   Shield,
   ShieldCheck,
   Search,
@@ -27,7 +26,6 @@ import { Card } from "@/components/fc/bits";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { apiFetchEnvelope } from "@/lib/api";
-import { getMe } from "@/lib/api-services";
 import { getMe, updateUserRole, suspendUser, restoreUser } from "@/lib/api-services";
 import type { Contest, User } from "@/lib/api-types";
 import { RoleGuard } from "@/components/fc/RoleGuard";
@@ -41,7 +39,6 @@ export const Route = createFileRoute("/admin")({
       { property: "og:description", content: "Platform overview: users, matches, contests and entries." },
     ],
   }),
-  component: Admin,
   component: () => (
     <RoleGuard allowedRoles={["admin", "super_admin"]}>
       <Admin />
@@ -78,7 +75,6 @@ function Admin() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [authChecked, setAuthChecked] = useState(false);
   const [dashboard, setDashboard] = useState<DashboardData>({ userCount: 0, liveMatches: 0, openContests: 0 });
   const [totalContests, setTotalContests] = useState(0);
   const [contestBreakdown, setContestBreakdown] = useState<{ name: string; value: number; color: string }[]>([]);
@@ -98,13 +94,6 @@ function Admin() {
     getMe()
       .then((user) => {
         setCurrentUser(user);
-        setAuthChecked(true);
-
-        if (user.role !== "admin" && user.role !== "super_admin") {
-          setLoading(false);
-          return;
-        }
-
         return Promise.all([
           apiFetchEnvelope<DashboardData>("/admin/dashboard"),
           apiFetchEnvelope<Contest[]>("/admin/contests?page=1&limit=100"),
@@ -130,34 +119,11 @@ function Admin() {
         });
       })
       .catch((e) => {
-        setAuthChecked(true);
         setError(e instanceof Error ? e.message : "Unable to load dashboard data.");
       })
       .finally(() => setLoading(false));
   }, []);
 
-  if (authChecked && (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "super_admin"))) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div className="max-w-md w-full rounded-2xl border border-destructive/40 bg-surface p-8 text-center shadow-2xl">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
-            <ShieldAlert className="h-7 w-7" />
-          </div>
-          <h1 className="mt-5 font-display text-2xl font-black tracking-tight text-foreground">
-            Access Restricted
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-            You do not have administrator permissions to access this management dashboard. Only authorized administrators can view platform operations.
-          </p>
-          <div className="mt-6 flex justify-center gap-3">
-            <Button asChild variant="hero" size="lg" className="font-bold">
-              <Link to="/matches">Return to Matches</Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
   const loadUsers = (search = "") => {
     setUsersLoading(true);
     const q = search ? `&search=${encodeURIComponent(search)}` : "";
@@ -244,7 +210,6 @@ function Admin() {
             <button
               key={label}
               type="button"
-              onClick={() => setActive(label)}
               onClick={() => {
                 setActive(label);
                 setStatusNotice(null);
@@ -261,12 +226,6 @@ function Admin() {
             </button>
           ))}
         </nav>
-        <Link
-          to="/login"
-          className="mt-4 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-destructive hover:bg-destructive/10"
-        >
-          <LogOut className="h-4 w-4" /> Logout
-        </Link>
 
         <div className="pt-4 border-t border-border space-y-2">
           <Link
@@ -284,9 +243,6 @@ function Admin() {
         </div>
       </aside>
 
-      <main className="flex-1 p-6 lg:p-8">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="font-display text-2xl font-bold">{active} Overview</h1>
       <main className="flex-1 p-6 lg:p-8 min-w-0">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
@@ -303,10 +259,8 @@ function Admin() {
           </div>
           <Link
             to="/profile"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground"
             className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground overflow-hidden border border-primary/40 shadow-sm"
           >
-            VB
             {currentUser?.profileImage ? (
               <img src={currentUser.profileImage} alt={currentUser.name} className="h-full w-full object-cover" />
             ) : (
@@ -316,8 +270,6 @@ function Admin() {
         </div>
 
         {error && (
-          <Card className="mb-4 border-destructive/30">
-            <p className="text-sm text-destructive">{error}</p>
           <Card className="mb-4 border-destructive/30 bg-destructive/10 p-3">
             <p className="text-sm text-destructive flex items-center gap-2">
               <AlertCircle className="h-4 w-4 shrink-0" />
@@ -326,21 +278,6 @@ function Admin() {
           </Card>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {loading
-            ? Array.from({ length: 4 }).map((_, i) => (
-                <Card key={i}>
-                  <div className="h-3 w-20 animate-pulse rounded bg-muted" />
-                  <div className="mt-3 h-6 w-16 animate-pulse rounded bg-muted" />
-                </Card>
-              ))
-            : stats.map((s) => (
-                <Card key={s.label}>
-                  <p className="text-xs text-muted-foreground">{s.label}</p>
-                  <p className="mt-2 font-display text-2xl font-bold">{s.value}</p>
-                </Card>
-              ))}
-        </div>
         {statusNotice && (
           <div className={cn(
             "mb-4 flex items-center justify-between rounded-xl border p-3.5 text-xs font-semibold transition-all",
@@ -361,25 +298,6 @@ function Admin() {
           </div>
         )}
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-[1.6fr_1fr]">
-          <Card>
-            <h2 className="mb-4 font-display text-sm font-bold">Recent Activity</h2>
-            {loading && <p className="text-sm text-muted-foreground">Loading...</p>}
-            {!loading && !recentActivity.length && (
-              <p className="text-sm text-muted-foreground">No admin activity recorded yet.</p>
-            )}
-            <ul className="space-y-3">
-              {recentActivity.map((log) => (
-                <li key={log._id} className="flex items-center justify-between border-b border-border pb-2 text-sm last:border-0 last:pb-0">
-                  <div>
-                    <p className="font-medium">{log.action.replaceAll("_", " ")}</p>
-                    <p className="text-xs text-muted-foreground">{log.entityType}</p>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{new Date(log.createdAt).toLocaleString()}</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
         {/* ------------------------------------------------------------- */}
         {/* TAB 1: USERS ROLE & PERMISSION MANAGEMENT                     */}
         {/* ------------------------------------------------------------- */}
@@ -411,29 +329,6 @@ function Admin() {
               </Button>
             </div>
 
-          <Card>
-            <h2 className="mb-4 font-display text-sm font-bold">Contest Status Breakdown</h2>
-            {!loading && !contestBreakdown.length && (
-              <p className="text-sm text-muted-foreground">No contests yet.</p>
-            )}
-            {!!contestBreakdown.length && (
-              <>
-                <div className="h-56">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={contestBreakdown} dataKey="value" innerRadius={48} outerRadius={78} paddingAngle={3}>
-                        {contestBreakdown.map((p) => (
-                          <Cell key={p.name} fill={p.color} stroke="none" />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <ul className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                  {contestBreakdown.map((p) => (
-                    <li key={p.name} className="flex items-center gap-2 text-muted-foreground">
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: p.color }} />
-                      {p.name} ({p.value})
             <Card className="p-0 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
@@ -610,8 +505,6 @@ function Admin() {
                     </li>
                   ))}
                 </ul>
-              </>
-            )}
               </Card>
 
               <Card>
@@ -665,7 +558,6 @@ function Admin() {
               </Button>
             </div>
           </Card>
-        </div>
         )}
       </main>
     </div>
