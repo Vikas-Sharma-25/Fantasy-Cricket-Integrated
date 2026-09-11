@@ -11,6 +11,7 @@ import { Contest } from "../models/Contest";
 import { AuditLog } from "../models/AuditLog";
 import { SupportTicket } from "../models/SupportTicket";
 import { PlayerEvent } from "../models/PlayerEvent";
+import { Notification } from "../models/Notification";
 import * as scoringService from "../services/scoring.service";
 import * as leaderboardService from "../services/leaderboard.service";
 import * as teamService from "../services/team.service";
@@ -46,7 +47,7 @@ export const listUsers = asyncHandler(async (req: Request, res: Response) => {
     ? { $or: [{ name: new RegExp(search, "i") }, { email: new RegExp(search, "i") }] }
     : {};
   const [items, total] = await Promise.all([
-    User.find(filter).skip((page - 1) * limit).limit(limit).sort({ createdAt: -1 }),
+    User.find(filter).select("-passwordHash").skip((page - 1) * limit).limit(limit).sort({ createdAt: -1 }),
     User.countDocuments(filter)
   ]);
   return sendPaginated(res, items, page, limit, total);
@@ -248,4 +249,100 @@ export const listAuditLogs = asyncHandler(async (req: Request, res: Response) =>
     AuditLog.countDocuments({})
   ]);
   return sendPaginated(res, items, page, limit, total);
+});
+
+// ---- Matches List for Admin ----
+export const listMatches = asyncHandler(async (req: Request, res: Response) => {
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 50;
+  const status = req.query.status as string | undefined;
+  const search = req.query.search as string | undefined;
+
+  const filter: Record<string, unknown> = {};
+  if (status && status !== "ALL") {
+    filter.status = status;
+  }
+  if (search) {
+    filter.$or = [
+      { teamA: new RegExp(search, "i") },
+      { teamB: new RegExp(search, "i") },
+      { series: new RegExp(search, "i") },
+      { format: new RegExp(search, "i") },
+      { venue: new RegExp(search, "i") }
+    ];
+  }
+
+  const [items, total] = await Promise.all([
+    Match.find(filter).sort({ startTime: -1 }).skip((page - 1) * limit).limit(limit),
+    Match.countDocuments(filter)
+  ]);
+  return sendPaginated(res, items, page, limit, total);
+});
+
+// ---- Players List for Admin ----
+export const listPlayers = asyncHandler(async (req: Request, res: Response) => {
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 100;
+  const role = req.query.role as string | undefined;
+  const team = req.query.team as string | undefined;
+  const search = req.query.search as string | undefined;
+
+  const filter: Record<string, unknown> = {};
+  if (role && role !== "ALL") filter.role = role;
+  if (team && team !== "ALL") filter.team = team;
+  if (search) {
+    filter.$or = [
+      { name: new RegExp(search, "i") },
+      { team: new RegExp(search, "i") }
+    ];
+  }
+
+  const [items, total] = await Promise.all([
+    Player.find(filter).sort({ name: 1 }).skip((page - 1) * limit).limit(limit),
+    Player.countDocuments(filter)
+  ]);
+  return sendPaginated(res, items, page, limit, total);
+});
+
+// ---- Update Scoring Rule ----
+export const updateScoringRule = asyncHandler(async (req: Request, res: Response) => {
+  const rule = await ScoringRule.findById(req.params.ruleId);
+  if (!rule) throw ApiError.notFound("Scoring rule not found");
+  const before = rule.toObject();
+  Object.assign(rule, req.body);
+  await rule.save();
+  await writeAudit(req, "UPDATE_SCORING_RULE", "ScoringRule", rule._id.toString(), before, rule.toObject());
+  return sendSuccess(res, rule, "Scoring rule updated");
+});
+
+// ---- Notifications for Admin ----
+export const listNotifications = asyncHandler(async (req: Request, res: Response) => {
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  const [items, total] = await Promise.all([
+    Notification.find({}).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
+    Notification.countDocuments({})
+  ]);
+  return sendPaginated(res, items, page, limit, total);
+});
+
+export const broadcastNotification = asyncHandler(async (req: Request, res: Response) => {
+  const { title, message, type = "SYSTEM_BROADCAST" } = req.body;
+  if (!title || !message) throw ApiError.badRequest("Title and message are required");
+
+  const users = await User.find({ status: "active" }).select("_id");
+  const docs = users.map((u) => ({
+    userId: u._id,
+    type,
+    title,
+    message,
+    isRead: false,
+    createdAt: new Date()
+  }));
+
+  if (docs.length > 0) {
+    await Notification.insertMany(docs);
+  }
+  await writeAudit(req, "BROADCAST_NOTIFICATION", "Notification", undefined, undefined, { title, recipientCount: docs.length });
+  return sendSuccess(res, { count: docs.length }, `Notification sent to ${docs.length} users`, 201);
 });

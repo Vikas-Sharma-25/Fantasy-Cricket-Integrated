@@ -14,16 +14,19 @@ router.patch("/users/:userId/suspend", adminController.suspendUser);
 router.patch("/users/:userId/restore", adminController.restoreUser);
 router.patch("/users/:userId/role", requireSuperAdmin, adminController.updateUserRole);
 
+router.get("/matches", adminController.listMatches);
 router.post("/matches", adminController.createMatch);
 router.patch("/matches/:matchId", adminController.updateMatch);
 router.post("/matches/:matchId/lock-teams", adminController.lockTeamsForMatch);
 router.post("/matches/:matchId/freeze-leaderboards", adminController.freezeLeaderboards);
 
+router.get("/players", adminController.listPlayers);
 router.post("/players", adminController.createPlayer);
 router.post("/match-players", adminController.upsertMatchPlayer);
 
 router.get("/scoring-rules", adminController.listScoringRules);
 router.post("/scoring-rules", adminController.createScoringRule);
+router.patch("/scoring-rules/:ruleId", adminController.updateScoringRule);
 
 router.post("/events/ingest", adminController.ingestEvent);
 router.get("/events", adminController.listPlayerEvents);
@@ -33,6 +36,9 @@ router.post("/events/:eventId/reverse", adminController.reverseEvent);
 
 router.get("/contests", adminController.listAllContests);
 router.patch("/contests/:contestId/status", adminController.updateContestStatus);
+
+router.get("/notifications", adminController.listNotifications);
+router.post("/notifications/broadcast", adminController.broadcastNotification);
 
 router.get("/support/tickets", adminController.listAllTickets);
 router.patch("/support/tickets/:ticketId/reply", adminController.replyToTicket);

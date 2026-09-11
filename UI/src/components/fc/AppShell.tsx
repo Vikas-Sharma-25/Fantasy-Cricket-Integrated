@@ -354,6 +354,25 @@ export function AppShell({
                 )}
               </button>
 
+              {/* Profile Avatar Quick Button */}
+              <Link
+                to="/profile"
+                aria-label="User Profile"
+                className="flex items-center rounded-full ring-2 ring-primary/30 hover:ring-primary/70 transition-all overflow-hidden"
+              >
+                {user?.profileImage ? (
+                  <img
+                    src={user.profileImage}
+                    alt={user.name || "User"}
+                    className="h-8 w-8 rounded-full object-cover border border-primary/40"
+                  />
+                ) : (
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary border border-primary/40">
+                    {user?.name ? user.name.slice(0, 2).toUpperCase() : "U"}
+                  </span>
+                )}
+              </Link>
+
               {/* Notifications Dropdown Popover */}
               {showNotifications && (
                 <div className="absolute right-0 top-12 z-50 w-80 sm:w-96 rounded-2xl border border-border bg-surface/98 p-4 shadow-2xl backdrop-blur animate-in fade-in-50 zoom-in-95">
