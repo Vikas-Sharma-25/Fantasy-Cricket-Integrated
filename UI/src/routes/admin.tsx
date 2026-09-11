@@ -912,19 +912,19 @@ export function Admin() {
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
       {/* ------------------------------------------------------------- */}
-      {/* SIDEBAR NAVIGATION (FIXED & PERMANENTLY DARK BRANDED)          */}
+      {/* SIDEBAR NAVIGATION (THEME-AWARE INTEGRATION)                  */}
       {/* ------------------------------------------------------------- */}
-      <aside className="hidden w-64 shrink-0 flex-col justify-between border-r border-slate-800 bg-[#0a0f1d] text-slate-100 p-4 lg:flex h-screen overflow-y-auto z-30 shadow-2xl">
+      <aside className="hidden w-64 shrink-0 flex-col justify-between border-r border-sidebar-border bg-sidebar text-sidebar-foreground p-4 lg:flex h-screen overflow-y-auto z-30 shadow-xl">
         <div>
-          <div className="px-2 pb-4 flex items-center justify-between border-b border-slate-800/80 mb-2">
+          <div className="px-2 pb-4 flex items-center justify-between border-b border-sidebar-border/80 mb-2">
             <Logo size="sm" />
             {isSuperAdmin ? (
-              <span className="flex items-center gap-1 rounded-full bg-purple-500/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-purple-300 border border-purple-500/30">
-                <Crown className="h-2.5 w-2.5 text-purple-400" /> Root
+              <span className="flex items-center gap-1 rounded-full bg-purple-500/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-300 border border-purple-500/30">
+                <Crown className="h-2.5 w-2.5 text-purple-500" /> Root
               </span>
             ) : (
-              <span className="flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-300 border border-emerald-500/30">
-                <ShieldCheck className="h-2.5 w-2.5 text-emerald-400" /> Admin
+              <span className="flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-300 border border-emerald-500/30">
+                <ShieldCheck className="h-2.5 w-2.5 text-emerald-500" /> Admin
               </span>
             )}
           </div>
@@ -934,12 +934,12 @@ export function Admin() {
             className={cn(
               "mb-3 mx-1 rounded-xl p-2.5 border backdrop-blur text-xs",
               isSuperAdmin
-                ? "bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-purple-950/40 border-purple-500/30 text-purple-200"
-                : "bg-emerald-950/30 border-emerald-500/30 text-emerald-200"
+                ? "bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-200 dark:bg-gradient-to-r dark:from-purple-950/40 dark:via-indigo-950/30 dark:to-purple-950/40"
+                : "bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-200 dark:bg-emerald-950/30"
             )}
           >
             <div className="flex items-center gap-2 font-bold text-[11px]">
-              {isSuperAdmin ? <Crown className="h-3.5 w-3.5 text-purple-400" /> : <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />}
+              {isSuperAdmin ? <Crown className="h-3.5 w-3.5 text-purple-500" /> : <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />}
               <span>{isSuperAdmin ? "SUPER ADMIN CONSOLE" : "ADMIN CONSOLE"}</span>
             </div>
             <p className="mt-1 text-[9.5px] text-muted-foreground leading-tight">

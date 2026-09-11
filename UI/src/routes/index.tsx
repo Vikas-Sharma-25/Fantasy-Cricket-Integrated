@@ -322,8 +322,8 @@ function Landing() {
           className="h-full w-full object-cover object-center scale-105"
         />
         {/* Sleek gradient overlays for crystal-clear text readability */}
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,var(--background)_0%,var(--background)_25%,oklch(0.16_0.018_265/0.75)_50%,oklch(0.16_0.018_265/0.25)_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-64 bg-[linear-gradient(180deg,transparent,var(--background))]" />
+        <div className="absolute inset-0 gradient-video-overlay" />
+        <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-background to-transparent" />
 
         {/* Floating Interactive Video Controls */}
         <div className="pointer-events-auto absolute bottom-10 right-8 z-20 flex flex-wrap items-center gap-2.5">
@@ -393,12 +393,12 @@ function Landing() {
 
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            <Button asChild variant="outlineGreen" size="sm" className="gap-2 tracking-wide font-bold sm:size-lg">
+            <Button asChild variant="outlineGreen" size="sm" className="gap-2 tracking-wide font-bold sm:size-lg bg-surface/80 hover:bg-surface-2 border-border shadow-xs text-foreground">
               <Link to="/login">
-                <LogIn className="h-4 w-4" /> LOGIN
+                <LogIn className="h-4 w-4 text-primary" /> LOGIN
               </Link>
             </Button>
-            <Button asChild variant="hero" size="sm" className="gap-2 tracking-wide font-bold sm:size-lg">
+            <Button asChild variant="hero" size="sm" className="gap-2 tracking-wide font-bold sm:size-lg shadow-md shadow-primary/20">
               <Link to="/register">
                 <UserPlus className="h-4 w-4" /> REGISTER
               </Link>
