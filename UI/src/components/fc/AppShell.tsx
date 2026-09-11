@@ -123,6 +123,32 @@ export function AppShell({
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [user, setUser] = useState<User | null>(() => getCachedUser());
+
+  // Synchronize user profile & role across all tabs & events
+  useEffect(() => {
+    const handleProfileUpdated = (e: any) => {
+      if (e.detail) {
+        setUser(e.detail);
+      } else {
+        setUser(getCachedUser());
+      }
+    };
+    const handleStorage = () => {
+      setUser(getCachedUser());
+    };
+    window.addEventListener("user-profile-updated", handleProfileUpdated);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("user-profile-updated", handleProfileUpdated);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
+
+  // Also sync user when route pathname changes
+  useEffect(() => {
+    setUser(getCachedUser());
+  }, [pathname]);
+
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [toastAlert, setToastAlert] = useState<{ title: string; message: string } | null>(null);
