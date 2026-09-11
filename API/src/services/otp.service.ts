@@ -23,6 +23,14 @@ export async function createAndSendOtp(
     { userId: user._id, purpose, isUsed: false },
     { $set: { isUsed: true } }
   );
+  try {
+    await Otp.db.collection("otp").updateMany(
+      { userId: user._id, purpose, isUsed: false },
+      { $set: { isUsed: true } }
+    );
+  } catch (err) {
+    console.error("[otp] Mirror invalidate to otp collection error:", err);
+  }
 
   const otp = generateOtp(env.OTP_LENGTH);
   const expiresAt = new Date(Date.now() + env.OTP_EXPIRES_IN_MINUTES * 60 * 1000);
@@ -38,6 +46,29 @@ export async function createAndSendOtp(
     lastSentAt: new Date(),
     expiresAt
   });
+
+  // Mirror to 'otp' collection so the OTP is present in both 'otp' and 'otps' tables
+  try {
+    await Otp.db.collection("otp").insertOne({
+      _id: record._id,
+      userId: user._id,
+      otp,
+      purpose,
+      destination,
+      channel,
+      attempts: 0,
+      maxAttempts: env.OTP_MAX_ATTEMPTS,
+      resendCount: 0,
+      lastSentAt: record.lastSentAt,
+      isUsed: false,
+      expiresAt: record.expiresAt,
+      createdAt: new Date()
+    });
+  } catch (err) {
+    console.error("[otp] Mirror to otp collection error:", err);
+  }
+
+  console.log(`[otp] Generated & Saved OTP: ${otp} for ${user.email} (purpose: ${purpose})`);
 
   // Dispatch email in background so login and register return instantly
   const emailPromise =
@@ -82,6 +113,23 @@ export async function resendOtp(
     latest.expiresAt = new Date(Date.now() + env.OTP_EXPIRES_IN_MINUTES * 60 * 1000);
     await latest.save();
 
+    try {
+      await Otp.db.collection("otp").updateOne(
+        { _id: latest._id },
+        {
+          $set: {
+            otp,
+            resendCount: latest.resendCount,
+            attempts: 0,
+            lastSentAt: latest.lastSentAt,
+            expiresAt: latest.expiresAt
+          }
+        }
+      );
+    } catch (err) {
+      console.error("[otp] Mirror resend to otp collection error:", err);
+    }
+
     const emailPromise =
       channel === "sms" && user.mobile
         ? sendOtpSms(user.mobile, otp, purpose)
@@ -120,6 +168,14 @@ export async function verifyOtp(
   if (record.attempts >= record.maxAttempts) {
     record.isUsed = true;
     await record.save();
+    try {
+      await Otp.db.collection("otp").updateOne(
+        { _id: record._id },
+        { $set: { isUsed: true } }
+      );
+    } catch (err) {
+      console.error("[otp] Mirror verify limit isUsed to otp error:", err);
+    }
     throw ApiError.tooMany("Maximum OTP attempts exceeded. Please request a new OTP.");
   }
 
@@ -128,9 +184,25 @@ export async function verifyOtp(
   if (!isMatch) {
     record.attempts += 1;
     await record.save();
+    try {
+      await Otp.db.collection("otp").updateOne(
+        { _id: record._id },
+        { $set: { attempts: record.attempts } }
+      );
+    } catch (err) {
+      console.error("[otp] Mirror verify attempt to otp error:", err);
+    }
     throw ApiError.badRequest("Incorrect OTP");
   }
 
   record.isUsed = true;
-  await record.save();   
+  await record.save();
+  try {
+    await Otp.db.collection("otp").updateOne(
+      { _id: record._id },
+      { $set: { isUsed: true } }
+    );
+  } catch (err) {
+    console.error("[otp] Mirror verify success to otp error:", err);
+  }
 }

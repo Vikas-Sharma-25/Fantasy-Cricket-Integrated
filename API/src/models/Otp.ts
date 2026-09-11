@@ -45,7 +45,7 @@ const otpSchema = new Schema<IOtp>(
     resendCount: { type: Number, default: 0 },
     lastSentAt: { type: Date, default: Date.now },
     isUsed: { type: Boolean, default: false },
-    expiresAt: { type: Date, required: true, index: { expires: 0 } }
+    expiresAt: { type: Date, required: true }
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );
