@@ -16,7 +16,9 @@ import {
   Eye,
   Trash2,
   RefreshCw,
-  X
+  X,
+  ShieldAlert,
+  Crown
 } from "lucide-react";
 import { AppShell } from "@/components/fc/AppShell";
 import { Card } from "@/components/fc/bits";
@@ -272,7 +274,42 @@ function Profile() {
         </div>
       </Card>
 
-      <Card className="mt-4 p-0">
+      <Card className="mt-4 p-0 overflow-hidden">
+        {(user?.role === "admin" || user?.role === "super_admin") && (
+          <Link
+            to="/admin"
+            className={cn(
+              "flex items-center gap-3 border-b border-border px-4 py-3.5 text-sm font-bold transition-colors",
+              user.role === "super_admin"
+                ? "bg-purple-500/10 text-purple-300 hover:bg-purple-500/20"
+                : "bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+            )}
+          >
+            {user.role === "super_admin" ? (
+              <Crown className="h-4.5 w-4.5 text-purple-400 shrink-0" />
+            ) : (
+              <ShieldAlert className="h-4.5 w-4.5 text-emerald-400 shrink-0" />
+            )}
+            <div className="flex-1">
+              <p className="font-bold">
+                {user.role === "super_admin" ? "Super Admin Console" : "Admin Console"}
+              </p>
+              <p className="text-[10px] text-muted-foreground font-normal">
+                Manage matches, users, contests & scoring rules
+              </p>
+            </div>
+            <span
+              className={cn(
+                "text-[10px] font-black uppercase px-2 py-0.5 rounded-full border",
+                user.role === "super_admin"
+                  ? "border-purple-500/40 bg-purple-500/20 text-purple-300"
+                  : "border-emerald-500/40 bg-emerald-500/20 text-emerald-300"
+              )}
+            >
+              Open &rarr;
+            </span>
+          </Link>
+        )}
         {menu.map(({ icon: Icon, label, to }) => (
           <Link
             key={label}

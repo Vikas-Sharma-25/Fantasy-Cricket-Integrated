@@ -354,6 +354,22 @@ export function AppShell({
                 )}
               </button>
 
+              {/* Admin / Super Admin Console Quick Nav Button */}
+              {(user?.role === "admin" || user?.role === "super_admin") && (
+                <Link
+                  to="/admin"
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border shadow-sm",
+                    user.role === "super_admin"
+                      ? "bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30 hover:border-purple-300 shadow-purple-500/10"
+                      : "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30 hover:border-emerald-300 shadow-emerald-500/10"
+                  )}
+                >
+                  <ShieldAlert className="h-3.5 w-3.5" />
+                  <span>{user.role === "super_admin" ? "Super Admin" : "Admin"}</span>
+                </Link>
+              )}
+
               {/* Profile Avatar Quick Button */}
               <Link
                 to="/profile"

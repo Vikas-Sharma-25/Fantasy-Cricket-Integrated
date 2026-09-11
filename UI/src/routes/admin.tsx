@@ -511,72 +511,74 @@ export function Admin() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* ------------------------------------------------------------- */}
-      {/* SIDEBAR NAVIGATION                                            */}
+      {/* SIDEBAR NAVIGATION (FIXED & NEVER MOVES)                      */}
       {/* ------------------------------------------------------------- */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-sidebar p-4 lg:flex">
-        <div className="px-2 pb-5 flex items-center justify-between">
-          <Logo size="sm" />
-          {isSuperAdmin ? (
-            <span className="flex items-center gap-1 rounded-full bg-purple-500/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-purple-300 border border-purple-500/30">
-              <Crown className="h-2.5 w-2.5 text-purple-400" /> Root
-            </span>
-          ) : (
-            <span className="flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-300 border border-emerald-500/30">
-              <ShieldCheck className="h-2.5 w-2.5 text-emerald-400" /> Admin
-            </span>
-          )}
-        </div>
-
-        {/* Super Admin / Admin Status Badge in Sidebar */}
-        <div
-          className={cn(
-            "mb-4 mx-1 rounded-xl p-3 border backdrop-blur text-xs",
-            isSuperAdmin
-              ? "bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-purple-950/40 border-purple-500/30 text-purple-200"
-              : "bg-emerald-950/30 border-emerald-500/30 text-emerald-200"
-          )}
-        >
-          <div className="flex items-center gap-2 font-bold">
-            {isSuperAdmin ? <Crown className="h-4 w-4 text-purple-400" /> : <ShieldCheck className="h-4 w-4 text-emerald-400" />}
-            <span>{isSuperAdmin ? "SUPER ADMIN CONSOLE" : "ADMIN CONSOLE"}</span>
+      <aside className="hidden w-64 shrink-0 flex-col justify-between border-r border-border bg-sidebar p-4 lg:flex h-screen overflow-y-auto z-30">
+        <div>
+          <div className="px-2 pb-4 flex items-center justify-between">
+            <Logo size="sm" />
+            {isSuperAdmin ? (
+              <span className="flex items-center gap-1 rounded-full bg-purple-500/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-purple-300 border border-purple-500/30">
+                <Crown className="h-2.5 w-2.5 text-purple-400" /> Root
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-300 border border-emerald-500/30">
+                <ShieldCheck className="h-2.5 w-2.5 text-emerald-400" /> Admin
+              </span>
+            )}
           </div>
-          <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
-            {isSuperAdmin
-              ? "Full root authorization: user roles, scoring governance & system operations."
-              : "Match management, contest lifecycles & player roster administration."}
-          </p>
+
+          {/* Super Admin / Admin Status Badge in Sidebar */}
+          <div
+            className={cn(
+              "mb-3 mx-1 rounded-xl p-2.5 border backdrop-blur text-xs",
+              isSuperAdmin
+                ? "bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-purple-950/40 border-purple-500/30 text-purple-200"
+                : "bg-emerald-950/30 border-emerald-500/30 text-emerald-200"
+            )}
+          >
+            <div className="flex items-center gap-2 font-bold text-[11px]">
+              {isSuperAdmin ? <Crown className="h-3.5 w-3.5 text-purple-400" /> : <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />}
+              <span>{isSuperAdmin ? "SUPER ADMIN CONSOLE" : "ADMIN CONSOLE"}</span>
+            </div>
+            <p className="mt-1 text-[9.5px] text-muted-foreground leading-tight">
+              {isSuperAdmin
+                ? "Full root authorization: user roles, scoring governance & system operations."
+                : "Match management, contest lifecycles & player roster administration."}
+            </p>
+          </div>
+
+          <nav className="space-y-1">
+            {nav.map(({ label, icon: Icon }) => {
+              const isTabActive = active === label;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => {
+                    setActive(label);
+                    setStatusNotice(null);
+                  }}
+                  className={cn(
+                    "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-semibold transition-all",
+                    isTabActive
+                      ? isSuperAdmin
+                        ? "bg-purple-500/20 text-purple-300 border-l-2 border-purple-400 font-bold"
+                        : "bg-primary/15 text-primary border-l-2 border-primary font-bold"
+                      : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                  )}
+                >
+                  <Icon className={cn("h-4 w-4", isTabActive ? (isSuperAdmin ? "text-purple-400" : "text-primary") : "text-muted-foreground")} />
+                  {label}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        <nav className="flex-1 space-y-1">
-          {nav.map(({ label, icon: Icon }) => {
-            const isTabActive = active === label;
-            return (
-              <button
-                key={label}
-                type="button"
-                onClick={() => {
-                  setActive(label);
-                  setStatusNotice(null);
-                }}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-all",
-                  isTabActive
-                    ? isSuperAdmin
-                      ? "bg-purple-500/20 text-purple-300 border-l-2 border-purple-400 font-bold"
-                      : "bg-primary/15 text-primary border-l-2 border-primary font-bold"
-                    : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-                )}
-              >
-                <Icon className={cn("h-4 w-4", isTabActive ? (isSuperAdmin ? "text-purple-400" : "text-primary") : "text-muted-foreground")} />
-                {label}
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="pt-4 border-t border-border space-y-2">
+        <div className="pt-3 border-t border-border space-y-1 mt-3">
           <Link
             to="/matches"
             className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-surface-2 hover:text-foreground transition-colors"
@@ -593,11 +595,11 @@ export function Admin() {
       </aside>
 
       {/* ------------------------------------------------------------- */}
-      {/* MAIN ADMIN WORKSPACE                                          */}
+      {/* MAIN ADMIN WORKSPACE (INDEPENDENT SCROLL)                      */}
       {/* ------------------------------------------------------------- */}
-      <main className="flex-1 p-5 sm:p-7 lg:p-8 min-w-0 overflow-y-auto">
-        {/* Top Header Bar */}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-border/80 pb-5">
+      <main className="flex-1 p-5 sm:p-7 lg:p-8 min-w-0 h-screen overflow-y-auto">
+        {/* Top Header Bar (Sticky at top of content area) */}
+        <div className="sticky -top-5 sm:-top-7 lg:-top-8 z-20 bg-background/95 backdrop-blur -mt-5 sm:-mt-7 lg:-mt-8 -mx-5 sm:-mx-7 lg:-mx-8 px-5 sm:px-7 lg:px-8 py-4 mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-border/80">
           <div>
             <div className="flex items-center gap-2.5">
               <h1 className="font-display text-2xl font-bold text-foreground">{active} Overview</h1>
