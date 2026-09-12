@@ -38,6 +38,7 @@ import { getSocket } from "@/lib/socket";
 import type { User } from "@/lib/api-types";
 import { removeFlow, FLOW_KEYS } from "@/lib/flow";
 import { ThemeToggle } from "@/context/ThemeContext";
+import { AuthGuard } from "@/components/fc/AuthGuard";
 
 interface NotificationItem {
   id: string;
@@ -307,33 +308,37 @@ export function AppShell({
   };
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
-      {/* ------------------------------------------------------------- */}
-      {/* LEFT VERTICAL SIDEBAR (Desktop & Tablet)                       */}
-      {/* ------------------------------------------------------------- */}
-      <aside className="hidden md:flex w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shrink-0 sticky top-0 h-screen z-30 shadow-xl">
-        {/* Top Logo */}
-        <div className="flex h-16 items-center px-6 border-b border-sidebar-border">
-          <Logo size="sm" />
-        </div>
+    <AuthGuard>
+      <div className="flex min-h-screen bg-background text-foreground">
+        {/* ------------------------------------------------------------- */}
+        {/* LEFT VERTICAL SIDEBAR (Desktop & Tablet)                       */}
+        {/* ------------------------------------------------------------- */}
+        <aside className="hidden md:flex w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shrink-0 sticky top-0 h-screen z-30 shadow-xl">
+          {/* Top Logo */}
+          <div className="flex h-16 items-center px-6 border-b border-sidebar-border">
+            <Logo size="sm" />
+          </div>
 
-        {/* Vertical Navigation Links */}
-        <nav className="flex-1 space-y-1 p-3.5 overflow-y-auto scrollbar-none">
-          <p className="px-3 py-1 text-[10px] font-black text-muted-foreground uppercase tracking-wider">
-            Fantasy Arena
-          </p>
-          {sidebarNavItems.map(({ to, label, icon: Icon, badge }) => {
-            const active = pathname === to;
-            return (
-              <Link
-                key={to}
-                to={to}
-                onClick={() => {
-                  if (to === "/matches") {
-                    removeFlow(FLOW_KEYS.selectedMatchId);
-                    window.dispatchEvent(new CustomEvent("reset-home-match"));
-                  }
-                }}
+          {/* Vertical Navigation Links */}
+          <nav className="flex-1 space-y-1 p-3.5 overflow-y-auto scrollbar-none">
+            <p className="px-3 py-1 text-[10px] font-black text-muted-foreground uppercase tracking-wider">
+              Fantasy Arena
+            </p>
+            {sidebarNavItems.map(({ to, label, icon: Icon, badge }) => {
+              const active = pathname === to;
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  onClick={() => {
+                    if (to === "/matches") {
+                      removeFlow(FLOW_KEYS.selectedMatchId);
+                      removeFlow("RETURN_TO_MATCH_CENTER");
+                      if (typeof window !== "undefined") {
+                        window.dispatchEvent(new CustomEvent("reset-home-match"));
+                      }
+                    }
+                  }}
                 className={cn(
                   "flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all",
                   active
@@ -368,8 +373,11 @@ export function AppShell({
                   onClick={() => {
                     if (action === "upcoming") {
                       removeFlow(FLOW_KEYS.selectedMatchId);
-                      window.dispatchEvent(new CustomEvent("switch-matches-tab", { detail: "UPCOMING" }));
-                      window.dispatchEvent(new CustomEvent("reset-home-match"));
+                      removeFlow("RETURN_TO_MATCH_CENTER");
+                      if (typeof window !== "undefined") {
+                        window.dispatchEvent(new CustomEvent("switch-matches-tab", { detail: "UPCOMING" }));
+                        window.dispatchEvent(new CustomEvent("reset-home-match"));
+                      }
                     }
                   }}
                   className={cn(
@@ -726,7 +734,10 @@ export function AppShell({
                   onClick={() => {
                     if (to === "/matches") {
                       removeFlow(FLOW_KEYS.selectedMatchId);
-                      window.dispatchEvent(new CustomEvent("reset-home-match"));
+                      removeFlow("RETURN_TO_MATCH_CENTER");
+                      if (typeof window !== "undefined") {
+                        window.dispatchEvent(new CustomEvent("reset-home-match"));
+                      }
                     }
                   }}
                   className={cn(
@@ -755,6 +766,7 @@ export function AppShell({
         </nav>
       </div>
     </div>
+    </AuthGuard>
   );
 }
 
@@ -774,7 +786,10 @@ export function PageHeader({
         onClick={() => {
           if (back === "/matches") {
             removeFlow(FLOW_KEYS.selectedMatchId);
-            window.dispatchEvent(new CustomEvent("reset-home-match"));
+            removeFlow("RETURN_TO_MATCH_CENTER");
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("reset-home-match"));
+            }
           }
         }}
         className="flex items-center gap-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"

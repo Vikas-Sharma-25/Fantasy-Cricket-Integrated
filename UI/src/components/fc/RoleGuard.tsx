@@ -1,9 +1,10 @@
 import { ReactNode, useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { ShieldAlert, LogIn } from "lucide-react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getMe, getCachedUser } from "@/lib/api-services";
 import type { User } from "@/lib/api-types";
+import { setFlow, FLOW_KEYS } from "@/lib/flow";
 
 interface RoleGuardProps {
   allowedRoles: Array<"user" | "admin" | "super_admin">;
@@ -12,6 +13,8 @@ interface RoleGuardProps {
 }
 
 export function RoleGuard({ allowedRoles, children, fallback }: RoleGuardProps) {
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [user, setUser] = useState<User | null>(() => getCachedUser());
   const [loading, setLoading] = useState<boolean>(() => !getCachedUser());
   const [checked, setChecked] = useState<boolean>(false);
@@ -42,18 +45,37 @@ export function RoleGuard({ allowedRoles, children, fallback }: RoleGuardProps) 
     };
   }, []);
 
+  // If unauthenticated, redirect immediately to login
+  useEffect(() => {
+    if (!loading && !user && checked) {
+      setFlow("redirectAfterLogin", pathname || "/admin");
+      setFlow(
+        FLOW_KEYS.authPromptMsg,
+        "Access Denied: Please log in with an administrator account to access the admin console."
+      );
+      navigate({ to: "/login" });
+    }
+  }, [loading, user, checked, pathname, navigate]);
+
   const currentRole = (user?.role || "user") as "user" | "admin" | "super_admin";
   const hasAccess = user && allowedRoles.includes(currentRole);
 
   if (loading && !user) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <span className="text-xs font-semibold text-muted-foreground">Verifying admin credentials...</span>
+        </div>
       </div>
     );
   }
 
-  if (!hasAccess && (checked || !user)) {
+  if (!user && (checked || !loading)) {
+    return null; // Redirect is executing
+  }
+
+  if (!hasAccess && (checked || user)) {
     if (fallback) {
       return <>{fallback}</>;
     }
@@ -68,23 +90,14 @@ export function RoleGuard({ allowedRoles, children, fallback }: RoleGuardProps) 
             Access Restricted
           </h1>
           <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-            {!user
-              ? "You must be signed in with an authorized administrative account to access this area."
-              : `Your account (${user.email}) has role "${user.role || "user"}" which does not have permission to view this section.`}
+            {user
+              ? `Your account (${user.email}) has role "${user.role || "user"}" which does not have permission to view the administrative console.`
+              : "Administrative privileges are required to access this area."}
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
-            {!user ? (
-              <Button asChild variant="hero" size="lg" className="font-bold">
-                <Link to="/login">
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Sign In
-                </Link>
-              </Button>
-            ) : (
-              <Button asChild variant="hero" size="lg" className="font-bold">
-                <Link to="/matches">Return to Matches</Link>
-              </Button>
-            )}
+            <Button asChild variant="hero" size="lg" className="font-bold">
+              <Link to="/matches">Return to Matches</Link>
+            </Button>
           </div>
         </div>
       </div>
@@ -93,4 +106,3 @@ export function RoleGuard({ allowedRoles, children, fallback }: RoleGuardProps) 
 
   return <>{children}</>;
 }
-

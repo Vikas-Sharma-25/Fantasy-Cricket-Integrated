@@ -1456,21 +1456,8 @@ function Matches() {
   // Top Ticker Pagination (3 per view)
   const [tickerPage, setTickerPage] = useState(0);
 
-  // Selected match for Full-Page view: initialize immediately from cache/flow so there is ZERO delay
-  const [selectedHomeMatch, setSelectedHomeMatch] = useState<any | null>(() => {
-    const pendingId = getFlow<string | null>(FLOW_KEYS.selectedMatchId, null);
-    if (pendingId) {
-      if (
-        memoryCachedSelectedMatch &&
-        (memoryCachedSelectedMatch.id === pendingId || memoryCachedSelectedMatch.dbId === pendingId)
-      ) {
-        return memoryCachedSelectedMatch;
-      }
-      const found = memoryCachedWorldMatches.find((m) => (m.id || m.dbId) === pendingId);
-      if (found) return found;
-    }
-    return null;
-  });
+  // Selected match for Full-Page view: default is null so Dashboard (Pic 2) always displays on open!
+  const [selectedHomeMatch, setSelectedHomeMatch] = useState<any | null>(null);
   const [matchTab, setMatchTab] = useState<string>(() => {
     return getFlow<string | null>("OPEN_MATCH_TAB", null) || "Live";
   });
@@ -1641,23 +1628,27 @@ function Matches() {
     };
   }, [selectedHomeMatch]);
 
-  // Restore pending match selection if returning from team creation or captain flow
+  // Restore pending match selection ONLY if returning specifically from team creation flow
   useEffect(() => {
     if (worldMatches.length > 0 && !selectedHomeMatch) {
-      const pendingMatchId = getFlow<string | null>(FLOW_KEYS.selectedMatchId, null);
-      if (pendingMatchId) {
-        const found = worldMatches.find((m) => (m.id || m.dbId) === pendingMatchId);
-        if (found) {
-          handleSelectMatch(found);
-          const openTab = getFlow<string | null>("OPEN_MATCH_TAB", null);
-          if (openTab) {
-            setMatchTab(openTab);
-            removeFlow("OPEN_MATCH_TAB");
-          }
-          const openSubTab = getFlow<any | null>("OPEN_CONTEST_SUBTAB", null);
-          if (openSubTab) {
-            setContestSubTab(openSubTab);
-            removeFlow("OPEN_CONTEST_SUBTAB");
+      const returnFromTeam = getFlow<boolean>("RETURN_TO_MATCH_CENTER", false);
+      if (returnFromTeam) {
+        removeFlow("RETURN_TO_MATCH_CENTER");
+        const pendingMatchId = getFlow<string | null>(FLOW_KEYS.selectedMatchId, null);
+        if (pendingMatchId) {
+          const found = worldMatches.find((m) => (m.id || m.dbId) === pendingMatchId);
+          if (found) {
+            handleSelectMatch(found);
+            const openTab = getFlow<string | null>("OPEN_MATCH_TAB", null);
+            if (openTab) {
+              setMatchTab(openTab);
+              removeFlow("OPEN_MATCH_TAB");
+            }
+            const openSubTab = getFlow<any | null>("OPEN_CONTEST_SUBTAB", null);
+            if (openSubTab) {
+              setContestSubTab(openSubTab);
+              removeFlow("OPEN_CONTEST_SUBTAB");
+            }
           }
         }
       }
@@ -1742,6 +1733,7 @@ function Matches() {
   function handleBackToHome() {
     setSelectedHomeMatch(null);
     removeFlow(FLOW_KEYS.selectedMatchId);
+    removeFlow("RETURN_TO_MATCH_CENTER");
     if (typeof window !== "undefined" && window.history.state?.matchView) {
       window.history.back();
     }
@@ -1757,6 +1749,7 @@ function Matches() {
       removeFlow(FLOW_KEYS.viceCaptainId);
       removeFlow(FLOW_KEYS.returnToContestId);
       setFlow(FLOW_KEYS.selectedMatchId, matchId);
+      setFlow("RETURN_TO_MATCH_CENTER", true);
       setFlow(FLOW_KEYS.selectedTeamName, `Team ${myTeams.length + 1}`);
       navigate({ to: "/players" });
     }

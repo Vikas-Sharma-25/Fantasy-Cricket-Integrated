@@ -39,6 +39,10 @@ function VerifyOtp() {
     try {
       const otpToken = getFlow<string | undefined>(FLOW_KEYS.otpToken, undefined);
       await verifyAccount(otp, otpToken);
+      setFlow(
+        FLOW_KEYS.authPromptMsg,
+        "Account verified successfully! Please log in to your account to access your fantasy dashboard."
+      );
       navigate({ to: "/login" });
     } catch (err: any) {
       setError(err?.message || (err instanceof ApiClientError ? err.message : "Invalid OTP code"));

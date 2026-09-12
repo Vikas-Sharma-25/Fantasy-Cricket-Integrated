@@ -5,7 +5,7 @@ import { AuthLayout } from "@/components/fc/AuthLayout";
 import { OtpInput } from "@/components/fc/OtpInput";
 import { Button } from "@/components/ui/button";
 import { verifyLoginOtp, resendOtp } from "@/lib/api-services";
-import { getFlow, setFlow, FLOW_KEYS } from "@/lib/flow";
+import { getFlow, setFlow, removeFlow, FLOW_KEYS } from "@/lib/flow";
 import { ApiClientError } from "@/lib/api";
 
 export const Route = createFileRoute("/verify-otp-login")({ component: VerifyOtpLogin });
@@ -39,7 +39,10 @@ function VerifyOtpLogin() {
     try {
       const otpToken = getFlow<string | undefined>(FLOW_KEYS.otpToken, undefined);
       await verifyLoginOtp(otp, otpToken);
-      navigate({ to: "/matches" });
+      const destination = getFlow<string>("redirectAfterLogin", "/matches");
+      removeFlow("redirectAfterLogin");
+      removeFlow(FLOW_KEYS.authPromptMsg);
+      navigate({ to: destination as any });
     } catch (err: any) {
       setError(err?.message || (err instanceof ApiClientError ? err.message : "Invalid OTP code"));
     } finally {

@@ -1,11 +1,11 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Mail, Lock, Loader2 } from "lucide-react";
+import { Mail, Lock, Loader2, AlertCircle } from "lucide-react";
 import { AuthLayout } from "@/components/fc/AuthLayout";
 import { Field } from "@/components/fc/Field";
 import { Button } from "@/components/ui/button";
 import { loginUser } from "@/lib/api-services";
-import { setFlow, FLOW_KEYS } from "@/lib/flow";
+import { setFlow, getFlow, FLOW_KEYS } from "@/lib/flow";
 import { ApiClientError } from "@/lib/api";
 
 export const Route = createFileRoute("/login")({ component: Login });
@@ -16,6 +16,7 @@ function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const authPrompt = getFlow<string>(FLOW_KEYS.authPromptMsg, "");
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -47,6 +48,15 @@ function Login() {
         </span>
       }
     >
+      {authPrompt && (
+        <div className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3.5 text-xs font-semibold text-amber-700 dark:text-amber-300 flex items-start gap-2.5 shadow-sm">
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
+          <div className="flex-1">
+            <p className="font-bold text-[13px]">Notice</p>
+            <p className="mt-0.5 text-foreground/80 leading-relaxed">{authPrompt}</p>
+          </div>
+        </div>
+      )}
       <form onSubmit={submit} className="space-y-4">
         <Field
           required
