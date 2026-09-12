@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Eye, Pencil, Save, CheckCircle2, Trophy, Users, X } from "lucide-react";
+import { Eye, Pencil, Save, CheckCircle2, Trophy, Users, X, AlertCircle } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/fc/AppShell";
 import { Card } from "@/components/fc/bits";
 import { LoadingState } from "@/components/fc/ListState";
 import { Button } from "@/components/ui/button";
 import { TeamPitchPreview } from "@/components/fc/TeamPitchPreview";
-import { getMatchPlayers, createTeam, updateTeam, getContests, joinContest } from "@/lib/api-services";
+import { getMatchPlayers, createTeam, updateTeam, getContests, joinContest, getLocalWalletBalance, deductLocalWallet } from "@/lib/api-services";
 import type { MatchPlayer, Contest } from "@/lib/api-types";
 import { getFlow, setFlow, removeFlow, FLOW_KEYS } from "@/lib/flow";
 import { ApiClientError } from "@/lib/api";
@@ -139,15 +139,46 @@ function Captain() {
 
   async function handleConfirmJoinContest() {
     if (!selectedContestId || !savedTeamId) return;
+
+    const contestObj = availableContests.find((c) => c._id === selectedContestId);
+    const fee = typeof contestObj?.entryFee === "number" ? contestObj.entryFee : (contestObj?.rules?.entryFee ?? 0);
+    const currentBal = getLocalWalletBalance();
+
+    if (fee > 0 && currentBal < fee) {
+      setJoinError("You don't have sufficient money to join contest. Please add money to your wallet.");
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(
+          "fc_wallet_insufficient_notice",
+          `You need at least ₹${fee} to join "${contestObj?.name || "the contest"}". Please add funds to your wallet.`
+        );
+        setTimeout(() => {
+          navigate({ to: "/wallet" });
+        }, 2200);
+      }
+      return;
+    }
+
     setJoiningContest(true);
     setJoinError("");
 
     try {
       await joinContest(selectedContestId, savedTeamId);
+      deductLocalWallet(fee, contestObj?.name || "Contest Entry");
       setFlow(FLOW_KEYS.selectedContestId, selectedContestId);
       setJoinSuccess(true);
-    } catch (e) {
-      setJoinError(e instanceof ApiClientError ? e.message : "Failed to join contest");
+    } catch (e: any) {
+      const msg = e instanceof ApiClientError ? e.message : (e?.message || "Failed to join contest");
+      if (msg.includes("INSUFFICIENT_WALLET_BALANCE") || msg.toLowerCase().includes("sufficient money")) {
+        setJoinError("You don't have sufficient money to join contest. Please add money to your wallet.");
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("fc_wallet_insufficient_notice", "You don't have sufficient money to join contest. Please add money to your wallet.");
+          setTimeout(() => {
+            navigate({ to: "/wallet" });
+          }, 2200);
+        }
+      } else {
+        setJoinError(msg);
+      }
     } finally {
       setJoiningContest(false);
     }
@@ -437,9 +468,26 @@ function Captain() {
                   </div>
 
                   {joinError && (
-                    <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                      {joinError}
-                    </p>
+                    <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 space-y-2 text-xs">
+                      <p className="text-destructive font-bold flex items-center gap-1.5">
+                        <AlertCircle className="h-4 w-4 shrink-0" />
+                        <span>{joinError}</span>
+                      </p>
+                      {(joinError.includes("sufficient money") || joinError.includes("wallet")) && (
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            setShowJoinModal(false);
+                            navigate({ to: "/wallet" });
+                          }}
+                          variant="hero"
+                          size="sm"
+                          className="w-full text-xs font-bold py-1.5"
+                        >
+                          Add Money to Wallet Now
+                        </Button>
+                      )}
+                    </div>
                   )}
 
                   {/* Action Buttons */}

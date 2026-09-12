@@ -234,3 +234,67 @@ export async function markAllNotificationsAsRead(): Promise<void> {
     await api.patch("/users/me/notifications/read-all");
   } catch {}
 }
+
+export function getLocalWalletBalance(): number {
+  try {
+    const saved = localStorage.getItem("fc_user_wallet");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      const total = (parsed.deposited || 0) + (parsed.winnings || 0) + (parsed.bonus || 0);
+      if (typeof total === "number" && !isNaN(total)) return total;
+    }
+  } catch {}
+  return 3000;
+}
+
+export function deductLocalWallet(amount: number, contestName: string): number {
+  if (amount <= 0) return getLocalWalletBalance();
+  try {
+    const saved = localStorage.getItem("fc_user_wallet");
+    const wallet = saved ? JSON.parse(saved) : { deposited: 1500, winnings: 1000, bonus: 500 };
+    if ((wallet.deposited || 0) >= amount) {
+      wallet.deposited -= amount;
+    } else {
+      const rem = amount - (wallet.deposited || 0);
+      wallet.deposited = 0;
+      if ((wallet.winnings || 0) >= rem) {
+        wallet.winnings -= rem;
+      } else {
+        const remBonus = rem - (wallet.winnings || 0);
+        wallet.winnings = 0;
+        wallet.bonus = Math.max(0, (wallet.bonus || 0) - remBonus);
+      }
+    }
+    localStorage.setItem("fc_user_wallet", JSON.stringify(wallet));
+
+    // Add passbook transaction
+    const txsSaved = localStorage.getItem("fc_wallet_txs");
+    const txs = txsSaved ? JSON.parse(txsSaved) : [];
+    txs.unshift({
+      id: `tx-${Date.now()}`,
+      type: "ENTRY_FEE",
+      title: `Contest Entry: ${contestName}`,
+      amount: -amount,
+      date: "Just now",
+      status: "SUCCESS",
+      refId: `FEE-${Math.floor(10000 + Math.random() * 90000)}`,
+    });
+    localStorage.setItem("fc_wallet_txs", JSON.stringify(txs));
+
+    const newTotal = (wallet.deposited || 0) + (wallet.winnings || 0) + (wallet.bonus || 0);
+    const cached = getCachedUser();
+    if (cached) {
+      const updatedUser = { ...cached, walletBalance: newTotal };
+      setCachedUser(updatedUser);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("user-profile-updated", { detail: updatedUser }));
+      }
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("storage"));
+    }
+    return newTotal;
+  } catch {
+    return 2900;
+  }
+}

@@ -3,7 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/fc/AppShell";
 import { Card } from "@/components/fc/bits";
 import { Button } from "@/components/ui/button";
-import { getMatches, getContests, getMyTeams, joinContest, getMyContests, getLeaderboard, getMatchPlayers, deleteTeam } from "@/lib/api-services";
+import { getMatches, getContests, getMyTeams, joinContest, getMyContests, getLeaderboard, getMatchPlayers, deleteTeam, getLocalWalletBalance, deductLocalWallet } from "@/lib/api-services";
 import type { Match, Contest, FantasyTeam, MatchPlayer } from "@/lib/api-types";
 import { TeamPitchPreview, type PitchPlayer } from "@/components/fc/TeamPitchPreview";
 import { setFlow, removeFlow, getFlow, FLOW_KEYS } from "@/lib/flow";
@@ -23,6 +23,7 @@ import {
   Cell,
 } from "recharts";
 import {
+  AlertCircle,
   Clock,
   ChevronRight,
   ChevronLeft,
@@ -72,7 +73,6 @@ import {
   MapPin,
   Pencil,
   Trash2,
-  AlertCircle,
 } from "lucide-react";
 
 export const Route = createFileRoute("/matches")({ component: Matches });
@@ -387,6 +387,18 @@ const MOCK_HIGHLIGHTS = [
 ];
 
 const MOCK_MATCH_CONTESTS = [
+  {
+    id: "c-gl-100",
+    name: "Grand League - ₹5 Lakhs",
+    category: "Mega Contests",
+    prizePool: "₹5,00,000",
+    entryFee: 100,
+    firstPrize: "₹1,50,000",
+    totalSpots: 10000,
+    filledSpots: 4500,
+    maxTeams: 5,
+    guaranteed: true,
+  },
   {
     id: "c-mega-1",
     name: "Mega Contest - ₹10 Lakhs",
@@ -1488,11 +1500,13 @@ function Matches() {
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
   const [joiningContestId, setJoiningContestId] = useState<string | null>(null);
   const [contestSuccessMsg, setContestSuccessMsg] = useState<string | null>(null);
+  const [contestErrorMsg, setContestErrorMsg] = useState<string | null>(null);
+  const [pendingJoinError, setPendingJoinError] = useState<string | null>(null);
 
   // Dedicated Join Flow with newly created team (Point 3)
   const [pendingJoinContest, setPendingJoinContest] = useState<any | null>(null);
   const [pendingJoinTeamInfo, setPendingJoinTeamInfo] = useState<{ id: string; name: string } | null>(null);
-  const [joinSuccessModal, setJoinSuccessModal] = useState<{ contestName: string; teamName: string } | null>(null);
+  const [joinSuccessModal, setJoinSuccessModal] = useState<{ contestName: string; teamName: string; deductedFee?: number; remainingBalance?: number } | null>(null);
 
   // Full Article Reader Modal State
   const [readingArticle, setReadingArticle] = useState<NewsArticle | null>(null);
@@ -1784,6 +1798,22 @@ function Matches() {
   async function handleConfirmJoinContest(overrideTeamId?: string) {
     const teamId = overrideTeamId || selectedJoinTeamId;
     if (!joinModalContest || !teamId) return;
+    setContestErrorMsg(null);
+
+    const fee = typeof joinModalContest.entryFee === "number" ? joinModalContest.entryFee : 0;
+    const currentBal = getLocalWalletBalance();
+
+    if (fee > 0 && currentBal < fee) {
+      setContestErrorMsg("You don't have sufficient money to join contest. Please add money to your wallet.");
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("fc_wallet_insufficient_notice", `You need at least ₹${fee} to join "${joinModalContest.name}". Please add funds to your wallet.`);
+        setTimeout(() => {
+          navigate({ to: "/wallet" });
+        }, 2200);
+      }
+      return;
+    }
+
     setIsJoining(true);
     let targetContestId = String(joinModalContest._id || joinModalContest.id);
     const targetTeam = myTeams.find((t) => String(t._id) === teamId);
@@ -1802,9 +1832,14 @@ function Matches() {
       }
 
       await joinContest(targetContestId, teamId);
+
+      const remainingBal = deductLocalWallet(fee, joinModalContest.name);
+
       setJoinSuccessModal({
         contestName: joinModalContest.name,
         teamName,
+        deductedFee: fee,
+        remainingBalance: remainingBal,
       });
       setContestSuccessMsg(`🎉 Successfully joined ${joinModalContest.name} with ${teamName}!`);
       setJoinModalContest(null);
@@ -1823,17 +1858,19 @@ function Matches() {
       }
       setTimeout(() => setContestSuccessMsg(null), 5000);
     } catch (err: any) {
-      setJoinSuccessModal({
-        contestName: joinModalContest.name,
-        teamName,
-      });
-      setContestSuccessMsg(err?.message || `Joined contest successfully with ${teamName}!`);
-      setJoinModalContest(null);
-      setContestSubTab("myContests");
-      if (currentMatchId) {
-        void getMyContests(currentMatchId).then(setMyContests).catch(() => {});
+      const msg = err?.message || "";
+      if (msg.includes("INSUFFICIENT_WALLET_BALANCE") || msg.toLowerCase().includes("sufficient money")) {
+        setContestErrorMsg("You don't have sufficient money to join contest. Please add money to your wallet.");
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("fc_wallet_insufficient_notice", "You don't have sufficient money to join contest. Please add money to your wallet.");
+          setTimeout(() => {
+            navigate({ to: "/wallet" });
+          }, 2200);
+        }
+        return;
       }
-      setTimeout(() => setContestSuccessMsg(null), 5000);
+      setContestErrorMsg(msg || "Failed to join contest");
+      setTimeout(() => setContestErrorMsg(null), 5000);
     } finally {
       setIsJoining(false);
     }
@@ -1842,6 +1879,22 @@ function Matches() {
   // Execute join with newly created squad (Point 3)
   async function handleExecutePendingJoin() {
     if (!pendingJoinContest || !pendingJoinTeamInfo) return;
+    setPendingJoinError(null);
+
+    const fee = typeof pendingJoinContest.entryFee === "number" ? pendingJoinContest.entryFee : 0;
+    const currentBal = getLocalWalletBalance();
+
+    if (fee > 0 && currentBal < fee) {
+      setPendingJoinError("You don't have sufficient money to join contest. Please add money to your wallet.");
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("fc_wallet_insufficient_notice", `You need at least ₹${fee} to join "${pendingJoinContest.name}". Please add funds to your wallet.`);
+        setTimeout(() => {
+          navigate({ to: "/wallet" });
+        }, 2200);
+      }
+      return;
+    }
+
     setIsJoining(true);
     const targetTeamName = pendingJoinTeamInfo.name;
     const targetContestName = pendingJoinContest.name;
@@ -1864,6 +1917,8 @@ function Matches() {
 
       await joinContest(targetContestId, pendingJoinTeamInfo.id);
 
+      const remainingBal = deductLocalWallet(fee, targetContestName);
+
       setPendingJoinContest(null);
       setPendingJoinTeamInfo(null);
 
@@ -1882,20 +1937,24 @@ function Matches() {
       setJoinSuccessModal({
         contestName: targetContestName,
         teamName: targetTeamName,
+        deductedFee: fee,
+        remainingBalance: remainingBal,
       });
       setContestSubTab("myContests");
     } catch (err: any) {
-      setPendingJoinContest(null);
-      setPendingJoinTeamInfo(null);
-      setJoinSuccessModal({
-        contestName: targetContestName,
-        teamName: targetTeamName,
-      });
-      setContestSubTab("myContests");
-      if (currentMatchId) {
-        void getMyContests(currentMatchId).then(setMyContests).catch(() => {});
-        void getMyTeams(currentMatchId).then(setMyTeams).catch(() => {});
+      const msg = err?.message || "";
+      if (msg.includes("INSUFFICIENT_WALLET_BALANCE") || msg.toLowerCase().includes("sufficient money")) {
+        setPendingJoinError("You don't have sufficient money to join contest. Please add money to your wallet.");
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("fc_wallet_insufficient_notice", "You don't have sufficient money to join contest. Please add money to your wallet.");
+          setTimeout(() => {
+            navigate({ to: "/wallet" });
+          }, 2200);
+        }
+        return;
       }
+      setPendingJoinError(msg || "Failed to join contest");
+      setTimeout(() => setPendingJoinError(null), 5000);
     } finally {
       setIsJoining(false);
     }
@@ -4934,6 +4993,26 @@ function Matches() {
                       })}
                     </div>
 
+                    {contestErrorMsg && (
+                      <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 space-y-2">
+                        <p className="text-xs font-bold text-destructive flex items-center gap-1.5">
+                          <AlertCircle className="h-4 w-4 shrink-0" />
+                          <span>{contestErrorMsg}</span>
+                        </p>
+                        <Button
+                          onClick={() => {
+                            setJoinModalContest(null);
+                            navigate({ to: "/wallet" });
+                          }}
+                          variant="hero"
+                          size="sm"
+                          className="w-full text-xs font-bold py-1.5"
+                        >
+                          Add Money to Wallet Now
+                        </Button>
+                      </div>
+                    )}
+
                     <Button
                       onClick={() => handleConfirmJoinContest()}
                       disabled={isJoining || !selectedJoinTeamId}
@@ -5038,6 +5117,27 @@ function Matches() {
                 </span>
               </div>
 
+              {pendingJoinError && (
+                <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 space-y-2">
+                  <p className="text-xs font-bold text-destructive flex items-center gap-1.5">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>{pendingJoinError}</span>
+                  </p>
+                  <Button
+                    onClick={() => {
+                      setPendingJoinContest(null);
+                      setPendingJoinTeamInfo(null);
+                      navigate({ to: "/wallet" });
+                    }}
+                    variant="hero"
+                    size="sm"
+                    className="w-full text-xs font-bold py-1.5"
+                  >
+                    Add Money to Wallet Now
+                  </Button>
+                </div>
+              )}
+
               <div className="pt-2 space-y-2">
                 <Button
                   onClick={handleExecutePendingJoin}
@@ -5081,6 +5181,22 @@ function Matches() {
                 Successfully joined <span className="font-bold text-foreground">{joinSuccessModal.contestName}</span> with <span className="font-bold text-emerald-400">{joinSuccessModal.teamName}</span>!
               </p>
             </div>
+
+            {joinSuccessModal.deductedFee !== undefined && joinSuccessModal.deductedFee > 0 && (
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs space-y-1.5 text-left">
+                <div className="flex justify-between items-center text-foreground font-semibold">
+                  <span className="text-muted-foreground">Entry Fee Deducted:</span>
+                  <span className="text-emerald-400 font-mono font-bold">-₹{joinSuccessModal.deductedFee}</span>
+                </div>
+                <div className="flex justify-between items-center text-muted-foreground text-[11px] pt-1 border-t border-emerald-500/20">
+                  <span>Remaining Wallet Balance:</span>
+                  <span className="text-foreground font-mono font-bold">
+                    ₹{joinSuccessModal.remainingBalance?.toLocaleString("en-IN") ?? "2,900"}
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="pt-2">
               <Button
                 onClick={() => {

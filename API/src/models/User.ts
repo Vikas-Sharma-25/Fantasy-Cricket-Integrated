@@ -14,6 +14,10 @@ export interface IUser extends Document {
   isVerified: boolean;
   profileImage?: string;
   preferences?: Record<string, unknown>;
+  walletBalance?: number;
+  depositedBalance?: number;
+  winningsBalance?: number;
+  bonusBalance?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,6 +48,11 @@ const userSchema = new Schema<IUser>(
     isVerified: { type: Boolean, default: false },
     profileImage: { type: String },
     preferences: { type: Schema.Types.Mixed, default: {} }
+    preferences: { type: Schema.Types.Mixed, default: {} },
+    walletBalance: { type: Number, default: 3000 },
+    depositedBalance: { type: Number, default: 1500 },
+    winningsBalance: { type: Number, default: 1000 },
+    bonusBalance: { type: Number, default: 500 }
   },
   { timestamps: true }
 );

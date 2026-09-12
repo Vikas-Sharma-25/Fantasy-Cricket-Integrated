@@ -103,7 +103,6 @@ const sidebarNavItems = [
   { to: "/my-teams", label: "My Teams", icon: Users },
   { to: "/leaderboard", label: "Leaderboard", icon: Award },
   { to: "/wallet", label: "Wallet", icon: Wallet },
-  { to: "/profile", label: "Profile", icon: UserIcon },
 ];
 
 const cricketNavItems = [
@@ -453,27 +452,6 @@ export function AppShell({
             </div>
           )}
 
-          {/* User Fantasy Account & Wallet Status (Informational only - NO ADS) */}
-          <Link
-            to="/wallet"
-            className="mt-4 block rounded-xl border border-sidebar-border bg-sidebar-accent/50 p-3 space-y-2.5 transition-colors hover:border-primary/40 hover:bg-sidebar-accent/70 cursor-pointer"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1.5">
-                <Wallet className="h-3.5 w-3.5 text-primary" /> Wallet Cash
-              </span>
-              <span className="text-xs font-mono font-bold text-primary">
-                ₹{(user?.walletBalance ?? walletTotal).toLocaleString("en-IN")}
-              </span>
-            </div>
-            <div className="h-px bg-sidebar-border/80" />
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-              <span className="flex items-center gap-1 text-primary font-medium">
-                <ShieldCheck className="h-3.5 w-3.5 text-primary" /> KYC Verified
-              </span>
-              <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold">100% Fair Play</span>
-            </div>
-          </Link>
         </nav>
 
         {/* Bottom User Profile Section */}

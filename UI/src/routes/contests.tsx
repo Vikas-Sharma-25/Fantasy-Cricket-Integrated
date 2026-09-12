@@ -10,6 +10,7 @@ import {
   Plus,
   Calendar,
   MapPin,
+  AlertCircle,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/fc/AppShell";
 import { Card, Tabs, StatusBadge, Progress, TeamBadge } from "@/components/fc/bits";
@@ -24,6 +25,8 @@ import {
   getMatch,
   getMatches,
   getLeaderboard,
+  getLocalWalletBalance,
+  deductLocalWallet,
 } from "@/lib/api-services";
 import type { Contest, FantasyTeam, MatchPlayer, Match } from "@/lib/api-types";
 import { getFlow, setFlow, removeFlow, FLOW_KEYS } from "@/lib/flow";
@@ -390,6 +393,23 @@ function Contests() {
       return;
     }
 
+    const fee = typeof contestToJoin.entryFee === "number" ? contestToJoin.entryFee : (contestToJoin.rules?.entryFee ?? 0);
+    const currentBal = getLocalWalletBalance();
+
+    if (fee > 0 && currentBal < fee) {
+      setError("You don't have sufficient money to join contest. Please add money to your wallet.");
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(
+          "fc_wallet_insufficient_notice",
+          `You need at least ₹${fee} to join "${contestToJoin.name}". Please add funds to your wallet.`
+        );
+        setTimeout(() => {
+          navigate({ to: "/wallet" });
+        }, 2200);
+      }
+      return;
+    }
+
     setJoining(true);
     setError("");
     setSuccess("");
@@ -399,8 +419,15 @@ function Contests() {
       const teamLabel = chosenTeam ? chosenTeam.name : "your team";
 
       await joinContest(contestToJoin._id, selectedTeamId);
+      const remainingBal = deductLocalWallet(fee, contestToJoin.name);
+
       setFlow(FLOW_KEYS.selectedContestId, contestToJoin._id);
       setSuccess(`🎉 Contest joined successfully with ${teamLabel}!`);
+      setSuccess(
+        fee > 0
+          ? `🎉 Contest joined successfully with ${teamLabel}! Entry fee ₹${fee} deducted • Balance: ₹${remainingBal.toLocaleString("en-IN")}`
+          : `🎉 Contest joined successfully with ${teamLabel}!`
+      );
 
       // Optimistically update slot counts
       setItems((prev) =>
@@ -417,8 +444,19 @@ function Contests() {
 
       // Automatically switch view to "My Contests" tab
       setTop("My Contests");
-    } catch (e) {
-      setError(e instanceof ApiClientError ? e.message : "Unable to join contest");
+    } catch (e: any) {
+      const msg = e instanceof ApiClientError ? e.message : (e?.message || "Unable to join contest");
+      if (msg.includes("INSUFFICIENT_WALLET_BALANCE") || msg.toLowerCase().includes("sufficient money")) {
+        setError("You don't have sufficient money to join contest. Please add money to your wallet.");
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("fc_wallet_insufficient_notice", "You don't have sufficient money to join contest. Please add money to your wallet.");
+          setTimeout(() => {
+            navigate({ to: "/wallet" });
+          }, 2200);
+        }
+      } else {
+        setError(msg);
+      }
     } finally {
       setJoining(false);
     }
@@ -964,6 +1002,29 @@ function Contests() {
                   </div>
                 )}
               </div>
+
+              {error && (
+                <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 space-y-2">
+                  <p className="text-xs font-bold text-destructive flex items-center gap-1.5">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>{error}</span>
+                  </p>
+                  {(error.includes("sufficient money") || error.includes("wallet")) && (
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setContestToJoin(null);
+                        navigate({ to: "/wallet" });
+                      }}
+                      variant="hero"
+                      size="sm"
+                      className="w-full text-xs font-bold py-1.5"
+                    >
+                      Add Money to Wallet Now
+                    </Button>
+                  )}
+                </div>
+              )}
 
               {/* Action Button: Create New Team if all joined / 0 teams, else Join Contest */}
               {teams.length === 0 ||

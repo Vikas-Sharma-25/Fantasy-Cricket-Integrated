@@ -6,6 +6,7 @@ import { ContestEntry } from "../models/ContestEntry";
 import { FantasyTeam } from "../models/FantasyTeam";
 import { Match } from "../models/Match";
 import { Leaderboard } from "../models/Leaderboard";
+import { User } from "../models/User";
 
 import { ApiError } from "../utils/apiError";
 
@@ -87,6 +88,7 @@ export async function listContests(
 
     const existingCount = await Contest.countDocuments({ matchId });
     if (existingCount < 4) {
+    if (existingCount < 5) {
       const standardContests = [
         {
           matchId,
@@ -94,7 +96,20 @@ export async function listContests(
           type: "PUBLIC",
           maxSlots: 25000,
           joinedSlots: 20480,
+          entryFee: 49,
+          prizePool: 1000000,
           rules: { category: "MEGA CONTESTS", entryFee: 49, prizePool: 1000000, prizePoolText: "₹10,00,000", firstPrize: "₹3,00,000", maxTeams: 11, guaranteed: true },
+          status: "OPEN"
+        },
+        {
+          matchId,
+          name: "Grand League - ₹5 Lakhs",
+          type: "PUBLIC",
+          maxSlots: 10000,
+          joinedSlots: 4500,
+          entryFee: 100,
+          prizePool: 500000,
+          rules: { category: "MEGA CONTESTS", entryFee: 100, prizePool: 500000, prizePoolText: "₹5,00,000", firstPrize: "₹1,50,000", maxTeams: 5, guaranteed: true },
           status: "OPEN"
         },
         {
@@ -103,6 +118,8 @@ export async function listContests(
           type: "PUBLIC",
           maxSlots: 400,
           joinedSlots: 372,
+          entryFee: 299,
+          prizePool: 100000,
           rules: { category: "WINNER TAKES ALL", entryFee: 299, prizePool: 100000, prizePoolText: "₹1,00,000", firstPrize: "₹1,00,000", maxTeams: 2, guaranteed: true },
           status: "OPEN"
         },
@@ -112,6 +129,8 @@ export async function listContests(
           type: "PUBLIC",
           maxSlots: 2,
           joinedSlots: 1,
+          entryFee: 5750,
+          prizePool: 10000,
           rules: { category: "HEAD TO HEAD", entryFee: 5750, prizePool: 10000, prizePoolText: "₹10,000", firstPrize: "₹10,000", maxTeams: 1, guaranteed: true },
           status: "OPEN"
         },
@@ -121,6 +140,8 @@ export async function listContests(
           type: "PUBLIC",
           maxSlots: 10000,
           joinedSlots: 6410,
+          entryFee: 0,
+          prizePool: 0,
           rules: { category: "PRACTICE", entryFee: 0, prizePool: 0, prizePoolText: "Pride & Glory", firstPrize: "Top Rank Badge", maxTeams: 3, guaranteed: false },
           status: "OPEN"
         }
@@ -130,6 +151,10 @@ export async function listContests(
         const found = await Contest.findOne({ matchId, name: sc.name });
         if (!found) {
           await Contest.create(sc);
+        } else if (!found.entryFee && sc.entryFee) {
+          found.entryFee = sc.entryFee;
+          found.prizePool = sc.prizePool;
+          await found.save();
         }
       }
     }
@@ -146,8 +171,17 @@ export async function listContests(
     Contest.countDocuments(query)
   ]);
 
+  const formattedItems = items.map((c) => {
+    const obj: any = c.toObject();
+    const rules = obj.rules || {};
+    obj.entryFee = typeof obj.entryFee === "number" ? obj.entryFee : (typeof rules.entryFee === "number" ? rules.entryFee : 0);
+    obj.prizePool = typeof obj.prizePool === "number" && obj.prizePool > 0 ? obj.prizePool : (typeof rules.prizePool === "number" ? rules.prizePool : 0);
+    return obj;
+  });
+
   return {
     items,
+    items: formattedItems,
     total,
     page,
     limit
@@ -547,6 +581,50 @@ export async function joinContest(
   }
 
   /*
+   * Handle Wallet Balance & Entry Fee Deductions
+   */
+  const rules = (contest.rules || {}) as any;
+  const entryFee = typeof contest.entryFee === "number" ? contest.entryFee : (typeof rules.entryFee === "number" ? rules.entryFee : 0);
+  let userWalletBalance = 3000;
+
+  if (entryFee > 0) {
+    const user = await User.findById(userId);
+    if (!user) {
+      throw ApiError.notFound("User not found");
+    }
+
+    const currentBalance = typeof user.walletBalance === "number" ? user.walletBalance : 3000;
+    if (currentBalance < entryFee) {
+      throw ApiError.badRequest(
+        "INSUFFICIENT_WALLET_BALANCE: You don't have sufficient money to join contest. Please add money to your wallet."
+      );
+    }
+
+    user.walletBalance = currentBalance - entryFee;
+    userWalletBalance = user.walletBalance;
+
+    // Deduct from deposited balance first, then winnings, then bonus
+    const dep = typeof user.depositedBalance === "number" ? user.depositedBalance : 1500;
+    if (dep >= entryFee) {
+      user.depositedBalance = dep - entryFee;
+    } else {
+      user.depositedBalance = 0;
+      const remainingFee = entryFee - dep;
+      const win = typeof user.winningsBalance === "number" ? user.winningsBalance : 1000;
+      if (win >= remainingFee) {
+        user.winningsBalance = win - remainingFee;
+      } else {
+        user.winningsBalance = 0;
+        const bonusRem = remainingFee - win;
+        const bon = typeof user.bonusBalance === "number" ? user.bonusBalance : 500;
+        user.bonusBalance = Math.max(0, bon - bonusRem);
+      }
+    }
+
+    await user.save();
+  }
+
+  /*
    * Create ContestEntry.
    */
   const entry = await ContestEntry.create({
@@ -591,6 +669,12 @@ export async function joinContest(
   );
 
   return entry;
+  const entryObj: any = entry.toObject ? entry.toObject() : entry;
+  return {
+    ...entryObj,
+    walletBalance: userWalletBalance,
+    entryFeeDeducted: entryFee,
+  };
 }
 
 /*

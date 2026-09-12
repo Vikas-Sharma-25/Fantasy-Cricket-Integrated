@@ -22,7 +22,8 @@ import {
   Smartphone,
   ChevronRight,
   TrendingUp,
-  Award
+  Award,
+  AlertCircle,
 } from "lucide-react";
 
 export const Route = createFileRoute("/wallet")({
@@ -51,11 +52,22 @@ function WalletPage() {
     try {
       const saved = localStorage.getItem("fc_user_wallet");
       if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // If saved wallet was old demo balance of 1550, upgrade to 3000
+        if (parsed.deposited === 500 && parsed.winnings === 750 && parsed.bonus === 300) {
+          return { deposited: 1500, winnings: 1000, bonus: 500 };
+        }
+        return parsed;
+      }
     } catch {}
     return {
       deposited: 500,
       winnings: 750,
       bonus: 300,
+      deposited: 1500,
+      winnings: 1000,
+      bonus: 500,
     };
   });
 
@@ -109,6 +121,7 @@ function WalletPage() {
   const [addAmount, setAddAmount] = useState<number>(200);
   const [withdrawAmount, setWithdrawAmount] = useState<string>("");
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [insufficientNotice, setInsufficientNotice] = useState<string | null>(null);
 
   // Sync wallet to localStorage
   useEffect(() => {
@@ -122,6 +135,36 @@ function WalletPage() {
       localStorage.setItem("fc_wallet_txs", JSON.stringify(transactions));
     } catch {}
   }, [transactions]);
+
+  // Listen to external wallet updates and check insufficient funds redirect notice
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const notice = sessionStorage.getItem("fc_wallet_insufficient_notice");
+      if (notice) {
+        setInsufficientNotice(notice);
+        setShowAddModal(true);
+        sessionStorage.removeItem("fc_wallet_insufficient_notice");
+      }
+
+      function handleWalletSync() {
+        try {
+          const saved = localStorage.getItem("fc_user_wallet");
+          if (saved) setWallet(JSON.parse(saved));
+        } catch {}
+        try {
+          const txs = localStorage.getItem("fc_wallet_txs");
+          if (txs) setTransactions(JSON.parse(txs));
+        } catch {}
+      }
+
+      window.addEventListener("storage", handleWalletSync);
+      window.addEventListener("user-profile-updated", handleWalletSync);
+      return () => {
+        window.removeEventListener("storage", handleWalletSync);
+        window.removeEventListener("user-profile-updated", handleWalletSync);
+      };
+    }
+  }, []);
 
   const totalBalance = wallet.deposited + wallet.winnings + wallet.bonus;
 
@@ -204,6 +247,34 @@ function WalletPage() {
             </Button>
           </div>
         </div>
+
+        {/* Insufficient Funds Redirect Notice */}
+        {insufficientNotice && (
+          <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in-50">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-destructive/20 text-destructive flex items-center justify-center shrink-0">
+                <AlertCircle className="h-5 w-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-destructive">
+                  You don't have sufficient money to join contest.
+                </h4>
+                <p className="text-xs text-foreground/80 mt-0.5">
+                  {insufficientNotice} Please add money to your wallet to participate.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="hero"
+              size="sm"
+              onClick={() => setShowAddModal(true)}
+              className="shrink-0 font-bold text-xs shadow-md shadow-primary/25 self-start sm:self-center"
+            >
+              <Plus className="h-3.5 w-3.5" /> Add Cash Now
+            </Button>
+          </div>
+        )}
 
         {/* Feedback Alert */}
         {feedback && (

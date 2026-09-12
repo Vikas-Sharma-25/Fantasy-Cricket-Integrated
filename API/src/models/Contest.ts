@@ -19,6 +19,8 @@ export interface IContest extends Document {
 
   maxSlots: number;
   joinedSlots: number;
+  entryFee?: number;
+  prizePool?: number;
 
   rules?: Record<string, unknown>;
 
@@ -63,6 +65,18 @@ const contestSchema = new Schema<IContest>(
     },
 
     joinedSlots: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+
+    entryFee: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+
+    prizePool: {
       type: Number,
       default: 0,
       min: 0
