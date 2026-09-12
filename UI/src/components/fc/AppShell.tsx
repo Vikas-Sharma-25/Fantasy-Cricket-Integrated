@@ -35,6 +35,7 @@ import {
   markNotificationAsRead,
   markAllNotificationsAsRead,
   logoutUser,
+  getLocalWalletBalance,
 } from "@/lib/api-services";
 import { getSocket } from "@/lib/socket";
 import type { User } from "@/lib/api-types";
@@ -129,7 +130,7 @@ export function AppShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [user, setUser] = useState<User | null>(() => getCachedUser());
 
-  // Synchronize user profile & role across all tabs & events
+  // Synchronize user profile, role & wallet balance across all tabs & events
   useEffect(() => {
     const handleProfileUpdated = (e: any) => {
       if (e.detail) {
@@ -137,9 +138,11 @@ export function AppShell({
       } else {
         setUser(getCachedUser());
       }
+      setWalletTotal(getLocalWalletBalance());
     };
     const handleStorage = () => {
       setUser(getCachedUser());
+      setWalletTotal(getLocalWalletBalance());
     };
     window.addEventListener("user-profile-updated", handleProfileUpdated);
     window.addEventListener("storage", handleStorage);
@@ -149,9 +152,10 @@ export function AppShell({
     };
   }, []);
 
-  // Also sync user when route pathname changes
+  // Also sync user and wallet when route pathname changes
   useEffect(() => {
     setUser(getCachedUser());
+    setWalletTotal(getLocalWalletBalance());
   }, [pathname]);
 
   const [showNotifications, setShowNotifications] = useState(false);
@@ -159,14 +163,10 @@ export function AppShell({
   const [toastAlert, setToastAlert] = useState<{ title: string; message: string } | null>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
   const [walletTotal, setWalletTotal] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem("fc_user_wallet");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return (parsed.deposited || 0) + (parsed.winnings || 0) + (parsed.bonus || 0);
-      }
-    } catch {}
-    return 1550;
+    if (typeof window !== "undefined") {
+      return getLocalWalletBalance();
+    }
+    return 2900;
   });
 
   // Load live notifications from backend API
@@ -544,7 +544,7 @@ export function AppShell({
               >
                 <Wallet className="h-3.5 w-3.5 text-primary" />
                 <span className="font-mono font-bold text-primary">
-                  ₹{(user?.walletBalance ?? walletTotal).toLocaleString("en-IN")}
+                  ₹{walletTotal.toLocaleString("en-IN")}
                 </span>
               </Link>
 
