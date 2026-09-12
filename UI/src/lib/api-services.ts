@@ -241,10 +241,17 @@ export function getLocalWalletBalance(): number {
     if (saved) {
       const parsed = JSON.parse(saved);
       const total = (parsed.deposited || 0) + (parsed.winnings || 0) + (parsed.bonus || 0);
-      if (typeof total === "number" && !isNaN(total)) return total;
+      if (typeof total === "number" && !isNaN(total)) {
+        // ₹100 maintenance deposit is fixed and treated as ₹0 for joining contests
+        return Math.max(0, total - 100);
+      }
+    }
+    const cached = getCachedUser();
+    if (cached && typeof cached.walletBalance === "number") {
+      return Math.max(0, cached.walletBalance - 100);
     }
   } catch {}
-  return 3000;
+  return 0;
 }
 
 export function deductLocalWallet(amount: number, contestName: string): number {
@@ -298,4 +305,14 @@ export function deductLocalWallet(amount: number, contestName: string): number {
   } catch {
     return 700;
   }
+}
+
+export async function createPrivateContestApi(payload: {
+  matchId: string;
+  name: string;
+  maxSlots: number;
+  entryFee?: number;
+  prizePool?: number;
+}): Promise<Contest> {
+  return api.post<Contest>("/contests/private", payload);
 }

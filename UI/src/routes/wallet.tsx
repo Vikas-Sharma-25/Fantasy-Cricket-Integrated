@@ -589,31 +589,6 @@ function WalletPage() {
                 </p>
               </div>
 
-              {/* Demo Helper if balance depleted */}
-              {maxAllowedWithdrawal <= 0 && (
-                <div className="text-center pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = { deposited: 100, winnings: 600, bonus: 100 };
-                      setWallet(updated);
-                      localStorage.setItem("fc_user_wallet", JSON.stringify(updated));
-                      const cached = getCachedUser();
-                      if (cached) {
-                        cached.walletBalance = 800;
-                        cached.winningsBalance = 600;
-                        cached.depositedBalance = 100;
-                        localStorage.setItem("user", JSON.stringify(cached));
-                      }
-                      window.dispatchEvent(new CustomEvent("user-profile-updated", { detail: cached }));
-                      window.dispatchEvent(new Event("storage"));
-                    }}
-                    className="text-[11px] text-primary hover:underline font-semibold cursor-pointer"
-                  >
-                    + Reset Demo Winnings to ₹600 (Total ₹800 with ₹100 Dep + ₹100 Bonus)
-                  </button>
-                </div>
-              )}
 
               <div className="space-y-2">
                 <p className="text-[11px] text-muted-foreground flex items-center gap-1">

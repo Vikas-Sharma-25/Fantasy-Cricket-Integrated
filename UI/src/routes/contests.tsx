@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import {
   CheckCircle2,
@@ -11,6 +11,10 @@ import {
   Calendar,
   MapPin,
   AlertCircle,
+  Copy,
+  Share2,
+  Send,
+  MessageCircle,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/fc/AppShell";
 import { Card, Tabs, StatusBadge, Progress, TeamBadge } from "@/components/fc/bits";
@@ -27,6 +31,7 @@ import {
   getLeaderboard,
   getLocalWalletBalance,
   deductLocalWallet,
+  createPrivateContestApi,
 } from "@/lib/api-services";
 import type { Contest, FantasyTeam, MatchPlayer, Match } from "@/lib/api-types";
 import { getFlow, setFlow, removeFlow, FLOW_KEYS } from "@/lib/flow";
@@ -134,6 +139,89 @@ function Contests() {
   const [leaderboardContest, setLeaderboardContest] = useState<Contest | null>(null);
   const [leaderboardRows, setLeaderboardRows] = useState<any[]>([]);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
+
+  // Success message auto-hide timer ref
+  const successTimerRef = useRef<any>(null);
+
+  // Private contest creation state
+  const [showCreatePrivateModal, setShowCreatePrivateModal] = useState(false);
+  const [privateContestName, setPrivateContestName] = useState("");
+  const [privateMatchId, setPrivateMatchId] = useState<string>("");
+  const [privateSpots, setPrivateSpots] = useState<number>(10);
+  const [privateEntryFee, setPrivateEntryFee] = useState<number>(49);
+  const [privatePrizePool, setPrivatePrizePool] = useState<number>(490);
+  const [creatingPrivate, setCreatingPrivate] = useState(false);
+  const [privateCreateError, setPrivateCreateError] = useState("");
+
+  // Share Modal state
+  const [shareModalContest, setShareModalContest] = useState<Contest | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (showCreatePrivateModal) {
+      const targetMatch = currentMatch || (allMatches && allMatches[0]);
+      if (targetMatch && !privateMatchId) {
+        setPrivateMatchId(targetMatch._id);
+      }
+      if (!privateContestName) {
+        setPrivateContestName("My Private Contest");
+      }
+      setPrivateCreateError("");
+    }
+  }, [showCreatePrivateModal, currentMatch, allMatches]);
+
+  async function handleCreatePrivateContest(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    const targetMatchId = privateMatchId || matchId || currentMatch?._id || (allMatches && allMatches[0]?._id);
+    if (!targetMatchId) {
+      setPrivateCreateError("Please select a match for the private contest.");
+      return;
+    }
+    const name = privateContestName.trim();
+    if (!name) {
+      setPrivateCreateError("Contest name cannot be empty.");
+      return;
+    }
+    if (privateSpots < 2) {
+      setPrivateCreateError("Contest size must be at least 2 spots.");
+      return;
+    }
+    if (privateEntryFee < 0) {
+      setPrivateCreateError("Entry fee cannot be negative.");
+      return;
+    }
+
+    setCreatingPrivate(true);
+    setPrivateCreateError("");
+
+    try {
+      const created = await createPrivateContestApi({
+        matchId: targetMatchId,
+        name,
+        maxSlots: Number(privateSpots),
+        entryFee: Number(privateEntryFee),
+        prizePool: Number(privatePrizePool) || (Number(privateSpots) * Number(privateEntryFee)),
+      });
+
+      // Add newly created contest to lists
+      setItems((prev) => [created, ...prev]);
+      setShowCreatePrivateModal(false);
+      setFilter("Private");
+      setShareModalContest(created);
+    } catch (err: any) {
+      const msg = err instanceof ApiClientError ? err.message : (err?.message || "Failed to create private contest");
+      setPrivateCreateError(msg);
+    } finally {
+      setCreatingPrivate(false);
+    }
+  }
 
   function loadMyContests(mId?: string | null) {
     const targetId = mId !== undefined ? mId : matchId;
@@ -413,12 +501,11 @@ function Contests() {
       const remainingBal = deductLocalWallet(fee, contestToJoin.name);
 
       setFlow(FLOW_KEYS.selectedContestId, contestToJoin._id);
-      setSuccess(`🎉 Contest joined successfully with ${teamLabel}!`);
-      setSuccess(
-        fee > 0
-          ? `🎉 Contest joined successfully with ${teamLabel}! Entry fee ₹${fee} deducted • Balance: ₹${remainingBal.toLocaleString("en-IN")}`
-          : `🎉 Contest joined successfully with ${teamLabel}!`
-      );
+      setSuccess("Contest joined successfully!");
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => {
+        setSuccess("");
+      }, 1000);
 
       // Optimistically update slot counts
       setItems((prev) =>
@@ -513,7 +600,22 @@ function Contests() {
       )}
       {error && (
         <Card className="mt-4 border-destructive/30 bg-destructive/10">
-          <p className="text-sm text-destructive">{error}</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <p className="text-sm font-medium text-destructive flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" /> {error}
+            </p>
+            {error.includes("sufficient money") && (
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={() => navigate({ to: "/wallet" })}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shrink-0 cursor-pointer shadow"
+              >
+                Add Money to Wallet Now
+              </Button>
+            )}
+          </div>
         </Card>
       )}
 
@@ -785,14 +887,14 @@ function Contests() {
       </div>
 
       <Button
+        type="button"
         variant="outlineGreen"
         size="xl"
-        className="mt-6 w-full font-bold"
-        onClick={() =>
-          setError(
-            "Private contest creation is available through the API; add your contest details in the next step.",
-          )
-        }
+        className="mt-6 w-full font-bold cursor-pointer"
+        onClick={() => {
+          setError("");
+          setShowCreatePrivateModal(true);
+        }}
       >
         CREATE PRIVATE CONTEST
       </Button>
@@ -1384,6 +1486,403 @@ function Contests() {
               totalCredits={pitchPreviewTeam.totalCredits}
               onClose={() => setPitchPreviewTeam(null)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* MODAL 4: CREATE PRIVATE CONTEST MODAL                         */}
+      {/* ------------------------------------------------------------- */}
+      {showCreatePrivateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-primary/40 bg-surface shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-border bg-surface-2 px-5 py-4">
+              <div>
+                <h3 className="font-display text-base font-bold text-foreground">
+                  Create Private Contest
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Customize rules, invite friends and compete in your own league
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setShowCreatePrivateModal(false);
+                  setPrivateCreateError("");
+                }}
+                className="h-8 w-8 rounded-full border border-border"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <form onSubmit={handleCreatePrivateContest} className="p-5 space-y-4">
+              {privateCreateError && (
+                <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-3 text-xs text-destructive flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{privateCreateError}</span>
+                </div>
+              )}
+
+              {/* Match Display / Picker */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Match
+                </label>
+                {currentMatch ? (
+                  <div className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs font-bold text-foreground flex items-center justify-between">
+                    <span>{currentMatch.teamA} vs {currentMatch.teamB}</span>
+                    <span className="text-[10px] text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                      {currentMatch.status || "UPCOMING"}
+                    </span>
+                  </div>
+                ) : allMatches.length > 0 ? (
+                  <select
+                    value={privateMatchId}
+                    onChange={(e) => setPrivateMatchId(e.target.value)}
+                    className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    {allMatches.map((m) => (
+                      <option key={m._id} value={m._id}>
+                        {m.teamA} vs {m.teamB} ({m.status || "UPCOMING"})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs text-muted-foreground">
+                    Default Match
+                  </div>
+                )}
+              </div>
+
+              {/* Contest Name */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Contest Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Vikas Private League"
+                  value={privateContestName}
+                  onChange={(e) => setPrivateContestName(e.target.value)}
+                  className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+
+              {/* Contest Size (Spots) & Entry Fee */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Contest Size (Spots)
+                  </label>
+                  <input
+                    type="number"
+                    min="2"
+                    max="1000"
+                    required
+                    value={privateSpots}
+                    onChange={(e) => {
+                      const val = Math.max(2, parseInt(e.target.value, 10) || 2);
+                      setPrivateSpots(val);
+                      setPrivatePrizePool(val * privateEntryFee);
+                    }}
+                    className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Min: 2 • Max: 1,000</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Entry Fee (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="50000"
+                    required
+                    value={privateEntryFee}
+                    onChange={(e) => {
+                      const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                      setPrivateEntryFee(val);
+                      setPrivatePrizePool(privateSpots * val);
+                    }}
+                    className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <p className="text-[10px] text-muted-foreground">₹0 for free contest</p>
+                </div>
+              </div>
+
+              {/* Prize Pool Summary */}
+              <div className="rounded-xl border border-primary/30 bg-primary/10 p-3 text-center">
+                <span className="text-[10.5px] uppercase tracking-wider text-muted-foreground font-semibold">
+                  Estimated Prize Pool
+                </span>
+                <p className="mt-0.5 font-display text-2xl font-black text-primary">
+                  ₹{Number(privatePrizePool).toLocaleString("en-IN")}
+                </p>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  {privateSpots} spots × ₹{privateEntryFee} entry fee
+                </p>
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="pt-2 flex items-center gap-2.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    setShowCreatePrivateModal(false);
+                    setPrivateCreateError("");
+                  }}
+                  className="flex-1 font-bold border-border"
+                >
+                  CANCEL
+                </Button>
+                <Button
+                  type="submit"
+                  variant="hero"
+                  size="lg"
+                  disabled={creatingPrivate}
+                  className="flex-1 font-bold cursor-pointer"
+                >
+                  {creatingPrivate ? "CREATING..." : "CREATE CONTEST"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* MODAL 5: SHARE PRIVATE CONTEST MODAL                          */}
+      {/* ------------------------------------------------------------- */}
+      {shareModalContest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-primary/40 bg-surface shadow-2xl">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-border bg-surface-2 px-5 py-4">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center font-bold">
+                  <Check className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="font-display text-sm font-bold text-foreground">
+                    Contest Created!
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    Share invite code or link with friends
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setShareModalContest(null);
+                  setCopiedCode(false);
+                  setCopiedLink(false);
+                }}
+                className="h-8 w-8 rounded-full border border-border"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Contest Summary Card */}
+              <div className="rounded-xl border border-border bg-surface-2/60 p-3.5 space-y-1">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-display text-sm font-bold text-foreground">
+                    {shareModalContest.name}
+                  </h4>
+                  <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                    PRIVATE
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-border/60">
+                  <span className="text-muted-foreground">Prize Pool</span>
+                  <span className="font-bold text-primary">
+                    ₹{Number(shareModalContest.prizePool ?? ((shareModalContest.entryFee || 0) * (shareModalContest.maxSlots || 10))).toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Entry Fee</span>
+                  <span className="font-bold text-foreground">
+                    {!shareModalContest.entryFee ? "FREE" : `₹${shareModalContest.entryFee}`}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Total Spots</span>
+                  <span className="font-bold text-foreground">
+                    {shareModalContest.maxSlots} spots
+                  </span>
+                </div>
+              </div>
+
+              {/* Invite Code Box */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Invite Code
+                </label>
+                <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-2.5">
+                  <span className="font-mono text-base font-black tracking-widest text-primary px-2">
+                    {shareModalContest.inviteCode || "PRIVATE"}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outlineGreen"
+                    size="sm"
+                    onClick={() => {
+                      if (shareModalContest.inviteCode) {
+                        navigator.clipboard.writeText(shareModalContest.inviteCode);
+                        setCopiedCode(true);
+                        setTimeout(() => setCopiedCode(false), 2000);
+                      }
+                    }}
+                    className="gap-1.5 text-xs font-bold cursor-pointer"
+                  >
+                    {copiedCode ? (
+                      <>
+                        <Check className="h-3.5 w-3.5 text-emerald-400" /> Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5" /> Copy Code
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Shareable Link Box */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Shareable Link
+                </label>
+                <div className="flex items-center gap-2 rounded-xl border border-border bg-surface-2 p-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${typeof window !== "undefined" ? window.location.origin : ""}/contests?matchId=${shareModalContest.matchId}&invite=${shareModalContest.inviteCode || ""}`}
+                    className="flex-1 bg-transparent px-2 text-xs text-muted-foreground truncate outline-none"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const link = `${window.location.origin}/contests?matchId=${shareModalContest.matchId}&invite=${shareModalContest.inviteCode || ""}`;
+                      navigator.clipboard.writeText(link);
+                      setCopiedLink(true);
+                      setTimeout(() => setCopiedLink(false), 2000);
+                    }}
+                    className="gap-1.5 text-xs font-bold shrink-0 border-border cursor-pointer"
+                  >
+                    {copiedLink ? (
+                      <>
+                        <Check className="h-3.5 w-3.5 text-emerald-400" /> Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5" /> Copy Link
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* One-Click Social Share Channels */}
+              <div className="space-y-2 pt-1">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Share via Socials
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {/* WhatsApp */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      const shareUrl = `${window.location.origin}/contests?matchId=${shareModalContest.matchId}&invite=${shareModalContest.inviteCode || ""}`;
+                      const msg = `🏏 Join my Private Fantasy Cricket Contest "${shareModalContest.name}"!\n\n🏆 Prize Pool: ₹${shareModalContest.prizePool ?? ((shareModalContest.entryFee || 0) * (shareModalContest.maxSlots || 10))}\n🎟️ Entry Fee: ${!shareModalContest.entryFee ? "FREE" : `₹${shareModalContest.entryFee}`}\n🔑 Invite Code: ${shareModalContest.inviteCode || ""}\n\n👉 Join here: ${shareUrl}`;
+                      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, "_blank");
+                    }}
+                    className="gap-2 font-bold text-xs bg-[#25D366]/10 text-[#25D366] border-[#25D366]/30 hover:bg-[#25D366]/20 cursor-pointer"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                  </Button>
+
+                  {/* Telegram */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      const shareUrl = `${window.location.origin}/contests?matchId=${shareModalContest.matchId}&invite=${shareModalContest.inviteCode || ""}`;
+                      const msg = `🏏 Join my Private Fantasy Cricket Contest "${shareModalContest.name}"! Use Invite Code: ${shareModalContest.inviteCode || ""}`;
+                      window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(msg)}`, "_blank");
+                    }}
+                    className="gap-2 font-bold text-xs bg-[#0088cc]/10 text-[#0088cc] border-[#0088cc]/30 hover:bg-[#0088cc]/20 cursor-pointer"
+                  >
+                    <Send className="h-3.5 w-3.5" /> Telegram
+                  </Button>
+                </div>
+
+                {/* Native Web Share API if available */}
+                {typeof navigator !== "undefined" && !!navigator.share && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      const shareUrl = `${window.location.origin}/contests?matchId=${shareModalContest.matchId}&invite=${shareModalContest.inviteCode || ""}`;
+                      navigator.share({
+                        title: `Join ${shareModalContest.name}`,
+                        text: `🏏 Join my Private Fantasy Cricket Contest "${shareModalContest.name}"! Invite Code: ${shareModalContest.inviteCode || ""}`,
+                        url: shareUrl,
+                      }).catch(() => {});
+                    }}
+                    className="w-full gap-2 font-bold text-xs border-border hover:bg-surface-2 cursor-pointer"
+                  >
+                    <Share2 className="h-3.5 w-3.5" /> More Sharing Options
+                  </Button>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="hero"
+                  size="lg"
+                  onClick={() => {
+                    const c = shareModalContest;
+                    setShareModalContest(null);
+                    handleOpenJoinModal(c);
+                  }}
+                  className="flex-1 font-bold cursor-pointer"
+                >
+                  JOIN WITH TEAM
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    setShareModalContest(null);
+                    setCopiedCode(false);
+                    setCopiedLink(false);
+                  }}
+                  className="flex-1 font-bold border-border cursor-pointer"
+                >
+                  DONE
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}

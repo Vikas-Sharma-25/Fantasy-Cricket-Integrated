@@ -23,6 +23,8 @@ export async function createContest(
     name: string;
     type: "PUBLIC" | "PRIVATE";
     maxSlots: number;
+    entryFee?: number;
+    prizePool?: number;
     rules?: Record<string, unknown>;
   }
 ) {
@@ -36,9 +38,21 @@ export async function createContest(
     throw ApiError.notFound("Match not found");
   }
 
-  if (match.status !== "UPCOMING") {
+  /*
+   * Keep match deadline fresh so users can test & create contests freely
+   */
+  if (match.startTime.getTime() <= Date.now()) {
+    match.startTime = new Date(Date.now() + 48.5 * 3600 * 1000);
+    match.fantasyDeadline = new Date(Date.now() + 48 * 3600 * 1000);
+    if (match.status !== "UPCOMING" && match.status !== "LIVE") {
+      match.status = "UPCOMING";
+    }
+    await match.save();
+  }
+
+  if (match.status === "COMPLETED" || match.status === "ABANDONED") {
     throw ApiError.badRequest(
-      "Contests can only be created for upcoming matches"
+      "Contests cannot be created for completed or abandoned matches"
     );
   }
 
@@ -51,6 +65,9 @@ export async function createContest(
       .toUpperCase();
   }
 
+  const entryFee = typeof input.entryFee === "number" ? input.entryFee : (typeof (input.rules as any)?.entryFee === "number" ? (input.rules as any).entryFee : 0);
+  const prizePool = typeof input.prizePool === "number" ? input.prizePool : (typeof (input.rules as any)?.prizePool === "number" ? (input.rules as any).prizePool : (entryFee * input.maxSlots));
+
   const contest = await Contest.create({
     matchId: input.matchId,
     createdBy: userId,
@@ -58,7 +75,13 @@ export async function createContest(
     type: input.type,
     maxSlots: input.maxSlots,
     joinedSlots: 0,
-    rules: input.rules || {},
+    entryFee,
+    prizePool,
+    rules: {
+      ...(input.rules || {}),
+      entryFee,
+      prizePool,
+    },
     inviteCode,
     status: "OPEN"
   });
@@ -410,6 +433,8 @@ export async function createPrivateContest(
     matchId: string;
     name: string;
     maxSlots: number;
+    entryFee?: number;
+    prizePool?: number;
     rules?: Record<string, unknown>;
   }
 ) {
@@ -589,31 +614,36 @@ export async function joinContest(
     }
 
     const currentBalance = typeof user.walletBalance === "number" ? user.walletBalance : 3000;
-    if (currentBalance < entryFee) {
+    const usableBalance = Math.max(0, currentBalance - 100);
+    if (usableBalance < entryFee) {
       throw ApiError.badRequest(
         "INSUFFICIENT_WALLET_BALANCE: You don't have sufficient money to join contest. Please add money to your wallet."
       );
     }
 
-    user.walletBalance = currentBalance - entryFee;
+    user.walletBalance = Math.max(100, currentBalance - entryFee);
     userWalletBalance = user.walletBalance;
 
-    // Deduct from deposited balance first, then winnings, then bonus
-    const dep = typeof user.depositedBalance === "number" ? user.depositedBalance : 1500;
-    if (dep >= entryFee) {
-      user.depositedBalance = dep - entryFee;
+    let rem = entryFee;
+    const currentWinnings = typeof user.winningsBalance === "number" ? user.winningsBalance : 0;
+    const deductWinnings = Math.min(currentWinnings, rem);
+    user.winningsBalance = currentWinnings - deductWinnings;
+    rem -= deductWinnings;
+
+    if (rem > 0) {
+      const currentBonus = typeof user.bonusBalance === "number" ? user.bonusBalance : 0;
+      const deductBonus = Math.min(currentBonus, rem);
+      user.bonusBalance = Math.max(0, currentBonus - deductBonus);
+      rem -= deductBonus;
+    }
+
+    if (rem > 0) {
+      const dep = typeof user.depositedBalance === "number" ? user.depositedBalance : 100;
+      const excessDep = Math.max(0, dep - 100);
+      const deductDep = Math.min(excessDep, rem);
+      user.depositedBalance = 100 + (excessDep - deductDep);
     } else {
-      user.depositedBalance = 0;
-      const remainingFee = entryFee - dep;
-      const win = typeof user.winningsBalance === "number" ? user.winningsBalance : 1000;
-      if (win >= remainingFee) {
-        user.winningsBalance = win - remainingFee;
-      } else {
-        user.winningsBalance = 0;
-        const bonusRem = remainingFee - win;
-        const bon = typeof user.bonusBalance === "number" ? user.bonusBalance : 500;
-        user.bonusBalance = Math.max(0, bon - bonusRem);
-      }
+      user.depositedBalance = Math.max(100, typeof user.depositedBalance === "number" ? user.depositedBalance : 100);
     }
 
     await user.save();

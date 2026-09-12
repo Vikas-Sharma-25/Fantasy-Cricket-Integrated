@@ -18,6 +18,16 @@ export const createContestSchema = z.object({
       .int()
       .positive(),
 
+    entryFee: z
+      .number()
+      .min(0)
+      .optional(),
+
+    prizePool: z
+      .number()
+      .min(0)
+      .optional(),
+
     rules: z
       .record(z.unknown())
       .optional()
@@ -81,6 +91,16 @@ export const createPrivateContestSchema = z.object({
       .number()
       .int()
       .positive(),
+
+    entryFee: z
+      .number()
+      .min(0)
+      .optional(),
+
+    prizePool: z
+      .number()
+      .min(0)
+      .optional(),
 
     rules: z
       .record(z.unknown())
