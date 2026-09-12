@@ -102,7 +102,8 @@ const sidebarNavItems = [
   { to: "/my-matches", label: "My Matches", icon: ClipboardList },
   { to: "/my-teams", label: "My Teams", icon: Users },
   { to: "/leaderboard", label: "Leaderboard", icon: Award },
-  { to: "/profile", label: "Wallet & Profile", icon: UserIcon },
+  { to: "/wallet", label: "Wallet", icon: Wallet },
+  { to: "/profile", label: "Profile", icon: UserIcon },
 ];
 
 const cricketNavItems = [
@@ -114,7 +115,8 @@ const cricketNavItems = [
 const mobileNavItems = [
   { to: "/matches", label: "Home", icon: Home },
   { to: "/contests", label: "Contests", icon: Trophy },
-  { to: "/my-matches", label: "My Matches", icon: ClipboardList },
+  { to: "/my-matches", label: "Matches", icon: ClipboardList },
+  { to: "/wallet", label: "Wallet", icon: Wallet },
   { to: "/profile", label: "Profile", icon: UserIcon },
 ];
 
@@ -760,7 +762,7 @@ export function AppShell({
 
         {/* Bottom Mobile Navigation (on small screens < md) */}
         <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur text-foreground shadow-lg">
-          <div className={cn("grid px-2", (user?.role === "admin" || user?.role === "super_admin") ? "grid-cols-5" : "grid-cols-4")}>
+          <div className={cn("grid px-2", (user?.role === "admin" || user?.role === "super_admin") ? "grid-cols-6" : "grid-cols-5")}>
             {mobileNavItems.map(({ to, label, icon: Icon }) => {
               const active = pathname === to;
               return (
