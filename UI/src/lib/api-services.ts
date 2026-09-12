@@ -240,49 +240,31 @@ export function getLocalWalletBalance(): number {
     const saved = localStorage.getItem("fc_user_wallet");
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (parsed.deposited === 6500 || parsed.deposited === 1500 || parsed.deposited === 2350) {
-        return 2900;
-      }
-      const total = (parsed.deposited || 100) + (parsed.winnings || 0) + (parsed.bonus || 0);
+      const total = (parsed.deposited || 0) + (parsed.winnings || 0) + (parsed.bonus || 0);
       if (typeof total === "number" && !isNaN(total)) return total;
     }
-    const cached = getCachedUser();
-    if (cached && typeof cached.walletBalance === "number") {
-      return cached.walletBalance;
-    }
   } catch {}
-  return 2900;
+  return 3000;
 }
 
 export function deductLocalWallet(amount: number, contestName: string): number {
   if (amount <= 0) return getLocalWalletBalance();
   try {
     const saved = localStorage.getItem("fc_user_wallet");
-    let wallet = { deposited: 100, winnings: 2800, bonus: 0 };
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.deposited === 6500 || parsed.deposited === 1500 || parsed.deposited === 2350) {
-          wallet = { deposited: 100, winnings: 2800, bonus: 0 };
-        } else {
-          wallet = {
-            deposited: 100,
-            winnings: typeof parsed.winnings === "number" ? parsed.winnings : 2800,
-            bonus: typeof parsed.bonus === "number" ? parsed.bonus : 0,
-          };
-        }
-      } catch {}
-    }
-
-    // Deduct entry fee from winnings (keeping deposited fixed at 100)
-    if ((wallet.bonus || 0) >= amount) {
-      wallet.bonus -= amount;
+    const wallet = saved ? JSON.parse(saved) : { deposited: 1500, winnings: 1000, bonus: 500 };
+    if ((wallet.deposited || 0) >= amount) {
+      wallet.deposited -= amount;
     } else {
-      const remAfterBonus = amount - (wallet.bonus || 0);
-      wallet.bonus = 0;
-      wallet.winnings = Math.max(0, (wallet.winnings || 0) - remAfterBonus);
+      const rem = amount - (wallet.deposited || 0);
+      wallet.deposited = 0;
+      if ((wallet.winnings || 0) >= rem) {
+        wallet.winnings -= rem;
+      } else {
+        const remBonus = rem - (wallet.winnings || 0);
+        wallet.winnings = 0;
+        wallet.bonus = Math.max(0, (wallet.bonus || 0) - remBonus);
+      }
     }
-    wallet.deposited = 100;
     localStorage.setItem("fc_user_wallet", JSON.stringify(wallet));
 
     // Add passbook transaction
@@ -299,7 +281,7 @@ export function deductLocalWallet(amount: number, contestName: string): number {
     });
     localStorage.setItem("fc_wallet_txs", JSON.stringify(txs));
 
-    const newTotal = (wallet.deposited || 100) + (wallet.winnings || 0) + (wallet.bonus || 0);
+    const newTotal = (wallet.deposited || 0) + (wallet.winnings || 0) + (wallet.bonus || 0);
     const cached = getCachedUser();
     if (cached) {
       const updatedUser = { ...cached, walletBalance: newTotal };
@@ -313,6 +295,6 @@ export function deductLocalWallet(amount: number, contestName: string): number {
     }
     return newTotal;
   } catch {
-    return 2800;
+    return 2900;
   }
 }

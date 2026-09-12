@@ -48,26 +48,22 @@ function WalletPage() {
       const saved = localStorage.getItem("fc_user_wallet");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (typeof parsed.deposited === "number" && parsed.deposited === 100 && typeof parsed.winnings === "number") {
-          return {
-            deposited: 100,
-            winnings: parsed.winnings,
-            bonus: typeof parsed.bonus === "number" ? parsed.bonus : 0,
-          };
+        let currentWinnings = typeof parsed.winnings === "number" ? parsed.winnings : 1000;
+        // If previous version put thousands in deposited (e.g. 6500 or 2350), move excess to winnings
+        if ((parsed.deposited || 0) > 100 && currentWinnings <= 100) {
+          currentWinnings = (parsed.deposited - 100) + currentWinnings;
         }
-        // Normalize any old test balances (e.g. 6500 deposited / 7100 total in Pic 2)
-        // so total equals ₹2,900 matching the top navbar amount from Pic 1 & Pic 2!
         return {
           deposited: 100,
-          winnings: 2800,
-          bonus: 0,
+          winnings: currentWinnings > 0 ? currentWinnings : 1000,
+          bonus: typeof parsed.bonus === "number" ? parsed.bonus : 500,
         };
       }
     } catch {}
     return {
       deposited: 100,
-      winnings: 2800,
-      bonus: 0,
+      winnings: 1000,
+      bonus: 500,
     };
   });
 
@@ -149,14 +145,7 @@ function WalletPage() {
       function handleWalletSync() {
         try {
           const saved = localStorage.getItem("fc_user_wallet");
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            setWallet({
-              deposited: 100,
-              winnings: typeof parsed.winnings === "number" ? parsed.winnings : 2800,
-              bonus: typeof parsed.bonus === "number" ? parsed.bonus : 0,
-            });
-          }
+          if (saved) setWallet(JSON.parse(saved));
         } catch {}
         try {
           const txs = localStorage.getItem("fc_wallet_txs");
@@ -176,27 +165,22 @@ function WalletPage() {
   const totalBalance = wallet.deposited + wallet.winnings + wallet.bonus;
   const numAdd = parseInt(addAmountInput, 10) || 0;
   const totalWinnings = wallet.winnings || 0;
-  // Deposited cash is fixed at 100 for maintenance.
-  // All remaining funds in winnings can be withdrawn.
-  const maxAllowedWithdrawal = Math.max(0, totalWinnings);
+  const maintenanceDeposit = 100;
+  const maxAllowedWithdrawal = Math.max(0, totalWinnings - maintenanceDeposit);
   const numWithdraw = parseFloat(withdrawAmount) || 0;
 
   function handleAddCash(amount: number) {
     if (amount < 10 || amount > 50000) return;
-    // Deposited is fixed at 100; winnings is updated every time when add cash
-    const updatedWallet = {
-      ...wallet,
-      deposited: 100,
-      winnings: wallet.winnings + amount,
-      bonus: wallet.bonus || 0,
-    };
+    const updatedWallet = { ...wallet, deposited: 100, winnings: wallet.winnings + amount };
     setWallet(updatedWallet);
-    const newTotal = updatedWallet.deposited + updatedWallet.winnings + updatedWallet.bonus;
     try {
       localStorage.setItem("fc_user_wallet", JSON.stringify(updatedWallet));
+      const total = updatedWallet.deposited + updatedWallet.winnings + updatedWallet.bonus;
       const cached = getCachedUser();
       if (cached) {
-        cached.walletBalance = newTotal;
+        cached.walletBalance = total;
+        cached.winningsBalance = updatedWallet.winnings;
+        cached.depositedBalance = updatedWallet.deposited;
         localStorage.setItem("user", JSON.stringify(cached));
       }
       window.dispatchEvent(new CustomEvent("user-profile-updated", { detail: cached }));
@@ -224,20 +208,16 @@ function WalletPage() {
       alert(`You can't withdraw this amount. ₹100 must remain deposited for maintenance.`);
       return;
     }
-    // Deposited is fixed at 100; winnings is updated every time when withdraw
-    const updatedWallet = {
-      ...wallet,
-      deposited: 100,
-      winnings: Math.max(0, wallet.winnings - amt),
-      bonus: wallet.bonus || 0,
-    };
+    const updatedWallet = { ...wallet, deposited: 100, winnings: wallet.winnings - amt };
     setWallet(updatedWallet);
-    const newTotal = updatedWallet.deposited + updatedWallet.winnings + updatedWallet.bonus;
     try {
       localStorage.setItem("fc_user_wallet", JSON.stringify(updatedWallet));
+      const total = updatedWallet.deposited + updatedWallet.winnings + updatedWallet.bonus;
       const cached = getCachedUser();
       if (cached) {
-        cached.walletBalance = newTotal;
+        cached.walletBalance = total;
+        cached.winningsBalance = updatedWallet.winnings;
+        cached.depositedBalance = updatedWallet.deposited;
         localStorage.setItem("user", JSON.stringify(cached));
       }
       window.dispatchEvent(new CustomEvent("user-profile-updated", { detail: cached }));
@@ -512,6 +492,7 @@ function WalletPage() {
                     value={addAmountInput}
                     onChange={(e) => setAddAmountInput(e.target.value)}
                     onFocus={(e) => e.target.select()}
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
                     className="w-full rounded-xl border border-border bg-surface-2 px-4 py-2.5 text-sm font-mono font-bold text-foreground outline-none focus:border-primary"
                     placeholder="Enter amount (e.g. 5000)"
                   />
@@ -618,6 +599,7 @@ function WalletPage() {
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
                   onFocus={(e) => e.target.select()}
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
                   placeholder={maxAllowedWithdrawal > 0 ? `e.g. 500 (Max ₹${maxAllowedWithdrawal.toLocaleString("en-IN")})` : "₹0 Withdrawable"}
                   disabled={maxAllowedWithdrawal <= 0}
                   className="w-full rounded-xl border border-border bg-surface-2 px-4 py-2.5 text-sm font-mono font-bold text-foreground outline-none focus:border-primary disabled:opacity-50"
@@ -629,46 +611,24 @@ function WalletPage() {
                 </p>
               </div>
 
-              {/* Testing Helpers */}
-              <div className="flex flex-wrap items-center justify-center gap-2 pt-1 border-t border-border/50">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const updated = { deposited: 100, winnings: 2800, bonus: 0 };
-                    setWallet(updated);
-                    localStorage.setItem("fc_user_wallet", JSON.stringify(updated));
-                    const cached = getCachedUser();
-                    if (cached) {
-                      cached.walletBalance = 2900;
-                      localStorage.setItem("user", JSON.stringify(cached));
-                    }
-                    window.dispatchEvent(new CustomEvent("user-profile-updated", { detail: cached }));
-                    window.dispatchEvent(new Event("storage"));
-                  }}
-                  className="text-[11px] text-primary hover:underline font-semibold cursor-pointer"
-                >
-                  + Reset to ₹2,900 (₹100 Deposited + ₹2,800 Winnings)
-                </button>
-                <span className="text-muted-foreground text-xs">•</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const updated = { deposited: 100, winnings: 900, bonus: 0 };
-                    setWallet(updated);
-                    localStorage.setItem("fc_user_wallet", JSON.stringify(updated));
-                    const cached = getCachedUser();
-                    if (cached) {
-                      cached.walletBalance = 1000;
-                      localStorage.setItem("user", JSON.stringify(cached));
-                    }
-                    window.dispatchEvent(new CustomEvent("user-profile-updated", { detail: cached }));
-                    window.dispatchEvent(new Event("storage"));
-                  }}
-                  className="text-[11px] text-primary hover:underline font-semibold cursor-pointer"
-                >
-                  + Reset to ₹1,000 (₹100 Deposited + ₹900 Winnings)
-                </button>
-              </div>
+              {/* Demo Helper if balance depleted */}
+              {totalWinnings <= 100 && (
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = { ...wallet, winnings: 1000 };
+                      setWallet(updated);
+                      localStorage.setItem("fc_user_wallet", JSON.stringify(updated));
+                      window.dispatchEvent(new Event("user-profile-updated"));
+                      window.dispatchEvent(new Event("storage"));
+                    }}
+                    className="text-[11px] text-primary hover:underline font-semibold cursor-pointer"
+                  >
+                    + Reset Demo Winnings to ₹1,000 for Testing
+                  </button>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <p className="text-[11px] text-muted-foreground flex items-center gap-1">
