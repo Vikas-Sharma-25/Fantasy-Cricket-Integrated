@@ -86,75 +86,72 @@ export async function listContests(
 
     query.matchId = matchId;
 
-    const existingCount = await Contest.countDocuments({ matchId });
-    if (existingCount < 5) {
-      const standardContests = [
-        {
-          matchId,
-          name: "Mega Contest - ₹10 Lakhs",
-          type: "PUBLIC",
-          maxSlots: 25000,
-          joinedSlots: 20480,
-          entryFee: 49,
-          prizePool: 1000000,
-          rules: { category: "MEGA CONTESTS", entryFee: 49, prizePool: 1000000, prizePoolText: "₹10,00,000", firstPrize: "₹3,00,000", maxTeams: 11, guaranteed: true },
-          status: "OPEN"
-        },
-        {
-          matchId,
-          name: "Grand League - ₹5 Lakhs",
-          type: "PUBLIC",
-          maxSlots: 10000,
-          joinedSlots: 4500,
-          entryFee: 100,
-          prizePool: 500000,
-          rules: { category: "MEGA CONTESTS", entryFee: 100, prizePool: 500000, prizePoolText: "₹5,00,000", firstPrize: "₹1,50,000", maxTeams: 5, guaranteed: true },
-          status: "OPEN"
-        },
-        {
-          matchId,
-          name: "Winner Takes All - ₹1,00,000",
-          type: "PUBLIC",
-          maxSlots: 400,
-          joinedSlots: 372,
-          entryFee: 299,
-          prizePool: 100000,
-          rules: { category: "WINNER TAKES ALL", entryFee: 299, prizePool: 100000, prizePoolText: "₹1,00,000", firstPrize: "₹1,00,000", maxTeams: 2, guaranteed: true },
-          status: "OPEN"
-        },
-        {
-          matchId,
-          name: "Head to Head (1 vs 1) - ₹10,000",
-          type: "PUBLIC",
-          maxSlots: 2,
-          joinedSlots: 1,
-          entryFee: 5750,
-          prizePool: 10000,
-          rules: { category: "HEAD TO HEAD", entryFee: 5750, prizePool: 10000, prizePoolText: "₹10,000", firstPrize: "₹10,000", maxTeams: 1, guaranteed: true },
-          status: "OPEN"
-        },
-        {
-          matchId,
-          name: "Practice Arena (Zero Risk)",
-          type: "PUBLIC",
-          maxSlots: 10000,
-          joinedSlots: 6410,
-          entryFee: 0,
-          prizePool: 0,
-          rules: { category: "PRACTICE", entryFee: 0, prizePool: 0, prizePoolText: "Pride & Glory", firstPrize: "Top Rank Badge", maxTeams: 3, guaranteed: false },
-          status: "OPEN"
-        }
-      ];
+    const standardContests = [
+      {
+        matchId,
+        name: "Mega Contest - ₹10 Lakhs",
+        type: "PUBLIC",
+        maxSlots: 25000,
+        joinedSlots: 20480,
+        entryFee: 49,
+        prizePool: 1000000,
+        rules: { category: "MEGA CONTESTS", entryFee: 49, prizePool: 1000000, prizePoolText: "₹10,00,000", firstPrize: "₹3,00,000", maxTeams: 11, guaranteed: true },
+        status: "OPEN"
+      },
+      {
+        matchId,
+        name: "Grand League - ₹5 Lakhs",
+        type: "PUBLIC",
+        maxSlots: 10000,
+        joinedSlots: 4500,
+        entryFee: 100,
+        prizePool: 500000,
+        rules: { category: "MEGA CONTESTS", entryFee: 100, prizePool: 500000, prizePoolText: "₹5,00,000", firstPrize: "₹1,50,000", maxTeams: 5, guaranteed: true },
+        status: "OPEN"
+      },
+      {
+        matchId,
+        name: "Winner Takes All - ₹1,00,000",
+        type: "PUBLIC",
+        maxSlots: 400,
+        joinedSlots: 372,
+        entryFee: 299,
+        prizePool: 100000,
+        rules: { category: "WINNER TAKES ALL", entryFee: 299, prizePool: 100000, prizePoolText: "₹1,00,000", firstPrize: "₹1,00,000", maxTeams: 2, guaranteed: true },
+        status: "OPEN"
+      },
+      {
+        matchId,
+        name: "Head to Head (1 vs 1) - ₹10,000",
+        type: "PUBLIC",
+        maxSlots: 2,
+        joinedSlots: 1,
+        entryFee: 5750,
+        prizePool: 10000,
+        rules: { category: "HEAD TO HEAD", entryFee: 5750, prizePool: 10000, prizePoolText: "₹10,000", firstPrize: "₹10,000", maxTeams: 1, guaranteed: true },
+        status: "OPEN"
+      },
+      {
+        matchId,
+        name: "Practice Arena (Zero Risk)",
+        type: "PUBLIC",
+        maxSlots: 10000,
+        joinedSlots: 6410,
+        entryFee: 0,
+        prizePool: 0,
+        rules: { category: "PRACTICE", entryFee: 0, prizePool: 0, prizePoolText: "Pride & Glory", firstPrize: "Top Rank Badge", maxTeams: 3, guaranteed: false },
+        status: "OPEN"
+      }
+    ];
 
-      for (const sc of standardContests) {
-        const found = await Contest.findOne({ matchId, name: sc.name });
-        if (!found) {
-          await Contest.create(sc);
-        } else if (!found.entryFee && sc.entryFee) {
-          found.entryFee = sc.entryFee;
-          found.prizePool = sc.prizePool;
-          await found.save();
-        }
+    for (const sc of standardContests) {
+      const found = await Contest.findOne({ matchId, name: sc.name });
+      if (!found) {
+        await Contest.create(sc);
+      } else if ((!found.entryFee || found.entryFee === 0) && sc.entryFee > 0) {
+        found.entryFee = sc.entryFee;
+        found.prizePool = sc.prizePool;
+        await found.save();
       }
     }
   }
@@ -173,7 +170,7 @@ export async function listContests(
   const formattedItems = items.map((c) => {
     const obj: any = c.toObject();
     const rules = obj.rules || {};
-    obj.entryFee = typeof obj.entryFee === "number" ? obj.entryFee : (typeof rules.entryFee === "number" ? rules.entryFee : 0);
+    obj.entryFee = typeof obj.entryFee === "number" && obj.entryFee > 0 ? obj.entryFee : (typeof rules.entryFee === "number" ? rules.entryFee : 0);
     obj.prizePool = typeof obj.prizePool === "number" && obj.prizePool > 0 ? obj.prizePool : (typeof rules.prizePool === "number" ? rules.prizePool : 0);
     return obj;
   });
@@ -582,7 +579,7 @@ export async function joinContest(
    * Handle Wallet Balance & Entry Fee Deductions
    */
   const rules = (contest.rules || {}) as any;
-  const entryFee = typeof contest.entryFee === "number" ? contest.entryFee : (typeof rules.entryFee === "number" ? rules.entryFee : 0);
+  const entryFee = typeof contest.entryFee === "number" && contest.entryFee > 0 ? contest.entryFee : (typeof rules.entryFee === "number" ? rules.entryFee : 0);
   let userWalletBalance = 3000;
 
   if (entryFee > 0) {
