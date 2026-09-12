@@ -72,6 +72,12 @@ function MyMatches() {
     };
   }, [tab]);
 
+  const handleGoContests = (matchId: string) => {
+    setFlow(FLOW_KEYS.selectedMatchId, matchId);
+    setFlow("contests_default_tab", "My Contests");
+    setFlow("contests_from_my_matches", true);
+  };
+
   return (
     <AppShell>
       <h1 className="mb-5 font-display text-xl font-bold">My Matches</h1>
@@ -81,16 +87,21 @@ function MyMatches() {
         {!loading &&
           visibleItems.map(({ match: m, teamCount, contestCount }) => (
             <Card key={m._id} className="p-0 overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface-2/50">
+              <Link
+                to="/contests"
+                search={{ matchId: m._id, tab: "my-contests", from: "my-matches" }}
+                onClick={() => handleGoContests(m._id)}
+                className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface-2/50 hover:bg-surface-2 transition-colors cursor-pointer"
+              >
                 <div className="flex items-center gap-3">
                   <TeamBadge team={m.teamA} size={36} />
-                  <span className="font-display text-sm font-bold">
+                  <span className="font-display text-sm font-bold text-foreground">
                     {m.teamA} vs {m.teamB}
                   </span>
                   <TeamBadge team={m.teamB} size={36} />
                 </div>
                 <StatusBadge status={m.status} />
-              </div>
+              </Link>
               <p className="px-4 py-2.5 text-xs text-muted-foreground">
                 {new Date(m.startTime).toLocaleString()}
               </p>
@@ -102,7 +113,11 @@ function MyMatches() {
                   className="font-display text-sm font-extrabold tracking-wider"
                   onClick={() => setFlow(FLOW_KEYS.selectedMatchId, m._id)}
                 >
-                  <Link to="/create-team" onClick={() => setFlow(FLOW_KEYS.selectedMatchId, m._id)}>
+                  <Link
+                    to="/my-teams"
+                    search={{ matchId: m._id }}
+                    onClick={() => setFlow(FLOW_KEYS.selectedMatchId, m._id)}
+                  >
                     {teamCount} {teamCount === 1 ? "TEAM" : "TEAMS"}
                   </Link>
                 </Button>
@@ -111,9 +126,13 @@ function MyMatches() {
                   variant="hero"
                   size="xl"
                   className="font-display text-sm font-extrabold tracking-wider shadow-lg"
-                  onClick={() => setFlow(FLOW_KEYS.selectedMatchId, m._id)}
+                  onClick={() => handleGoContests(m._id)}
                 >
-                  <Link to="/contests" onClick={() => setFlow(FLOW_KEYS.selectedMatchId, m._id)}>
+                  <Link
+                    to="/contests"
+                    search={{ matchId: m._id, tab: "my-contests", from: "my-matches" }}
+                    onClick={() => handleGoContests(m._id)}
+                  >
                     {contestCount} {contestCount === 1 ? "CONTEST" : "CONTESTS"}
                   </Link>
                 </Button>

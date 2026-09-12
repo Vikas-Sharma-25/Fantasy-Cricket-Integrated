@@ -2,18 +2,49 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { teamColors } from "./data";
 
+function getTeamCode(team: string): string {
+  if (!team) return "";
+  const t = team.trim();
+  const known: Record<string, string> = {
+    "England": "ENG",
+    "Pakistan": "PAK",
+    "India": "IND",
+    "Australia": "AUS",
+    "Guyana Amazon Warriors": "GAW",
+    "Antigua and Barbuda Falcons": "ABF",
+    "South Africa": "SA",
+    "West Indies": "WI",
+    "New Zealand": "NZ",
+    "Sri Lanka": "SL",
+    "Afghanistan": "AFG",
+    "Bangladesh": "BAN",
+    "Zimbabwe": "ZIM",
+    "Ireland": "IRE",
+    "Netherlands": "NED",
+    "Scotland": "SCO",
+  };
+  if (known[t]) return known[t];
+  const words = t.split(/\s+/).filter(Boolean);
+  if (words.length > 1) {
+    return words.map((w) => w[0]).join("").slice(0, 3).toUpperCase();
+  }
+  return t.slice(0, 3).toUpperCase();
+}
+
 export function TeamBadge({ team, size = 40 }: { team: string; size?: number }) {
+  const code = getTeamCode(team);
   return (
     <span
-      className="flex shrink-0 items-center justify-center rounded-full font-display text-xs font-bold text-foreground"
+      className="flex shrink-0 items-center justify-center rounded-full font-display text-xs font-bold text-foreground overflow-hidden"
       style={{
         width: size,
         height: size,
         background: `color-mix(in oklab, ${teamColors[team] ?? "oklch(0.4 0 0)"} 55%, transparent)`,
         border: `1px solid ${teamColors[team] ?? "oklch(0.4 0 0)"}`,
       }}
+      title={team}
     >
-      {team}
+      {code}
     </span>
   );
 }

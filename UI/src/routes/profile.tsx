@@ -39,7 +39,7 @@ import type { User } from "@/lib/api-types";
 export const Route = createFileRoute("/profile")({ component: Profile });
 
 const menu = [
-  { icon: Users, label: "My Teams", to: "/create-team" },
+  { icon: Users, label: "My Teams", to: "/my-teams" },
   { icon: Trophy, label: "My Contests", to: "/contests" },
   { icon: Receipt, label: "Match Results", to: "/results" },
   { icon: HelpCircle, label: "Fantasy Point Rules", to: "/rules" },

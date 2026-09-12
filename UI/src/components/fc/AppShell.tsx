@@ -100,7 +100,6 @@ const sidebarNavItems = [
   { to: "/matches", label: "Home", icon: Home },
   { to: "/contests", label: "Mega Contests", icon: Trophy },
   { to: "/my-matches", label: "My Matches", icon: ClipboardList },
-  { to: "/create-team", label: "My Teams", icon: Users },
   { to: "/my-teams", label: "My Teams", icon: Users },
   { to: "/leaderboard", label: "Leaderboard", icon: Award },
   { to: "/profile", label: "Wallet & Profile", icon: UserIcon },
@@ -352,6 +351,15 @@ export function AppShell({
                       if (typeof window !== "undefined") {
                         window.dispatchEvent(new CustomEvent("reset-home-match"));
                       }
+                    } else if (to === "/contests") {
+                      removeFlow(FLOW_KEYS.selectedMatchId);
+                      removeFlow("contests_default_tab");
+                      removeFlow("contests_from_my_matches");
+                      if (typeof window !== "undefined") {
+                        window.dispatchEvent(new CustomEvent("reset-contests-match"));
+                      }
+                    } else if (to === "/my-teams") {
+                      removeFlow(FLOW_KEYS.selectedMatchId);
                     }
                   }}
                 className={cn(
@@ -551,7 +559,6 @@ export function AppShell({
               <ThemeToggle />
 
               <Link
-                to="/profile"
                 to="/wallet"
                 className="flex items-center gap-2 rounded-full border border-border bg-surface-2/80 px-3 py-1.5 text-xs font-semibold hover:border-primary/50 transition-colors cursor-pointer text-foreground shadow-sm"
               >
@@ -766,6 +773,13 @@ export function AppShell({
                       removeFlow("RETURN_TO_MATCH_CENTER");
                       if (typeof window !== "undefined") {
                         window.dispatchEvent(new CustomEvent("reset-home-match"));
+                      }
+                    } else if (to === "/contests") {
+                      removeFlow(FLOW_KEYS.selectedMatchId);
+                      removeFlow("contests_default_tab");
+                      removeFlow("contests_from_my_matches");
+                      if (typeof window !== "undefined") {
+                        window.dispatchEvent(new CustomEvent("reset-contests-match"));
                       }
                     }
                   }}

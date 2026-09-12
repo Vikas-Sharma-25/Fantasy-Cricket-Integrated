@@ -12,7 +12,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/fc/AppShell";
-import { Card, Tabs, StatusBadge, Progress } from "@/components/fc/bits";
+import { Card, Tabs, StatusBadge, Progress, TeamBadge } from "@/components/fc/bits";
 import { Button } from "@/components/ui/button";
 import { TeamPitchPreview, type PitchPlayer } from "@/components/fc/TeamPitchPreview";
 import {
@@ -72,8 +72,17 @@ function getPrizeBreakdown(prizePool: any) {
 
 function Contests() {
   const navigate = useNavigate();
-  const rawMatchId = getFlow<string | null>(FLOW_KEYS.selectedMatchId, null);
+
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const urlMatchId = searchParams?.get("matchId");
+  const urlTab = searchParams?.get("tab");
+  const urlFrom = searchParams?.get("from");
+
+  const rawMatchId = urlMatchId || getFlow<string | null>(FLOW_KEYS.selectedMatchId, null);
   const [matchId, setMatchId] = useState<string | null>(rawMatchId);
+  const [isFromMyMatches, setIsFromMyMatches] = useState<boolean>(() => {
+    return urlFrom === "my-matches" || getFlow<boolean>("contests_from_my_matches", false);
+  });
 
   // Synchronous cache hydration for 0ms render
   const [items, setItems] = useState<Contest[]>(() => {
@@ -99,7 +108,12 @@ function Contests() {
   });
 
   const [filter, setFilter] = useState("All");
-  const [top, setTop] = useState("Contests");
+  const [top, setTop] = useState(() => {
+    if (urlTab === "my-contests" || getFlow<string>("contests_default_tab", "") === "My Contests") {
+      return "My Contests";
+    }
+    return "Contests";
+  });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [joining, setJoining] = useState(false);
@@ -169,6 +183,13 @@ function Contests() {
       .finally(() => setLoadingLeaderboard(false));
   }
 
+  // Synchronize top tab with search params
+  useEffect(() => {
+    if (urlTab === "my-contests" || getFlow<string>("contests_default_tab", "") === "My Contests") {
+      setTop("My Contests");
+    }
+  }, [urlTab]);
+
   useEffect(() => {
     let active = true;
 
@@ -178,36 +199,16 @@ function Contests() {
         if (!active) return;
         setAllMatches(matches);
 
-        let activeMatchId = rawMatchId;
-        let activeMatch = matches.find((m) => m._id === activeMatchId);
+        const activeMatchId = rawMatchId;
+        const activeMatch = activeMatchId ? matches.find((m) => m._id === activeMatchId) : null;
 
-        // If no match specified (e.g. clicking "Mega Contests" from sidebar), pick the primary upcoming/live match
-        if (!activeMatchId || !activeMatch) {
-          const upcomingOrLive =
-            matches.find(
-              (m) =>
-                m.providerMatchId === "ENG-PAK-T20-2026" ||
-                (m.teamA?.toLowerCase().includes("england") && m.teamB?.toLowerCase().includes("pakistan")) ||
-                m.status === "UPCOMING" ||
-                m.status === "LIVE",
-            ) || matches[0];
-
-          if (upcomingOrLive) {
-            activeMatchId = upcomingOrLive._id;
-            activeMatch = upcomingOrLive;
-            setFlow(FLOW_KEYS.selectedMatchId, activeMatchId);
-            setMatchId(activeMatchId);
-            setCurrentMatch(upcomingOrLive);
-            memoryCachedMatch = upcomingOrLive;
-            memoryCachedMatchId = activeMatchId;
-          }
-        } else {
+        if (activeMatchId && activeMatch) {
+          // CASE A: Specific match selected (e.g. clicked from My Matches)
+          setMatchId(activeMatchId);
           setCurrentMatch(activeMatch);
           memoryCachedMatch = activeMatch;
           memoryCachedMatchId = activeMatchId;
-        }
 
-        if (activeMatchId) {
           const [fetchedTeams, fetchedContests, fetchedPlayers] = await Promise.all([
             getMyTeams(activeMatchId).catch(() => []),
             getContests(activeMatchId).catch(() => []),
@@ -236,7 +237,16 @@ function Contests() {
               }
             }
           }
+
+          loadMyContests(activeMatchId);
         } else {
+          // CASE B: Mega Contests Arena (clicked from sidebar navigation)
+          // Do NOT force-pick an arbitrary match!
+          setMatchId(null);
+          setCurrentMatch(null);
+          memoryCachedMatch = null;
+          memoryCachedMatchId = null;
+
           const [fetchedTeams, fetchedContests] = await Promise.all([
             getMyTeams().catch(() => []),
             getContests().catch(() => []),
@@ -248,9 +258,10 @@ function Contests() {
 
           memoryCachedTeams = fetchedTeams;
           memoryCachedContests = fetchedContests;
-        }
 
-        loadMyContests(activeMatchId);
+          // Fetch all joined contests across all matches
+          loadMyContests(null);
+        }
       } catch (e: any) {
         if (active) {
           setError(e?.message || "Failed to load contests");
@@ -261,8 +272,22 @@ function Contests() {
 
     void initData();
 
+    // Listen for custom reset event when user clicks "Mega Contests" in sidebar
+    const handleReset = () => {
+      setMatchId(null);
+      setCurrentMatch(null);
+      setIsFromMyMatches(false);
+      removeFlow(FLOW_KEYS.selectedMatchId);
+      removeFlow("contests_default_tab");
+      removeFlow("contests_from_my_matches");
+      setTop("Contests");
+      void initData();
+    };
+    window.addEventListener("reset-contests-match", handleReset);
+
     return () => {
       active = false;
+      window.removeEventListener("reset-contests-match", handleReset);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rawMatchId]);
@@ -298,6 +323,26 @@ function Contests() {
     }
     return Array.from(map.values());
   }, [myFiltered]);
+
+  // Group contests by match for Mega Contests mode (Case B)
+  const matchGroupedMyContests = useMemo(() => {
+    if (matchId) {
+      // Case A: Single match mode
+      return [{ match: currentMatch, contests: groupedMyContests }];
+    }
+    // Case B: Mega Contests mode - group by matchId so each match has its own section
+    const groups = new Map<string, { match: Match | null; contests: typeof groupedMyContests }>();
+    for (const item of groupedMyContests) {
+      const cMatchId = String(item.contest.matchId || "");
+      const mObj = allMatches.find((m) => String(m._id) === cMatchId) || null;
+      const key = cMatchId || "other";
+      if (!groups.has(key)) {
+        groups.set(key, { match: mObj, contests: [] });
+      }
+      groups.get(key)!.contests.push(item);
+    }
+    return Array.from(groups.values());
+  }, [matchId, currentMatch, groupedMyContests, allMatches]);
 
   function getJoinedTeamIdsForContest(contestId: string): string[] {
     return myContests
@@ -415,7 +460,7 @@ function Contests() {
   return (
     <AppShell>
       <PageHeader
-        back="/matches"
+        back={isFromMyMatches ? "/my-matches" : "/matches"}
         title={currentMatch ? `${currentMatch.teamA} vs ${currentMatch.teamB} · Contests` : "Mega Contests Arena"}
       />
       <Tabs
@@ -522,119 +567,150 @@ function Contests() {
           })}
 
         {top === "My Contests" &&
-          groupedMyContests.map(({ contest: c, entries }) => {
-            const slots = c.maxSlots || 5000;
-            const prizeFormatted = formatPrizeDisplay(c.prizePool ?? c.prize);
-            const isMultiTeam = entries.length > 1;
-
+          matchGroupedMyContests.map(({ match: groupMatch, contests: groupContests }, gIdx) => {
+            if (groupContests.length === 0) return null;
             return (
-              <Card key={c._id} className="p-0 overflow-hidden border-border/80">
-                <div className="flex items-center justify-between border-b border-border bg-surface-2/40 px-4 py-2.5">
-                  <span className="font-display text-sm font-bold text-foreground">{c.name}</span>
-                  <StatusBadge status={c.status || "OPEN"} />
-                </div>
-
-                <div className="p-4 space-y-3">
-                  <div className="flex items-baseline justify-between">
-                    <div>
-                      <p className="font-display text-xl font-bold text-primary">{prizeFormatted}</p>
-                      <p className="text-[10px] text-muted-foreground">Prize Pool</p>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      Max {slots.toLocaleString()} spots
-                    </span>
-                  </div>
-
-                  {/* Joined Team(s) Info Banner */}
-                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                          ✓
-                        </span>
-                        <span className="text-xs font-bold text-foreground">
-                          {isMultiTeam
-                            ? `Joined with (${entries.length} Teams):`
-                            : "Joined with:"}
-                        </span>
-                      </div>
-                      {isMultiTeam && (
-                        <span className="text-[10px] font-mono text-primary bg-primary/15 px-2 py-0.5 rounded border border-primary/30">
-                          Multi-Entry Active
+              <div key={groupMatch?._id || `group-${gIdx}`} className="space-y-4 mb-6">
+                {!matchId && (
+                  <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-surface-2/70 border border-border">
+                    <div className="flex items-center gap-2.5">
+                      {groupMatch ? (
+                        <>
+                          <TeamBadge team={groupMatch.teamA} size={26} />
+                          <span className="font-display text-sm font-bold text-foreground">
+                            {groupMatch.teamA} vs {groupMatch.teamB}
+                          </span>
+                          <TeamBadge team={groupMatch.teamB} size={26} />
+                          <StatusBadge status={groupMatch.status} />
+                        </>
+                      ) : (
+                        <span className="font-display text-sm font-bold text-foreground">
+                          Other Contests
                         </span>
                       )}
                     </div>
+                    <span className="text-xs font-semibold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">
+                      {groupContests.length} {groupContests.length === 1 ? "Contest" : "Contests"}
+                    </span>
+                  </div>
+                )}
 
-                    <div className={cn("gap-2", isMultiTeam ? "grid grid-cols-1 sm:grid-cols-2" : "space-y-1")}>
-                      {entries.map((entry, eIdx) => {
-                        if (!entry) return null;
-                        const teamObj: any = typeof entry.fantasyTeamId === "object" ? entry.fantasyTeamId : null;
-                        const teamId = String(teamObj?._id || (typeof entry.fantasyTeamId === "string" ? entry.fantasyTeamId : "") || "");
-                        const userTeam = teams.find((t) => String(t._id) === teamId);
-                        const teamName = teamObj?.name || userTeam?.name || `Team ${eIdx + 1}`;
+                {groupContests.map(({ contest: c, entries }) => {
+                  const slots = c.maxSlots || 5000;
+                  const prizeFormatted = formatPrizeDisplay(c.prizePool ?? c.prize);
+                  const isMultiTeam = entries.length > 1;
 
-                        const capName =
-                          teamObj?.captainId?.name ||
-                          (teamObj?.captainId ? getPlayerName(teamObj.captainId) : null) ||
-                          (userTeam?.captainId ? getPlayerName(userTeam.captainId) : null);
+                  return (
+                    <Card key={c._id} className="p-0 overflow-hidden border-border/80">
+                      <div className="flex items-center justify-between border-b border-border bg-surface-2/40 px-4 py-2.5">
+                        <span className="font-display text-sm font-bold text-foreground">{c.name}</span>
+                        <StatusBadge status={c.status || "OPEN"} />
+                      </div>
 
-                        const vcName =
-                          teamObj?.viceCaptainId?.name ||
-                          (teamObj?.viceCaptainId ? getPlayerName(teamObj.viceCaptainId) : null) ||
-                          (userTeam?.viceCaptainId ? getPlayerName(userTeam.viceCaptainId) : null);
+                      <div className="p-4 space-y-3">
+                        <div className="flex items-baseline justify-between">
+                          <div>
+                            <p className="font-display text-xl font-bold text-primary">{prizeFormatted}</p>
+                            <p className="text-[10px] text-muted-foreground">Prize Pool</p>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            Max {slots.toLocaleString()} spots
+                          </span>
+                        </div>
 
-                        return (
-                          <div
-                            key={entry.entryId || entry._id || eIdx}
-                            className="rounded-lg bg-surface border border-border/80 p-2 text-xs"
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="font-bold text-foreground">{teamName}</span>
-                              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-500/30">
-                                Active
+                        {/* Joined Team(s) Info Banner */}
+                        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                                ✓
+                              </span>
+                              <span className="text-xs font-bold text-foreground">
+                                {isMultiTeam
+                                  ? `Joined with (${entries.length} Teams):`
+                                  : "Joined with:"}
                               </span>
                             </div>
-                            {(capName || vcName) && (
-                              <div className="mt-1 flex items-center gap-2.5 text-[10px] text-muted-foreground">
-                                {capName && (
-                                  <span>
-                                    <b className="text-amber-400">C:</b> {capName}
-                                  </span>
-                                )}
-                                {vcName && (
-                                  <span>
-                                    <b className="text-cyan-400">VC:</b> {vcName}
-                                  </span>
-                                )}
-                              </div>
+                            {isMultiTeam && (
+                              <span className="text-[10px] font-mono text-primary bg-primary/15 px-2 py-0.5 rounded border border-primary/30">
+                                Multi-Entry Active
+                              </span>
                             )}
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
 
-                  {/* Action Buttons: VIEW and LEADERBOARD */}
-                  <div className="grid grid-cols-2 gap-2.5 pt-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setViewingContest({ ...c, entries } as any)}
-                      className="gap-1.5 font-bold border-border bg-surface text-foreground hover:bg-surface-2"
-                    >
-                      <Eye className="h-3.5 w-3.5" /> VIEW
-                    </Button>
-                    <Button
-                      variant="outlineGreen"
-                      size="sm"
-                      onClick={() => handleOpenLeaderboard(c)}
-                      className="gap-1.5 font-bold"
-                    >
-                      <Trophy className="h-3.5 w-3.5" /> LEADERBOARD
-                    </Button>
-                  </div>
-                </div>
-              </Card>
+                          <div className={cn("gap-2", isMultiTeam ? "grid grid-cols-1 sm:grid-cols-2" : "space-y-1")}>
+                            {entries.map((entry, eIdx) => {
+                              if (!entry) return null;
+                              const teamObj: any = typeof entry.fantasyTeamId === "object" ? entry.fantasyTeamId : null;
+                              const teamId = String(teamObj?._id || (typeof entry.fantasyTeamId === "string" ? entry.fantasyTeamId : "") || "");
+                              const userTeam = teams.find((t) => String(t._id) === teamId);
+                              const teamName = teamObj?.name || userTeam?.name || `Team ${eIdx + 1}`;
+
+                              const capName =
+                                teamObj?.captainId?.name ||
+                                (teamObj?.captainId ? getPlayerName(teamObj.captainId) : null) ||
+                                (userTeam?.captainId ? getPlayerName(userTeam.captainId) : null);
+
+                              const vcName =
+                                teamObj?.viceCaptainId?.name ||
+                                (teamObj?.viceCaptainId ? getPlayerName(teamObj.viceCaptainId) : null) ||
+                                (userTeam?.viceCaptainId ? getPlayerName(userTeam.viceCaptainId) : null);
+
+                              return (
+                                <div
+                                  key={entry.entryId || entry._id || eIdx}
+                                  className="rounded-lg bg-surface border border-border/80 p-2 text-xs"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-bold text-foreground">{teamName}</span>
+                                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                                      Active
+                                    </span>
+                                  </div>
+                                  {(capName || vcName) && (
+                                    <div className="mt-1 flex items-center gap-2.5 text-[10px] text-muted-foreground">
+                                      {capName && (
+                                        <span>
+                                          <b className="text-amber-400">C:</b> {capName}
+                                        </span>
+                                      )}
+                                      {vcName && (
+                                        <span>
+                                          <b className="text-cyan-400">VC:</b> {vcName}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Action Buttons: VIEW and LEADERBOARD */}
+                        <div className="grid grid-cols-2 gap-2.5 pt-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setViewingContest({ ...c, entries } as any)}
+                            className="gap-1.5 font-bold border-border bg-surface text-foreground hover:bg-surface-2"
+                          >
+                            <Eye className="h-3.5 w-3.5" /> VIEW
+                          </Button>
+                          <Button
+                            variant="outlineGreen"
+                            size="sm"
+                            onClick={() => handleOpenLeaderboard(c)}
+                            className="gap-1.5 font-bold"
+                          >
+                            <Trophy className="h-3.5 w-3.5" /> LEADERBOARD
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
             );
           })}
 
@@ -670,10 +746,16 @@ function Contests() {
         {top === "My Contests" && !loadingMyContests && !groupedMyContests.length && (
           <div className="py-16 text-center space-y-3">
             <p className="text-sm text-muted-foreground">
-              You haven't joined any contests yet.
+              {matchId
+                ? "You haven't joined any contests for this match yet."
+                : "You haven't joined any contests yet."}
             </p>
-            <Button asChild variant="outlineGreen" size="sm">
-              <Link to="/matches">EXPLORE MATCHES</Link>
+            <Button
+              variant="outlineGreen"
+              size="sm"
+              onClick={() => setTop("Contests")}
+            >
+              EXPLORE CONTESTS
             </Button>
           </div>
         )}

@@ -12,7 +12,9 @@ import { getFlow, setFlow, removeFlow, FLOW_KEYS } from "@/lib/flow";
 
 export function MyTeamsView() {
   const navigate = useNavigate();
-  const matchId = getFlow<string | null>(FLOW_KEYS.selectedMatchId, null);
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const flowMatchId = getFlow<string | null>(FLOW_KEYS.selectedMatchId, null);
+  const matchId = searchParams?.get("matchId") || flowMatchId;
   const [match, setMatch] = useState<Match | null>(null);
   const [matchList, setMatchList] = useState<Match[]>([]);
   const [teams, setTeams] = useState<FantasyTeam[]>([]);
@@ -127,7 +129,7 @@ export function MyTeamsView() {
 
       {loading && <LoadingState label="Loading your teams..." />}
 
-      {!loading && !matchId && (
+      {!loading && !matchId && teams.length === 0 && (
         <Card className="text-center">
           <p className="text-sm text-muted-foreground">Select a match to view or create teams.</p>
           <Button asChild variant="hero" className="mt-4">
