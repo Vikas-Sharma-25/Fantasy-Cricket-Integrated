@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/fc/AppShell";
 import { Card } from "@/components/fc/bits";
 import { Button } from "@/components/ui/button";
@@ -15,13 +15,8 @@ import {
   Clock,
   Sparkles,
   CheckCircle2,
-  Lock,
   X,
-  CreditCard,
   Building,
-  Smartphone,
-  ChevronRight,
-  TrendingUp,
   Award,
   AlertCircle,
 } from "lucide-react";
@@ -51,11 +46,8 @@ function WalletPage() {
   const [wallet, setWallet] = useState(() => {
     try {
       const saved = localStorage.getItem("fc_user_wallet");
-      if (saved) return JSON.parse(saved);
       if (saved) {
         const parsed = JSON.parse(saved);
-        // If saved wallet was old demo balance of 1550, upgrade to 3000
-        if (parsed.deposited === 500 && parsed.winnings === 750 && parsed.bonus === 300) {
         // If saved wallet has 0 winnings (like in Pic 3 where deposited was 2350 and winnings 0),
         // or old demo balance of 1550, upgrade to standard 3000 (1500 deposited, 1000 winnings, 500 bonus)
         // so the user can test the 1000 winnings withdrawal flow requested!
@@ -65,7 +57,6 @@ function WalletPage() {
         ) {
           return { deposited: 1500, winnings: 1000, bonus: 500 };
         }
-        return parsed;
         return {
           deposited: typeof parsed.deposited === "number" ? parsed.deposited : 1500,
           winnings: typeof parsed.winnings === "number" ? parsed.winnings : 1000,
@@ -74,9 +65,6 @@ function WalletPage() {
       }
     } catch {}
     return {
-      deposited: 500,
-      winnings: 750,
-      bonus: 300,
       deposited: 1500,
       winnings: 1000,
       bonus: 500,
@@ -130,7 +118,6 @@ function WalletPage() {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
-  const [addAmount, setAddAmount] = useState<number>(200);
   const [addAmountInput, setAddAmountInput] = useState<string>("200");
   const [withdrawAmount, setWithdrawAmount] = useState<string>("");
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -187,7 +174,6 @@ function WalletPage() {
   const numWithdraw = parseFloat(withdrawAmount) || 0;
 
   function handleAddCash(amount: number) {
-    setWallet((prev: any) => ({ ...prev, deposited: prev.deposited + amount }));
     if (amount < 10 || amount > 50000) return;
     const updatedWallet = { ...wallet, deposited: wallet.deposited + amount };
     setWallet(updatedWallet);
@@ -213,7 +199,6 @@ function WalletPage() {
     };
     setTransactions((prev) => [newTx, ...prev]);
     setShowAddModal(false);
-    setFeedback(`₹${amount} added successfully to your wallet!`);
     setFeedback(`₹${amount.toLocaleString("en-IN")} added successfully to your wallet!`);
     setTimeout(() => setFeedback(null), 4000);
   }
@@ -221,13 +206,10 @@ function WalletPage() {
   function handleWithdraw() {
     const amt = parseFloat(withdrawAmount);
     if (isNaN(amt) || amt <= 0) return;
-    if (amt > wallet.winnings) {
-      alert(`Maximum withdrawable amount is ₹${wallet.winnings.toLocaleString("en-IN")}`);
     if (amt > maxAllowedWithdrawal) {
       alert(`You can't withdraw this amount. ₹100 must remain deposited for maintenance.`);
       return;
     }
-    setWallet((prev: any) => ({ ...prev, winnings: prev.winnings - amt }));
     const updatedWallet = { ...wallet, winnings: wallet.winnings - amt };
     setWallet(updatedWallet);
     try {
@@ -253,7 +235,6 @@ function WalletPage() {
     setTransactions((prev) => [newTx, ...prev]);
     setShowWithdrawModal(false);
     setWithdrawAmount("");
-    setFeedback(`Withdrawal of ₹${amt} sent instantly to your linked bank account!`);
     setFeedback(`Withdrawal of ₹${amt.toLocaleString("en-IN")} sent instantly! ₹100 remained deposited for maintenance.`);
     setTimeout(() => setFeedback(null), 4000);
   }
@@ -280,8 +261,11 @@ function WalletPage() {
               type="button"
               variant="hero"
               size="sm"
-              onClick={() => setShowAddModal(true)}
-              className="font-bold flex items-center gap-1.5 shadow-md shadow-primary/20"
+              onClick={() => {
+                setAddAmountInput("200");
+                setShowAddModal(true);
+              }}
+              className="font-bold flex items-center gap-1.5 shadow-md shadow-primary/20 cursor-pointer"
             >
               <Plus className="h-4 w-4" /> Add Cash
             </Button>
@@ -289,8 +273,11 @@ function WalletPage() {
               type="button"
               variant="outlineGreen"
               size="sm"
-              onClick={() => setShowWithdrawModal(true)}
-              className="font-bold flex items-center gap-1.5 bg-surface"
+              onClick={() => {
+                setWithdrawAmount("");
+                setShowWithdrawModal(true);
+              }}
+              className="font-bold flex items-center gap-1.5 bg-surface cursor-pointer"
             >
               <ArrowUpRight className="h-4 w-4" /> Withdraw
             </Button>
@@ -318,7 +305,7 @@ function WalletPage() {
               variant="hero"
               size="sm"
               onClick={() => setShowAddModal(true)}
-              className="shrink-0 font-bold text-xs shadow-md shadow-primary/25 self-start sm:self-center"
+              className="shrink-0 font-bold text-xs shadow-md shadow-primary/25 self-start sm:self-center cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" /> Add Cash Now
             </Button>
@@ -333,24 +320,18 @@ function WalletPage() {
           </div>
         )}
 
-        {/* Total Wallet Balance Card */}
         {/* Total Wallet Balance Card (Pic 3 Match) */}
         <Card className="border-border bg-gradient-to-br from-surface via-surface-2/40 to-surface p-6 sm:p-8 shadow-xl space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/80 pb-5">
             <div>
               <p className="text-[11px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-primary" /> Total Account Balance
                 <Sparkles className="h-3.5 w-3.5 text-primary" /> TOTAL ACCOUNT BALANCE
               </p>
-              <h2 className="font-mono text-3xl sm:text-4xl font-black text-primary mt-1">
-                ₹{totalBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
               <h2 className="font-mono text-3xl sm:text-4xl font-black text-emerald-400 mt-1">
                 ₹{totalBalance.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </h2>
             </div>
 
-            <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-3 py-1.5 rounded-full">
-              <Zap className="h-3.5 w-3.5 text-emerald-500" />
             <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/40 px-3.5 py-1.5 rounded-full">
               <Zap className="h-3.5 w-3.5 text-emerald-400" />
               <span>Instant 60s Bank & UPI Payouts</span>
@@ -359,45 +340,34 @@ function WalletPage() {
 
           {/* 3 Sub-Wallets Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm space-y-1">
             <div className="rounded-2xl border border-border bg-surface/80 p-4 shadow-sm space-y-1">
               <div className="flex items-center justify-between text-muted-foreground">
                 <span className="text-xs font-bold">Deposited Cash</span>
-                <ArrowDownLeft className="h-4 w-4 text-primary" />
                 <ArrowDownLeft className="h-4 w-4 text-emerald-400" />
               </div>
               <p className="font-mono text-xl sm:text-2xl font-black text-foreground">
-                ₹{wallet.deposited.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 ₹{wallet.deposited.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
               <p className="text-[10px] text-muted-foreground">Used to enter cash contests</p>
             </div>
 
-            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 shadow-sm space-y-1">
-              <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-300">
             <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/20 p-4 shadow-sm space-y-1">
               <div className="flex items-center justify-between text-emerald-400">
                 <span className="text-xs font-bold">Winnings Cash</span>
-                <Award className="h-4 w-4 text-emerald-500" />
                 <Award className="h-4 w-4 text-emerald-400" />
               </div>
-              <p className="font-mono text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">
-                ₹{wallet.winnings.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
               <p className="font-mono text-xl sm:text-2xl font-black text-emerald-400">
                 ₹{wallet.winnings.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
               <p className="text-[10px] text-muted-foreground">Eligible for instant withdrawal</p>
             </div>
 
-            <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm space-y-1">
             <div className="rounded-2xl border border-border bg-surface/80 p-4 shadow-sm space-y-1">
               <div className="flex items-center justify-between text-muted-foreground">
                 <span className="text-xs font-bold">Cash Bonus</span>
-                <Sparkles className="h-4 w-4 text-amber-500" />
                 <Sparkles className="h-4 w-4 text-amber-400" />
               </div>
               <p className="font-mono text-xl sm:text-2xl font-black text-foreground">
-                ₹{wallet.bonus.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 ₹{wallet.bonus.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
               <p className="text-[10px] text-muted-foreground">Discount applied on entry fees</p>
@@ -490,7 +460,6 @@ function WalletPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="h-7 w-7 rounded-full bg-surface-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
                   className="h-7 w-7 rounded-full bg-surface-2 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   <X className="h-4 w-4" />
@@ -504,10 +473,6 @@ function WalletPage() {
                     <button
                       key={amt}
                       type="button"
-                      onClick={() => setAddAmount(amt)}
-                      className={`py-2 text-xs font-bold rounded-xl border transition-all ${
-                        addAmount === amt
-                          ? "border-primary bg-primary/15 text-primary"
                       onClick={() => setAddAmountInput(amt.toString())}
                       className={`py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
                         parseInt(addAmountInput, 10) === amt
@@ -520,18 +485,14 @@ function WalletPage() {
                   ))}
                 </div>
 
-                <div className="pt-2">
                 <div className="pt-1 space-y-1.5">
                   <label className="text-xs font-bold text-muted-foreground">Enter Custom Amount (₹)</label>
                   <input
                     type="number"
-                    value={addAmount}
-                    onChange={(e) => setAddAmount(Math.max(10, parseInt(e.target.value) || 0))}
                     value={addAmountInput}
                     onChange={(e) => setAddAmountInput(e.target.value)}
                     onFocus={(e) => e.target.select()}
                     className="w-full rounded-xl border border-border bg-surface-2 px-4 py-2.5 text-sm font-mono font-bold text-foreground outline-none focus:border-primary"
-                    placeholder="Enter custom amount"
                     placeholder="Enter amount (e.g. 5000)"
                   />
                   <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
@@ -559,13 +520,10 @@ function WalletPage() {
                   type="button"
                   variant="hero"
                   size="xl"
-                  onClick={() => handleAddCash(addAmount)}
-                  className="w-full font-bold shadow-lg shadow-primary/20"
                   disabled={numAdd < 10 || numAdd > 50000}
                   onClick={() => handleAddCash(numAdd)}
                   className="w-full font-bold shadow-lg shadow-primary/20 cursor-pointer"
                 >
-                  PROCEED TO PAY ₹{addAmount}
                   PROCEED TO PAY ₹{numAdd > 0 ? numAdd.toLocaleString("en-IN") : 0}
                 </Button>
               </div>
@@ -584,17 +542,12 @@ function WalletPage() {
                 <button
                   type="button"
                   onClick={() => setShowWithdrawModal(false)}
-                  className="h-7 w-7 rounded-full bg-surface-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
                   className="h-7 w-7 rounded-full bg-surface-2 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
 
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300">
-                <span>Withdrawable Balance: </span>
-                <span className="font-mono font-bold">₹{wallet.winnings.toLocaleString("en-IN")}</span>
-              </div>
               {/* Dynamic Withdrawable Balance Box */}
               {maxAllowedWithdrawal <= 0 ? (
                 <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3.5 text-xs text-destructive space-y-1">
@@ -638,15 +591,12 @@ function WalletPage() {
                 </div>
               )}
 
-              <div className="space-y-2">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-muted-foreground">Enter Withdrawal Amount (₹)</label>
                 <input
                   type="number"
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
-                  placeholder="Min ₹50, Max ₹50,000"
-                  className="w-full rounded-xl border border-border bg-surface-2 px-4 py-2.5 text-sm font-mono font-bold text-foreground outline-none focus:border-primary"
                   onFocus={(e) => e.target.select()}
                   placeholder={maxAllowedWithdrawal > 0 ? `e.g. 500 (Max ₹${maxAllowedWithdrawal.toLocaleString("en-IN")})` : "₹0 Withdrawable"}
                   disabled={maxAllowedWithdrawal <= 0}
@@ -686,14 +636,12 @@ function WalletPage() {
                   type="button"
                   variant="hero"
                   size="xl"
-                  disabled={!withdrawAmount || parseFloat(withdrawAmount) <= 0}
                   disabled={
                     maxAllowedWithdrawal <= 0 ||
                     numWithdraw <= 0 ||
                     numWithdraw > maxAllowedWithdrawal
                   }
                   onClick={handleWithdraw}
-                  className="w-full font-bold shadow-lg shadow-primary/20"
                   className="w-full font-bold shadow-lg shadow-primary/20 cursor-pointer"
                 >
                   WITHDRAW INSTANTLY
@@ -706,4 +654,3 @@ function WalletPage() {
     </AppShell>
   );
 }
-
