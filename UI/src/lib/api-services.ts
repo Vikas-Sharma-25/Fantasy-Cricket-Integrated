@@ -251,21 +251,15 @@ export function deductLocalWallet(amount: number, contestName: string): number {
   if (amount <= 0) return getLocalWalletBalance();
   try {
     const saved = localStorage.getItem("fc_user_wallet");
-    const wallet = saved ? JSON.parse(saved) : { deposited: 1500, winnings: 1000, bonus: 500 };
-    if ((wallet.deposited || 0) >= amount) {
-      wallet.deposited -= amount;
-    } else {
-      const rem = amount - (wallet.deposited || 0);
-      wallet.deposited = 0;
-      if ((wallet.winnings || 0) >= rem) {
-        wallet.winnings -= rem;
-      } else {
-        const remBonus = rem - (wallet.winnings || 0);
-        wallet.winnings = 0;
-        wallet.bonus = Math.max(0, (wallet.bonus || 0) - remBonus);
-      }
-    }
-    localStorage.setItem("fc_user_wallet", JSON.stringify(wallet));
+    const parsed = saved ? JSON.parse(saved) : null;
+    const currentTotal = parsed ? ((parsed.deposited || 0) + (parsed.winnings || 0) + (parsed.bonus || 0)) : 700;
+    const newTotal = Math.max(0, currentTotal - amount);
+    const newWallet = {
+      deposited: 100,
+      winnings: Math.max(0, newTotal - 100),
+      bonus: 0,
+    };
+    localStorage.setItem("fc_user_wallet", JSON.stringify(newWallet));
 
     // Add passbook transaction
     const txsSaved = localStorage.getItem("fc_wallet_txs");
@@ -281,10 +275,9 @@ export function deductLocalWallet(amount: number, contestName: string): number {
     });
     localStorage.setItem("fc_wallet_txs", JSON.stringify(txs));
 
-    const newTotal = (wallet.deposited || 0) + (wallet.winnings || 0) + (wallet.bonus || 0);
     const cached = getCachedUser();
     if (cached) {
-      const updatedUser = { ...cached, walletBalance: newTotal };
+      const updatedUser = { ...cached, walletBalance: newTotal, winningsBalance: newWallet.winnings, depositedBalance: 100 };
       setCachedUser(updatedUser);
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("user-profile-updated", { detail: updatedUser }));
@@ -295,6 +288,6 @@ export function deductLocalWallet(amount: number, contestName: string): number {
     }
     return newTotal;
   } catch {
-    return 2900;
+    return 700;
   }
 }

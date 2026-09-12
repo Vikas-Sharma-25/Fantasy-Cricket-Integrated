@@ -48,22 +48,25 @@ function WalletPage() {
       const saved = localStorage.getItem("fc_user_wallet");
       if (saved) {
         const parsed = JSON.parse(saved);
-        let currentWinnings = typeof parsed.winnings === "number" ? parsed.winnings : 1000;
-        // If previous version put thousands in deposited (e.g. 6500 or 2350), move excess to winnings
-        if ((parsed.deposited || 0) > 100 && currentWinnings <= 100) {
-          currentWinnings = (parsed.deposited - 100) + currentWinnings;
+        const total = (parsed.deposited || 0) + (parsed.winnings || 0) + (parsed.bonus || 0);
+        if (total >= 100) {
+          return {
+            deposited: 100,
+            winnings: total - 100,
+            bonus: 0,
+          };
         }
         return {
           deposited: 100,
-          winnings: currentWinnings > 0 ? currentWinnings : 1000,
-          bonus: typeof parsed.bonus === "number" ? parsed.bonus : 500,
+          winnings: 600,
+          bonus: 0,
         };
       }
     } catch {}
     return {
       deposited: 100,
-      winnings: 1000,
-      bonus: 500,
+      winnings: 600,
+      bonus: 0,
     };
   });
 
@@ -145,7 +148,19 @@ function WalletPage() {
       function handleWalletSync() {
         try {
           const saved = localStorage.getItem("fc_user_wallet");
-          if (saved) setWallet(JSON.parse(saved));
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            const total = (parsed.deposited || 0) + (parsed.winnings || 0) + (parsed.bonus || 0);
+            if (total >= 100) {
+              setWallet({
+                deposited: 100,
+                winnings: total - 100,
+                bonus: 0,
+              });
+            } else {
+              setWallet(parsed);
+            }
+          }
         } catch {}
         try {
           const txs = localStorage.getItem("fc_wallet_txs");
@@ -162,25 +177,23 @@ function WalletPage() {
     }
   }, []);
 
-  const totalBalance = wallet.deposited + wallet.winnings + wallet.bonus;
+  const totalBalance = wallet.deposited + wallet.winnings + (wallet.bonus || 0);
   const numAdd = parseInt(addAmountInput, 10) || 0;
-  const totalWinnings = wallet.winnings || 0;
-  const maintenanceDeposit = 100;
-  const maxAllowedWithdrawal = Math.max(0, totalWinnings - maintenanceDeposit);
+  const maxAllowedWithdrawal = Math.max(0, wallet.winnings);
   const numWithdraw = parseFloat(withdrawAmount) || 0;
 
   function handleAddCash(amount: number) {
     if (amount < 10 || amount > 50000) return;
-    const updatedWallet = { ...wallet, deposited: 100, winnings: wallet.winnings + amount };
+    const updatedWallet = { deposited: 100, winnings: wallet.winnings + amount, bonus: 0 };
     setWallet(updatedWallet);
     try {
       localStorage.setItem("fc_user_wallet", JSON.stringify(updatedWallet));
-      const total = updatedWallet.deposited + updatedWallet.winnings + updatedWallet.bonus;
+      const total = 100 + updatedWallet.winnings;
       const cached = getCachedUser();
       if (cached) {
         cached.walletBalance = total;
         cached.winningsBalance = updatedWallet.winnings;
-        cached.depositedBalance = updatedWallet.deposited;
+        cached.depositedBalance = 100;
         localStorage.setItem("user", JSON.stringify(cached));
       }
       window.dispatchEvent(new CustomEvent("user-profile-updated", { detail: cached }));
@@ -208,16 +221,16 @@ function WalletPage() {
       alert(`You can't withdraw this amount. ₹100 must remain deposited for maintenance.`);
       return;
     }
-    const updatedWallet = { ...wallet, deposited: 100, winnings: wallet.winnings - amt };
+    const updatedWallet = { deposited: 100, winnings: Math.max(0, wallet.winnings - amt), bonus: 0 };
     setWallet(updatedWallet);
     try {
       localStorage.setItem("fc_user_wallet", JSON.stringify(updatedWallet));
-      const total = updatedWallet.deposited + updatedWallet.winnings + updatedWallet.bonus;
+      const total = 100 + updatedWallet.winnings;
       const cached = getCachedUser();
       if (cached) {
         cached.walletBalance = total;
         cached.winningsBalance = updatedWallet.winnings;
-        cached.depositedBalance = updatedWallet.deposited;
+        cached.depositedBalance = 100;
         localStorage.setItem("user", JSON.stringify(cached));
       }
       window.dispatchEvent(new CustomEvent("user-profile-updated", { detail: cached }));
@@ -320,7 +333,7 @@ function WalletPage() {
           </div>
         )}
 
-        {/* Total Wallet Balance Card (Pic 3 Match) */}
+        {/* Total Wallet Balance Card */}
         <Card className="border-border bg-gradient-to-br from-surface via-surface-2/40 to-surface p-6 sm:p-8 shadow-xl space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/80 pb-5">
             <div>
@@ -348,7 +361,7 @@ function WalletPage() {
               <p className="font-mono text-xl sm:text-2xl font-black text-foreground">
                 ₹{wallet.deposited.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
-              <p className="text-[10px] text-muted-foreground">Used to enter cash contests</p>
+              <p className="text-[10px] text-muted-foreground">Fixed maintenance deposit reserve</p>
             </div>
 
             <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/20 p-4 shadow-sm space-y-1">
@@ -368,7 +381,7 @@ function WalletPage() {
                 <Sparkles className="h-4 w-4 text-amber-400" />
               </div>
               <p className="font-mono text-xl sm:text-2xl font-black text-foreground">
-                ₹{wallet.bonus.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ₹{(wallet.bonus || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
               <p className="text-[10px] text-muted-foreground">Discount applied on entry fees</p>
             </div>
@@ -567,7 +580,7 @@ function WalletPage() {
                     <span className="font-mono text-sm">₹{maxAllowedWithdrawal.toLocaleString("en-IN")}</span>
                   </div>
                   <p className="text-[11px] font-bold text-destructive">
-                    You can't withdraw this amount. ₹100 must remain deposited for maintenance.
+                    You can't withdraw this amount. Minimum ₹100 must remain deposited for maintenance.
                   </p>
                 </div>
               ) : numWithdraw > 0 ? (
@@ -612,20 +625,27 @@ function WalletPage() {
               </div>
 
               {/* Demo Helper if balance depleted */}
-              {totalWinnings <= 100 && (
+              {maxAllowedWithdrawal <= 0 && (
                 <div className="text-center pt-1">
                   <button
                     type="button"
                     onClick={() => {
-                      const updated = { ...wallet, winnings: 1000 };
+                      const updated = { deposited: 100, winnings: 600, bonus: 0 };
                       setWallet(updated);
                       localStorage.setItem("fc_user_wallet", JSON.stringify(updated));
-                      window.dispatchEvent(new Event("user-profile-updated"));
+                      const cached = getCachedUser();
+                      if (cached) {
+                        cached.walletBalance = 700;
+                        cached.winningsBalance = 600;
+                        cached.depositedBalance = 100;
+                        localStorage.setItem("user", JSON.stringify(cached));
+                      }
+                      window.dispatchEvent(new CustomEvent("user-profile-updated", { detail: cached }));
                       window.dispatchEvent(new Event("storage"));
                     }}
                     className="text-[11px] text-primary hover:underline font-semibold cursor-pointer"
                   >
-                    + Reset Demo Winnings to ₹1,000 for Testing
+                    + Reset Demo Wallet to ₹700 (₹600 Withdrawable + ₹100 Maintenance)
                   </button>
                 </div>
               )}
