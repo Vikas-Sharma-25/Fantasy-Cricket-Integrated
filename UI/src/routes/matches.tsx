@@ -1805,12 +1805,6 @@ function Matches() {
 
     if (fee > 0 && currentBal < fee) {
       setContestErrorMsg("You don't have sufficient money to join contest. Please add money to your wallet.");
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem("fc_wallet_insufficient_notice", `You need at least ₹${fee} to join "${joinModalContest.name}". Please add funds to your wallet.`);
-        setTimeout(() => {
-          navigate({ to: "/wallet" });
-        }, 2200);
-      }
       return;
     }
 
@@ -1861,12 +1855,6 @@ function Matches() {
       const msg = err?.message || "";
       if (msg.includes("INSUFFICIENT_WALLET_BALANCE") || msg.toLowerCase().includes("sufficient money")) {
         setContestErrorMsg("You don't have sufficient money to join contest. Please add money to your wallet.");
-        if (typeof window !== "undefined") {
-          sessionStorage.setItem("fc_wallet_insufficient_notice", "You don't have sufficient money to join contest. Please add money to your wallet.");
-          setTimeout(() => {
-            navigate({ to: "/wallet" });
-          }, 2200);
-        }
         return;
       }
       setContestErrorMsg(msg || "Failed to join contest");
@@ -1886,12 +1874,6 @@ function Matches() {
 
     if (fee > 0 && currentBal < fee) {
       setPendingJoinError("You don't have sufficient money to join contest. Please add money to your wallet.");
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem("fc_wallet_insufficient_notice", `You need at least ₹${fee} to join "${pendingJoinContest.name}". Please add funds to your wallet.`);
-        setTimeout(() => {
-          navigate({ to: "/wallet" });
-        }, 2200);
-      }
       return;
     }
 
@@ -1945,12 +1927,6 @@ function Matches() {
       const msg = err?.message || "";
       if (msg.includes("INSUFFICIENT_WALLET_BALANCE") || msg.toLowerCase().includes("sufficient money")) {
         setPendingJoinError("You don't have sufficient money to join contest. Please add money to your wallet.");
-        if (typeof window !== "undefined") {
-          sessionStorage.setItem("fc_wallet_insufficient_notice", "You don't have sufficient money to join contest. Please add money to your wallet.");
-          setTimeout(() => {
-            navigate({ to: "/wallet" });
-          }, 2200);
-        }
         return;
       }
       setPendingJoinError(msg || "Failed to join contest");

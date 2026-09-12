@@ -18,7 +18,6 @@ import {
   X,
   Building,
   Award,
-  AlertCircle,
 } from "lucide-react";
 
 export const Route = createFileRoute("/wallet")({
@@ -48,25 +47,18 @@ function WalletPage() {
       const saved = localStorage.getItem("fc_user_wallet");
       if (saved) {
         const parsed = JSON.parse(saved);
-        const total = (parsed.deposited || 0) + (parsed.winnings || 0) + (parsed.bonus || 0);
-        if (total >= 100) {
-          return {
-            deposited: 100,
-            winnings: total - 100,
-            bonus: 0,
-          };
-        }
+        const currentWinnings = typeof parsed.winnings === "number" ? parsed.winnings : 200;
         return {
           deposited: 100,
-          winnings: 600,
-          bonus: 0,
+          winnings: currentWinnings,
+          bonus: 100,
         };
       }
     } catch {}
     return {
       deposited: 100,
-      winnings: 600,
-      bonus: 0,
+      winnings: 200,
+      bonus: 100,
     };
   });
 
@@ -107,7 +99,7 @@ function WalletPage() {
         id: "tx-104",
         type: "BONUS",
         title: "Sign-Up Cash Bonus Credited",
-        amount: 300,
+        amount: 100,
         date: "Sep 08, 11:00 AM",
         status: "SUCCESS",
         refId: "BNS-00192",
@@ -120,7 +112,6 @@ function WalletPage() {
   const [addAmountInput, setAddAmountInput] = useState<string>("200");
   const [withdrawAmount, setWithdrawAmount] = useState<string>("");
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [insufficientNotice, setInsufficientNotice] = useState<string | null>(null);
 
   // Sync wallet to localStorage
   useEffect(() => {
@@ -135,31 +126,20 @@ function WalletPage() {
     } catch {}
   }, [transactions]);
 
-  // Listen to external wallet updates and check insufficient funds redirect notice
+  // Listen to external wallet updates
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const notice = sessionStorage.getItem("fc_wallet_insufficient_notice");
-      if (notice) {
-        setInsufficientNotice(notice);
-        setShowAddModal(true);
-        sessionStorage.removeItem("fc_wallet_insufficient_notice");
-      }
-
       function handleWalletSync() {
         try {
           const saved = localStorage.getItem("fc_user_wallet");
           if (saved) {
             const parsed = JSON.parse(saved);
-            const total = (parsed.deposited || 0) + (parsed.winnings || 0) + (parsed.bonus || 0);
-            if (total >= 100) {
-              setWallet({
-                deposited: 100,
-                winnings: total - 100,
-                bonus: 0,
-              });
-            } else {
-              setWallet(parsed);
-            }
+            const currentWinnings = typeof parsed.winnings === "number" ? parsed.winnings : 200;
+            setWallet({
+              deposited: 100,
+              winnings: currentWinnings,
+              bonus: 100,
+            });
           }
         } catch {}
         try {
@@ -177,18 +157,18 @@ function WalletPage() {
     }
   }, []);
 
-  const totalBalance = wallet.deposited + wallet.winnings + (wallet.bonus || 0);
+  const totalBalance = wallet.deposited + wallet.winnings + 100;
   const numAdd = parseInt(addAmountInput, 10) || 0;
   const maxAllowedWithdrawal = Math.max(0, wallet.winnings);
   const numWithdraw = parseFloat(withdrawAmount) || 0;
 
   function handleAddCash(amount: number) {
     if (amount < 10 || amount > 50000) return;
-    const updatedWallet = { deposited: 100, winnings: wallet.winnings + amount, bonus: 0 };
+    const updatedWallet = { deposited: 100, winnings: wallet.winnings + amount, bonus: 100 };
     setWallet(updatedWallet);
     try {
       localStorage.setItem("fc_user_wallet", JSON.stringify(updatedWallet));
-      const total = 100 + updatedWallet.winnings;
+      const total = 100 + updatedWallet.winnings + 100;
       const cached = getCachedUser();
       if (cached) {
         cached.walletBalance = total;
@@ -218,14 +198,14 @@ function WalletPage() {
     const amt = parseFloat(withdrawAmount);
     if (isNaN(amt) || amt <= 0) return;
     if (amt > maxAllowedWithdrawal) {
-      alert(`You can't withdraw this amount. ₹100 must remain deposited for maintenance.`);
+      alert(`You can't withdraw this amount. Minimum ₹100 must remain deposited for maintenance.`);
       return;
     }
-    const updatedWallet = { deposited: 100, winnings: Math.max(0, wallet.winnings - amt), bonus: 0 };
+    const updatedWallet = { deposited: 100, winnings: Math.max(0, wallet.winnings - amt), bonus: 100 };
     setWallet(updatedWallet);
     try {
       localStorage.setItem("fc_user_wallet", JSON.stringify(updatedWallet));
-      const total = 100 + updatedWallet.winnings;
+      const total = 100 + updatedWallet.winnings + 100;
       const cached = getCachedUser();
       if (cached) {
         cached.walletBalance = total;
@@ -297,34 +277,6 @@ function WalletPage() {
           </div>
         </div>
 
-        {/* Insufficient Funds Redirect Notice */}
-        {insufficientNotice && (
-          <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in-50">
-            <div className="flex items-start sm:items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-destructive/20 text-destructive flex items-center justify-center shrink-0">
-                <AlertCircle className="h-5 w-5" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-destructive">
-                  You don't have sufficient money to join contest.
-                </h4>
-                <p className="text-xs text-foreground/80 mt-0.5">
-                  {insufficientNotice} Please add money to your wallet to participate.
-                </p>
-              </div>
-            </div>
-            <Button
-              type="button"
-              variant="hero"
-              size="sm"
-              onClick={() => setShowAddModal(true)}
-              className="shrink-0 font-bold text-xs shadow-md shadow-primary/25 self-start sm:self-center cursor-pointer"
-            >
-              <Plus className="h-3.5 w-3.5" /> Add Cash Now
-            </Button>
-          </div>
-        )}
-
         {/* Feedback Alert */}
         {feedback && (
           <div className="flex items-center gap-2 p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold animate-in fade-in-50">
@@ -381,7 +333,7 @@ function WalletPage() {
                 <Sparkles className="h-4 w-4 text-amber-400" />
               </div>
               <p className="font-mono text-xl sm:text-2xl font-black text-foreground">
-                ₹{(wallet.bonus || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ₹100.00
               </p>
               <p className="text-[10px] text-muted-foreground">Discount applied on entry fees</p>
             </div>
@@ -630,12 +582,12 @@ function WalletPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      const updated = { deposited: 100, winnings: 600, bonus: 0 };
+                      const updated = { deposited: 100, winnings: 600, bonus: 100 };
                       setWallet(updated);
                       localStorage.setItem("fc_user_wallet", JSON.stringify(updated));
                       const cached = getCachedUser();
                       if (cached) {
-                        cached.walletBalance = 700;
+                        cached.walletBalance = 800;
                         cached.winningsBalance = 600;
                         cached.depositedBalance = 100;
                         localStorage.setItem("user", JSON.stringify(cached));
@@ -645,7 +597,7 @@ function WalletPage() {
                     }}
                     className="text-[11px] text-primary hover:underline font-semibold cursor-pointer"
                   >
-                    + Reset Demo Wallet to ₹700 (₹600 Withdrawable + ₹100 Maintenance)
+                    + Reset Demo Winnings to ₹600 (Total ₹800 with ₹100 Dep + ₹100 Bonus)
                   </button>
                 </div>
               )}

@@ -398,15 +398,6 @@ function Contests() {
 
     if (fee > 0 && currentBal < fee) {
       setError("You don't have sufficient money to join contest. Please add money to your wallet.");
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem(
-          "fc_wallet_insufficient_notice",
-          `You need at least ₹${fee} to join "${contestToJoin.name}". Please add funds to your wallet.`
-        );
-        setTimeout(() => {
-          navigate({ to: "/wallet" });
-        }, 2200);
-      }
       return;
     }
 
@@ -448,12 +439,6 @@ function Contests() {
       const msg = e instanceof ApiClientError ? e.message : (e?.message || "Unable to join contest");
       if (msg.includes("INSUFFICIENT_WALLET_BALANCE") || msg.toLowerCase().includes("sufficient money")) {
         setError("You don't have sufficient money to join contest. Please add money to your wallet.");
-        if (typeof window !== "undefined") {
-          sessionStorage.setItem("fc_wallet_insufficient_notice", "You don't have sufficient money to join contest. Please add money to your wallet.");
-          setTimeout(() => {
-            navigate({ to: "/wallet" });
-          }, 2200);
-        }
       } else {
         setError(msg);
       }

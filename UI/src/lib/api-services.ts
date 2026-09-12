@@ -252,12 +252,13 @@ export function deductLocalWallet(amount: number, contestName: string): number {
   try {
     const saved = localStorage.getItem("fc_user_wallet");
     const parsed = saved ? JSON.parse(saved) : null;
-    const currentTotal = parsed ? ((parsed.deposited || 0) + (parsed.winnings || 0) + (parsed.bonus || 0)) : 700;
-    const newTotal = Math.max(0, currentTotal - amount);
+    const currentWinnings = typeof parsed?.winnings === "number" ? parsed.winnings : 2800;
+    const newWinnings = Math.max(0, currentWinnings - amount);
+    const newTotal = 100 + newWinnings + 100;
     const newWallet = {
       deposited: 100,
-      winnings: Math.max(0, newTotal - 100),
-      bonus: 0,
+      winnings: newWinnings,
+      bonus: 100,
     };
     localStorage.setItem("fc_user_wallet", JSON.stringify(newWallet));
 
@@ -277,7 +278,7 @@ export function deductLocalWallet(amount: number, contestName: string): number {
 
     const cached = getCachedUser();
     if (cached) {
-      const updatedUser = { ...cached, walletBalance: newTotal, winningsBalance: newWallet.winnings, depositedBalance: 100 };
+      const updatedUser = { ...cached, walletBalance: newTotal, winningsBalance: newWinnings, depositedBalance: 100 };
       setCachedUser(updatedUser);
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("user-profile-updated", { detail: updatedUser }));
