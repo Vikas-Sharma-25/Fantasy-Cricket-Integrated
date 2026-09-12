@@ -47,17 +47,18 @@ function WalletPage() {
       const saved = localStorage.getItem("fc_user_wallet");
       if (saved) {
         const parsed = JSON.parse(saved);
-        const currentWinnings = typeof parsed.winnings === "number" ? parsed.winnings : 200;
+        const initWinnings = typeof parsed.winnings === "number" ? parsed.winnings : 0;
+        const currentBonus = typeof parsed.bonus === "number" ? parsed.bonus : 100;
         return {
           deposited: 100,
-          winnings: currentWinnings,
-          bonus: 100,
+          winnings: initWinnings,
+          bonus: currentBonus,
         };
       }
     } catch {}
     return {
       deposited: 100,
-      winnings: 200,
+      winnings: 0,
       bonus: 100,
     };
   });
@@ -134,11 +135,12 @@ function WalletPage() {
           const saved = localStorage.getItem("fc_user_wallet");
           if (saved) {
             const parsed = JSON.parse(saved);
-            const currentWinnings = typeof parsed.winnings === "number" ? parsed.winnings : 200;
+            const syncWinnings = typeof parsed.winnings === "number" ? parsed.winnings : 0;
+            const currentBonus = typeof parsed.bonus === "number" ? parsed.bonus : 100;
             setWallet({
               deposited: 100,
-              winnings: currentWinnings,
-              bonus: 100,
+              winnings: syncWinnings,
+              bonus: currentBonus,
             });
           }
         } catch {}
@@ -157,18 +159,19 @@ function WalletPage() {
     }
   }, []);
 
-  const totalBalance = wallet.deposited + wallet.winnings + 100;
+  const totalBalance = wallet.deposited + wallet.winnings + (wallet.bonus || 0);
   const numAdd = parseInt(addAmountInput, 10) || 0;
-  const maxAllowedWithdrawal = Math.max(0, wallet.winnings);
+  const maxAllowedWithdrawal = Math.max(0, totalBalance - 100);
   const numWithdraw = parseFloat(withdrawAmount) || 0;
 
   function handleAddCash(amount: number) {
     if (amount < 10 || amount > 50000) return;
-    const updatedWallet = { deposited: 100, winnings: wallet.winnings + amount, bonus: 100 };
+    const currentBonus = typeof wallet.bonus === "number" ? wallet.bonus : 100;
+    const updatedWallet = { deposited: 100, winnings: wallet.winnings + amount, bonus: currentBonus };
     setWallet(updatedWallet);
     try {
       localStorage.setItem("fc_user_wallet", JSON.stringify(updatedWallet));
-      const total = 100 + updatedWallet.winnings + 100;
+      const total = 100 + updatedWallet.winnings + currentBonus;
       const cached = getCachedUser();
       if (cached) {
         cached.walletBalance = total;
@@ -201,15 +204,25 @@ function WalletPage() {
       alert(`You can't withdraw this amount. Minimum ₹100 must remain deposited for maintenance.`);
       return;
     }
-    const updatedWallet = { deposited: 100, winnings: Math.max(0, wallet.winnings - amt), bonus: 100 };
+
+    let rem = amt;
+    const deductWinnings = Math.min(wallet.winnings, rem);
+    const newWinnings = wallet.winnings - deductWinnings;
+    rem -= deductWinnings;
+
+    const currentBonus = typeof wallet.bonus === "number" ? wallet.bonus : 100;
+    const deductBonus = Math.min(currentBonus, rem);
+    const newBonus = Math.max(0, currentBonus - deductBonus);
+
+    const updatedWallet = { deposited: 100, winnings: newWinnings, bonus: newBonus };
     setWallet(updatedWallet);
     try {
       localStorage.setItem("fc_user_wallet", JSON.stringify(updatedWallet));
-      const total = 100 + updatedWallet.winnings + 100;
+      const total = 100 + newWinnings + newBonus;
       const cached = getCachedUser();
       if (cached) {
         cached.walletBalance = total;
-        cached.winningsBalance = updatedWallet.winnings;
+        cached.winningsBalance = newWinnings;
         cached.depositedBalance = 100;
         localStorage.setItem("user", JSON.stringify(cached));
       }

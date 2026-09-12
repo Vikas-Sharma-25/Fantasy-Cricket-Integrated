@@ -252,13 +252,20 @@ export function deductLocalWallet(amount: number, contestName: string): number {
   try {
     const saved = localStorage.getItem("fc_user_wallet");
     const parsed = saved ? JSON.parse(saved) : null;
-    const currentWinnings = typeof parsed?.winnings === "number" ? parsed.winnings : 2800;
-    const newWinnings = Math.max(0, currentWinnings - amount);
-    const newTotal = 100 + newWinnings + 100;
+    const currentWinnings = typeof parsed?.winnings === "number" ? parsed.winnings : 0;
+    const currentBonus = typeof parsed?.bonus === "number" ? parsed.bonus : 100;
+    let rem = amount;
+    const deductWinnings = Math.min(currentWinnings, rem);
+    const newWinnings = currentWinnings - deductWinnings;
+    rem -= deductWinnings;
+    const deductBonus = Math.min(currentBonus, rem);
+    const newBonus = Math.max(0, currentBonus - deductBonus);
+
+    const newTotal = 100 + newWinnings + newBonus;
     const newWallet = {
       deposited: 100,
       winnings: newWinnings,
-      bonus: 100,
+      bonus: newBonus,
     };
     localStorage.setItem("fc_user_wallet", JSON.stringify(newWallet));
 
