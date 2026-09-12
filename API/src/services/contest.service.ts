@@ -87,7 +87,6 @@ export async function listContests(
     query.matchId = matchId;
 
     const existingCount = await Contest.countDocuments({ matchId });
-    if (existingCount < 4) {
     if (existingCount < 5) {
       const standardContests = [
         {
@@ -180,7 +179,6 @@ export async function listContests(
   });
 
   return {
-    items,
     items: formattedItems,
     total,
     page,
@@ -668,7 +666,6 @@ export async function joinContest(
     }
   );
 
-  return entry;
   const entryObj: any = entry.toObject ? entry.toObject() : entry;
   return {
     ...entryObj,

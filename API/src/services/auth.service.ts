@@ -210,7 +210,6 @@ export function sanitizeUser(user: IUser) {
     status: user.status,
     isVerified: user.isVerified,
     profileImage: user.profileImage || "",
-    preferences: user.preferences
     preferences: user.preferences,
     walletBalance: typeof user.walletBalance === "number" ? user.walletBalance : 3000,
     depositedBalance: typeof user.depositedBalance === "number" ? user.depositedBalance : 1500,

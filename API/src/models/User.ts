@@ -47,7 +47,6 @@ const userSchema = new Schema<IUser>(
     },
     isVerified: { type: Boolean, default: false },
     profileImage: { type: String },
-    preferences: { type: Schema.Types.Mixed, default: {} }
     preferences: { type: Schema.Types.Mixed, default: {} },
     walletBalance: { type: Number, default: 3000 },
     depositedBalance: { type: Number, default: 1500 },
