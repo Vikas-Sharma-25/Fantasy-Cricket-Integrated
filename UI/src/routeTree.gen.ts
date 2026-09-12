@@ -20,6 +20,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as MatchDetailsRouteImport } from './routes/match-details'
 import { Route as MatchesRouteImport } from './routes/matches'
 import { Route as MyMatchesRouteImport } from './routes/my-matches'
+import { Route as MyTeamsRouteImport } from './routes/my-teams'
 import { Route as PlayersRouteImport } from './routes/players'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RegisterRouteImport } from './routes/register'
@@ -27,6 +28,7 @@ import { Route as ResultsRouteImport } from './routes/results'
 import { Route as RulesRouteImport } from './routes/rules'
 import { Route as VerifyOtpRouteImport } from './routes/verify-otp'
 import { Route as VerifyOtpLoginRouteImport } from './routes/verify-otp-login'
+import { Route as WalletRouteImport } from './routes/wallet'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -83,6 +85,11 @@ const MyMatchesRoute = MyMatchesRouteImport.update({
   path: '/my-matches',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MyTeamsRoute = MyTeamsRouteImport.update({
+  id: '/my-teams',
+  path: '/my-teams',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlayersRoute = PlayersRouteImport.update({
   id: '/players',
   path: '/players',
@@ -118,6 +125,11 @@ const VerifyOtpLoginRoute = VerifyOtpLoginRouteImport.update({
   path: '/verify-otp-login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WalletRoute = WalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -131,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/match-details': typeof MatchDetailsRoute
   '/matches': typeof MatchesRoute
   '/my-matches': typeof MyMatchesRoute
+  '/my-teams': typeof MyTeamsRoute
   '/players': typeof PlayersRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
@@ -138,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/rules': typeof RulesRoute
   '/verify-otp': typeof VerifyOtpRoute
   '/verify-otp-login': typeof VerifyOtpLoginRoute
+  '/wallet': typeof WalletRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -151,6 +165,7 @@ export interface FileRoutesByTo {
   '/match-details': typeof MatchDetailsRoute
   '/matches': typeof MatchesRoute
   '/my-matches': typeof MyMatchesRoute
+  '/my-teams': typeof MyTeamsRoute
   '/players': typeof PlayersRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
@@ -158,6 +173,7 @@ export interface FileRoutesByTo {
   '/rules': typeof RulesRoute
   '/verify-otp': typeof VerifyOtpRoute
   '/verify-otp-login': typeof VerifyOtpLoginRoute
+  '/wallet': typeof WalletRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -172,6 +188,7 @@ export interface FileRoutesById {
   '/match-details': typeof MatchDetailsRoute
   '/matches': typeof MatchesRoute
   '/my-matches': typeof MyMatchesRoute
+  '/my-teams': typeof MyTeamsRoute
   '/players': typeof PlayersRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
@@ -179,6 +196,7 @@ export interface FileRoutesById {
   '/rules': typeof RulesRoute
   '/verify-otp': typeof VerifyOtpRoute
   '/verify-otp-login': typeof VerifyOtpLoginRoute
+  '/wallet': typeof WalletRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -194,6 +212,7 @@ export interface FileRouteTypes {
     | '/match-details'
     | '/matches'
     | '/my-matches'
+    | '/my-teams'
     | '/players'
     | '/profile'
     | '/register'
@@ -201,6 +220,7 @@ export interface FileRouteTypes {
     | '/rules'
     | '/verify-otp'
     | '/verify-otp-login'
+    | '/wallet'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -214,6 +234,7 @@ export interface FileRouteTypes {
     | '/match-details'
     | '/matches'
     | '/my-matches'
+    | '/my-teams'
     | '/players'
     | '/profile'
     | '/register'
@@ -221,6 +242,7 @@ export interface FileRouteTypes {
     | '/rules'
     | '/verify-otp'
     | '/verify-otp-login'
+    | '/wallet'
   id:
     | '__root__'
     | '/'
@@ -234,6 +256,7 @@ export interface FileRouteTypes {
     | '/match-details'
     | '/matches'
     | '/my-matches'
+    | '/my-teams'
     | '/players'
     | '/profile'
     | '/register'
@@ -241,6 +264,7 @@ export interface FileRouteTypes {
     | '/rules'
     | '/verify-otp'
     | '/verify-otp-login'
+    | '/wallet'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -255,6 +279,7 @@ export interface RootRouteChildren {
   MatchDetailsRoute: typeof MatchDetailsRoute
   MatchesRoute: typeof MatchesRoute
   MyMatchesRoute: typeof MyMatchesRoute
+  MyTeamsRoute: typeof MyTeamsRoute
   PlayersRoute: typeof PlayersRoute
   ProfileRoute: typeof ProfileRoute
   RegisterRoute: typeof RegisterRoute
@@ -262,6 +287,7 @@ export interface RootRouteChildren {
   RulesRoute: typeof RulesRoute
   VerifyOtpRoute: typeof VerifyOtpRoute
   VerifyOtpLoginRoute: typeof VerifyOtpLoginRoute
+  WalletRoute: typeof WalletRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -343,6 +369,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyMatchesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/my-teams': {
+      id: '/my-teams'
+      path: '/my-teams'
+      fullPath: '/my-teams'
+      preLoaderRoute: typeof MyTeamsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/players': {
       id: '/players'
       path: '/players'
@@ -392,6 +425,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyOtpLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/wallet': {
+      id: '/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof WalletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -407,6 +447,7 @@ const rootRouteChildren: RootRouteChildren = {
   MatchDetailsRoute: MatchDetailsRoute,
   MatchesRoute: MatchesRoute,
   MyMatchesRoute: MyMatchesRoute,
+  MyTeamsRoute: MyTeamsRoute,
   PlayersRoute: PlayersRoute,
   ProfileRoute: ProfileRoute,
   RegisterRoute: RegisterRoute,
@@ -414,6 +455,7 @@ const rootRouteChildren: RootRouteChildren = {
   RulesRoute: RulesRoute,
   VerifyOtpRoute: VerifyOtpRoute,
   VerifyOtpLoginRoute: VerifyOtpLoginRoute,
+  WalletRoute: WalletRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

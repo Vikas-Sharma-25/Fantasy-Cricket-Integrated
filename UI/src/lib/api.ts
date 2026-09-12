@@ -68,6 +68,16 @@ async function rawRequest(path: string, options: RequestInit = {}, retry = true)
     const nextToken = await refreshAccessToken();
     if (nextToken) return rawRequest(path, options, false);
     setToken(null);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("cached_user");
+      sessionStorage.setItem(
+        "authPromptMsg",
+        JSON.stringify("Your session has expired. Please log in again to continue.")
+      );
+      if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/register")) {
+        window.location.href = "/login";
+      }
+    }
   }
 
   const text = await response.text();

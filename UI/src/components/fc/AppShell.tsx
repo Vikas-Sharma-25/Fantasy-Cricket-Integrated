@@ -24,6 +24,7 @@ import {
   ShieldAlert,
   Megaphone,
   AlertCircle,
+  LogOut,
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
@@ -32,7 +33,8 @@ import {
   getCachedUser,
   getUserNotifications,
   markNotificationAsRead,
-  markAllNotificationsAsRead
+  markAllNotificationsAsRead,
+  logoutUser,
 } from "@/lib/api-services";
 import { getSocket } from "@/lib/socket";
 import type { User } from "@/lib/api-types";
@@ -99,6 +101,7 @@ const sidebarNavItems = [
   { to: "/contests", label: "Mega Contests", icon: Trophy },
   { to: "/my-matches", label: "My Matches", icon: ClipboardList },
   { to: "/create-team", label: "My Teams", icon: Users },
+  { to: "/my-teams", label: "My Teams", icon: Users },
   { to: "/leaderboard", label: "Leaderboard", icon: Award },
   { to: "/profile", label: "Wallet & Profile", icon: UserIcon },
 ];
@@ -307,6 +310,18 @@ export function AppShell({
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } catch {}
+    setUser(null);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("user-profile-updated", { detail: null }));
+      sessionStorage.setItem("fc_auth_prompt_msg", "You have been logged out successfully.");
+      window.location.href = "/login";
+    }
+  };
+
   return (
     <AuthGuard>
       <div className="flex min-h-screen bg-background text-foreground">
@@ -429,7 +444,10 @@ export function AppShell({
           )}
 
           {/* User Fantasy Account & Wallet Status (Informational only - NO ADS) */}
-          <div className="mt-4 rounded-xl border border-sidebar-border bg-sidebar-accent/50 p-3 space-y-2.5">
+          <Link
+            to="/wallet"
+            className="mt-4 block rounded-xl border border-sidebar-border bg-sidebar-accent/50 p-3 space-y-2.5 transition-colors hover:border-primary/40 hover:bg-sidebar-accent/70 cursor-pointer"
+          >
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1.5">
                 <Wallet className="h-3.5 w-3.5 text-primary" /> Wallet Cash
@@ -445,38 +463,48 @@ export function AppShell({
               </span>
               <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold">100% Fair Play</span>
             </div>
-          </div>
+          </Link>
         </nav>
 
         {/* Bottom User Profile Section */}
-        <div className="p-4 border-t border-sidebar-border space-y-3 bg-sidebar-accent/30">
+        <div className="p-4 border-t border-sidebar-border space-y-2.5 bg-sidebar-accent/30">
           {user ? (
-            <Link
-              to="/profile"
-              className="flex items-center justify-between rounded-xl border border-sidebar-border bg-surface p-2.5 transition-colors hover:border-primary/50 shadow-sm"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                {user.profileImage ? (
-                  <img
-                    src={user.profileImage}
-                    alt={user.name}
-                    className="h-9 w-9 shrink-0 rounded-full border border-primary/40 object-cover"
-                  />
-                ) : (
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary font-display text-xs font-bold text-primary-foreground">
-                    {user.name ? user.name.slice(0, 2).toUpperCase() : "U"}
-                  </span>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-bold text-foreground">
-                    {user.name}
-                  </p>
-                  <p className="truncate text-[10px] text-muted-foreground">
-                    {user.email}
-                  </p>
+            <div className="space-y-2">
+              <Link
+                to="/profile"
+                className="flex items-center justify-between rounded-xl border border-sidebar-border bg-surface p-2.5 transition-colors hover:border-primary/50 shadow-sm"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {user.profileImage ? (
+                    <img
+                      src={user.profileImage}
+                      alt={user.name}
+                      className="h-9 w-9 shrink-0 rounded-full border border-primary/40 object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary font-display text-xs font-bold text-primary-foreground">
+                      {user.name ? user.name.slice(0, 2).toUpperCase() : "U"}
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-bold text-foreground">
+                      {user.name}
+                    </p>
+                    <p className="truncate text-[10px] text-muted-foreground">
+                      {user.email}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </Link>
+              </Link>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 py-1.5 text-xs font-bold text-destructive hover:bg-destructive/20 transition-colors cursor-pointer"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span>Logout</span>
+              </button>
+            </div>
           ) : (
             <Link
               to="/login"
@@ -493,7 +521,7 @@ export function AppShell({
       {/* ------------------------------------------------------------- */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Top Navbar */}
-                <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur text-foreground shadow-xs">
+        <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur text-foreground shadow-xs">
           <div className="mx-auto flex h-16 items-center justify-between gap-4 px-4 sm:px-6 w-full">
             {/* Mobile Logo */}
             <div className="md:hidden">
@@ -524,6 +552,7 @@ export function AppShell({
 
               <Link
                 to="/profile"
+                to="/wallet"
                 className="flex items-center gap-2 rounded-full border border-border bg-surface-2/80 px-3 py-1.5 text-xs font-semibold hover:border-primary/50 transition-colors cursor-pointer text-foreground shadow-sm"
               >
                 <Wallet className="h-3.5 w-3.5 text-primary" />
