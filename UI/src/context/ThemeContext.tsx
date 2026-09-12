@@ -112,15 +112,15 @@ export function ThemeToggle({
       className={cn(
         "relative inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-bold transition-all cursor-pointer shadow-sm",
         isLight
-          ? "bg-amber-500/15 border-amber-500/40 text-amber-600 hover:bg-amber-500/25 hover:border-amber-500"
+          ? "bg-amber-100/80 border-amber-300 text-amber-800 hover:bg-amber-200/80 hover:border-amber-400"
           : "bg-surface-2/80 border-border text-foreground hover:bg-surface hover:border-primary/50",
         className
       )}
     >
       {isLight ? (
         <>
-          <Sun className="h-3.5 w-3.5 text-amber-500 animate-spin-slow" />
-          {showLabel && <span>Dim Light</span>}
+          <Sun className="h-3.5 w-3.5 text-amber-600 animate-spin-slow" />
+          {showLabel && <span>Light</span>}
         </>
       ) : (
         <>

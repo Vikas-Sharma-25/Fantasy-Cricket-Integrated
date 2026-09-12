@@ -347,15 +347,15 @@ export function AppShell({
         {/* ------------------------------------------------------------- */}
         {/* LEFT VERTICAL SIDEBAR (Desktop & Tablet)                       */}
         {/* ------------------------------------------------------------- */}
-        <aside className="hidden md:flex w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shrink-0 sticky top-0 h-screen z-30 shadow-xl">
+        <aside className="hidden md:flex w-64 flex-col border-r border-[#1e293b] bg-[#0b0f19] text-slate-100 shrink-0 sticky top-0 h-screen z-30 shadow-xl select-none">
           {/* Top Logo */}
-          <div className="flex h-16 items-center px-6 border-b border-sidebar-border">
-            <Logo size="sm" />
+          <div className="flex h-16 items-center px-6 border-b border-[#1e293b]">
+            <Logo size="sm" forceDark />
           </div>
 
           {/* Vertical Navigation Links */}
           <nav className="flex-1 space-y-1 p-3.5 overflow-y-auto scrollbar-none">
-            <p className="px-3 py-1 text-[10px] font-black text-muted-foreground uppercase tracking-wider">
+            <p className="px-3 py-1 text-[10px] font-black text-slate-400 uppercase tracking-wider">
               Fantasy Arena
             </p>
             {sidebarNavItems.map(({ to, label, icon: Icon, badge }) => {
@@ -382,190 +382,190 @@ export function AppShell({
                       removeFlow(FLOW_KEYS.selectedMatchId);
                     }
                   }}
-                className={cn(
-                  "flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all",
-                  active
-                    ? "bg-primary/15 text-primary border border-primary/30 shadow-sm"
-                    : "text-muted-foreground hover:bg-surface-2 hover:text-foreground",
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon className={cn("h-4.5 w-4.5", active ? "text-primary" : "text-muted-foreground")} />
-                  <span>{label}</span>
-                </div>
-                {badge && (
-                  <span className="flex items-center gap-1 rounded-full bg-destructive/15 border border-destructive/30 px-2 py-0.5 text-[9px] font-black text-destructive animate-pulse">
-                    <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
-                    {badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-
-          <div className="pt-3">
-            <p className="px-3 py-1 text-[10px] font-black text-muted-foreground uppercase tracking-wider">
-              Cricket Desk
-            </p>
-            {cricketNavItems.map(({ to, label, icon: Icon, action, isLive }) => {
-              const active = pathname === to && (!action || (typeof window !== "undefined" && window.location.search.includes("tab=upcoming")));
-              return (
-                <Link
-                  key={label}
-                  to={to}
-                  onClick={() => {
-                    if (action === "upcoming") {
-                      removeFlow(FLOW_KEYS.selectedMatchId);
-                      removeFlow("RETURN_TO_MATCH_CENTER");
-                      if (typeof window !== "undefined") {
-                        window.dispatchEvent(new CustomEvent("switch-matches-tab", { detail: "UPCOMING" }));
-                        window.dispatchEvent(new CustomEvent("reset-home-match"));
-                      }
-                    }
-                  }}
                   className={cn(
-                    "flex items-center justify-between rounded-xl px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer",
+                    "flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all",
                     active
-                      ? "bg-primary/15 text-primary border border-primary/30 font-bold"
-                      : "text-muted-foreground hover:bg-surface-2 hover:text-foreground"
+                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-sm font-bold"
+                      : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-100",
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <Icon className={cn("h-4 w-4", isLive ? "text-red-500 animate-pulse" : active ? "text-primary" : "text-muted-foreground")} />
+                    <Icon className={cn("h-4.5 w-4.5", active ? "text-emerald-400" : "text-slate-400")} />
                     <span>{label}</span>
                   </div>
-                  {isLive && (
-                    <span className="flex items-center gap-1 rounded-full bg-red-500/15 border border-red-500/30 px-1.5 py-0.2 text-[9px] font-black text-red-400 animate-pulse">
-                      <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-                      LIVE
+                  {badge && (
+                    <span className="flex items-center gap-1 rounded-full bg-red-500/20 border border-red-500/30 px-2 py-0.5 text-[9px] font-black text-red-400 animate-pulse">
+                      <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+                      {badge}
                     </span>
                   )}
                 </Link>
               );
             })}
-          </div>
 
-          {/* Admin / Management Navigation for authorized roles */}
-          {(user?.role === "admin" || user?.role === "super_admin") && (
             <div className="pt-3">
-              <p className="px-3 py-1 text-[10px] font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                <ShieldAlert className="h-3 w-3" /> Management
+              <p className="px-3 py-1 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                Cricket Desk
               </p>
-              <Link
-                to="/admin"
-                className={cn(
-                  "flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-bold transition-all border",
-                  pathname === "/admin"
-                    ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm"
-                    : "text-emerald-400/90 hover:bg-emerald-500/10 border-emerald-500/20 hover:border-emerald-500/40"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <LayoutDashboard className="h-4.5 w-4.5 text-emerald-400" />
-                  <span>Admin Portal</span>
-                </div>
-                <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-300">
-                  {user?.role === "super_admin" ? "Super" : "Admin"}
-                </span>
-              </Link>
+              {cricketNavItems.map(({ to, label, icon: Icon, action, isLive }) => {
+                const active = pathname === to && (!action || (typeof window !== "undefined" && window.location.search.includes("tab=upcoming")));
+                return (
+                  <Link
+                    key={label}
+                    to={to}
+                    onClick={() => {
+                      if (action === "upcoming") {
+                        removeFlow(FLOW_KEYS.selectedMatchId);
+                        removeFlow("RETURN_TO_MATCH_CENTER");
+                        if (typeof window !== "undefined") {
+                          window.dispatchEvent(new CustomEvent("switch-matches-tab", { detail: "UPCOMING" }));
+                          window.dispatchEvent(new CustomEvent("reset-home-match"));
+                        }
+                      }
+                    }}
+                    className={cn(
+                      "flex items-center justify-between rounded-xl px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer",
+                      active
+                        ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold"
+                        : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-100"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className={cn("h-4 w-4", isLive ? "text-red-500 animate-pulse" : active ? "text-emerald-400" : "text-slate-400")} />
+                      <span>{label}</span>
+                    </div>
+                    {isLive && (
+                      <span className="flex items-center gap-1 rounded-full bg-red-500/15 border border-red-500/30 px-1.5 py-0.2 text-[9px] font-black text-red-400 animate-pulse">
+                        <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                        LIVE
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
-          )}
 
-        </nav>
-
-        {/* Bottom User Profile Section */}
-        <div className="p-4 border-t border-sidebar-border space-y-2.5 bg-sidebar-accent/30">
-          {user ? (
-            <div className="space-y-2">
-              <Link
-                to="/profile"
-                className="flex items-center justify-between rounded-xl border border-sidebar-border bg-surface p-2.5 transition-colors hover:border-primary/50 shadow-sm"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  {user.profileImage ? (
-                    <img
-                      src={user.profileImage}
-                      alt={user.name}
-                      className="h-9 w-9 shrink-0 rounded-full border border-primary/40 object-cover"
-                    />
-                  ) : (
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary font-display text-xs font-bold text-primary-foreground">
-                      {user.name ? user.name.slice(0, 2).toUpperCase() : "U"}
-                    </span>
+            {/* Admin / Management Navigation for authorized roles */}
+            {(user?.role === "admin" || user?.role === "super_admin") && (
+              <div className="pt-3">
+                <p className="px-3 py-1 text-[10px] font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldAlert className="h-3 w-3" /> Management
+                </p>
+                <Link
+                  to="/admin"
+                  className={cn(
+                    "flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-bold transition-all border",
+                    pathname === "/admin"
+                      ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm"
+                      : "text-emerald-400/90 hover:bg-emerald-500/10 border-emerald-500/20 hover:border-emerald-500/40"
                   )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-bold text-foreground">
-                      {user.name}
-                    </p>
-                    <p className="truncate text-[10px] text-muted-foreground">
-                      {user.email}
-                    </p>
+                >
+                  <div className="flex items-center gap-3">
+                    <LayoutDashboard className="h-4.5 w-4.5 text-emerald-400" />
+                    <span>Admin Portal</span>
                   </div>
-                </div>
-              </Link>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 py-1.5 text-xs font-bold text-destructive hover:bg-destructive/20 transition-colors cursor-pointer"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                <span>Logout</span>
-              </button>
-            </div>
-          ) : (
-            <Link
-              to="/login"
-              className="flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/10 py-2.5 text-xs font-bold text-primary hover:bg-primary/20 transition-colors"
-            >
-              Login to Account
-            </Link>
-          )}
-        </div>
-      </aside>
-
-      {/* ------------------------------------------------------------- */}
-      {/* RIGHT MAIN CONTENT AREA                                        */}
-      {/* ------------------------------------------------------------- */}
-      <div className="flex flex-1 flex-col min-w-0">
-        {/* Top Navbar */}
-        <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur text-foreground shadow-xs">
-          <div className="mx-auto flex h-16 items-center justify-between gap-4 px-4 sm:px-6 w-full">
-            {/* Mobile Logo */}
-            <div className="md:hidden">
-              <Logo size="sm" />
-            </div>
-
-            {/* Desktop Brand Badge with Logo Icon */}
-            <div className="hidden md:flex items-center gap-3">
-              <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-primary/30 bg-surface-2/80 backdrop-blur shadow-sm">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-tr from-primary to-emerald-400 text-primary-foreground shadow-sm">
-                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
-                    <circle cx="16.5" cy="3.6" r="2.1" />
-                    <path d="M14.9 7.2 9.7 9.9l-2.9 4.4-2 5.9 2.1.7 1.8-5.3 2.6-2.2.6 4.3-2.6 5.4 2 1 3.1-6.3-.4-5.1 3.1-1.5 2.9 3.1 1.5-1.4-3.6-4.1z" />
-                    <rect x="2.5" y="1.5" width="1.6" height="9" rx="0.8" transform="rotate(-24 3.3 6)" />
-                  </svg>
-                </div>
-                <span className="font-display text-xs font-black tracking-wider text-foreground">
-                  FANTASY CRICKET <span className="text-primary">ARENA</span>
-                </span>
-                <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
+                  <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-300">
+                    {user?.role === "super_admin" ? "Super" : "Admin"}
+                  </span>
+                </Link>
               </div>
-            </div>
+            )}
 
-            {/* Right Quick Actions (Theme Toggle, Wallet & Interactive Notifications) */}
-            <div className="flex items-center gap-2.5 sm:gap-3 relative" ref={notificationRef}>
-              {/* Theme Toggle (Dim Light / Dark) */}
-              <ThemeToggle />
+          </nav>
 
+          {/* Bottom User Profile Section */}
+          <div className="p-4 border-t border-[#1e293b] space-y-2.5 bg-[#070a12]/70">
+            {user ? (
+              <div className="space-y-2">
+                <Link
+                  to="/profile"
+                  className="flex items-center justify-between rounded-xl border border-[#1e293b] bg-[#0f172a] p-2.5 transition-colors hover:border-emerald-500/50 shadow-sm"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {user.profileImage ? (
+                      <img
+                        src={user.profileImage}
+                        alt={user.name}
+                        className="h-9 w-9 shrink-0 rounded-full border border-emerald-500/40 object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 font-display text-xs font-bold text-white">
+                        {user.name ? user.name.slice(0, 2).toUpperCase() : "U"}
+                      </span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-bold text-slate-100">
+                        {user.name}
+                      </p>
+                      <p className="truncate text-[10px] text-slate-400">
+                        {user.email}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 py-1.5 text-xs font-bold text-red-400 hover:bg-red-500/20 transition-colors cursor-pointer"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span>Logout</span>
+                </button>
+              </div>
+            ) : (
               <Link
-                to="/wallet"
-                className="flex items-center gap-2 rounded-full border border-border bg-surface-2/80 px-3 py-1.5 text-xs font-semibold hover:border-primary/50 transition-colors cursor-pointer text-foreground shadow-sm"
+                to="/login"
+                className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 py-2.5 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition-colors"
               >
-                <Wallet className="h-3.5 w-3.5 text-primary" />
-                <span className="font-mono font-bold text-primary">
-                  ₹{walletTotal.toLocaleString("en-IN")}
-                </span>
+                Login to Account
               </Link>
+            )}
+          </div>
+        </aside>
+
+        {/* ------------------------------------------------------------- */}
+        {/* RIGHT MAIN CONTENT AREA                                        */}
+        {/* ------------------------------------------------------------- */}
+        <div className="flex flex-1 flex-col min-w-0">
+          {/* Top Navbar */}
+          <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur text-foreground shadow-xs">
+            <div className="mx-auto flex h-16 items-center justify-between gap-4 px-4 sm:px-6 w-full">
+              {/* Mobile Logo */}
+              <div className="md:hidden">
+                <Logo size="sm" />
+              </div>
+
+              {/* Desktop Brand Badge with Logo Icon */}
+              <div className="hidden md:flex items-center gap-3">
+                <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-border bg-surface-2/80 backdrop-blur shadow-xs">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white shadow-xs">
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
+                      <circle cx="16.5" cy="3.6" r="2.1" />
+                      <path d="M14.9 7.2 9.7 9.9l-2.9 4.4-2 5.9 2.1.7 1.8-5.3 2.6-2.2.6 4.3-2.6 5.4 2 1 3.1-6.3-.4-5.1 3.1-1.5 2.9 3.1 1.5-1.4-3.6-4.1z" />
+                      <rect x="2.5" y="1.5" width="1.6" height="9" rx="0.8" transform="rotate(-24 3.3 6)" />
+                    </svg>
+                  </div>
+                  <span className="font-display text-xs font-black tracking-wider text-foreground">
+                    FANTASY CRICKET <span className="text-emerald-600 dark:text-primary">ARENA</span>
+                  </span>
+                  <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                </div>
+              </div>
+
+              {/* Right Quick Actions (Theme Toggle, Wallet & Interactive Notifications) */}
+              <div className="flex items-center gap-2.5 sm:gap-3 relative" ref={notificationRef}>
+                {/* Theme Toggle (Dim Light / Dark) */}
+                <ThemeToggle />
+
+                <Link
+                  to="/wallet"
+                  className="flex items-center gap-2 rounded-full border border-border bg-surface-2/80 px-3 py-1.5 text-xs font-semibold hover:border-emerald-500/50 transition-colors cursor-pointer text-foreground shadow-xs"
+                >
+                  <Wallet className="h-3.5 w-3.5 text-emerald-600 dark:text-primary" />
+                  <span className="font-mono font-bold text-emerald-700 dark:text-primary">
+                    ₹{walletTotal.toLocaleString("en-IN")}
+                  </span>
+                </Link>
 
               {/* Notification Bell Button */}
               <button
