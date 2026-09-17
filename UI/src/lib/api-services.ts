@@ -36,7 +36,16 @@ export async function verifyLoginOtp(otp: string, otpToken?: string) {
   const result = await api.post<{ accessToken: string; user: User }>("/auth/verify-otp", { otp, otpToken });
   if (typeof window !== "undefined") {
     localStorage.setItem("accessToken", result.accessToken);
-    if (result.user) setCachedUser(result.user);
+    if (result.user) {
+      setCachedUser(result.user);
+      // Seed fc_user_wallet from real DB values so each user sees their own balance
+      const deposited = typeof result.user.depositedBalance === "number" ? result.user.depositedBalance : 0;
+      const winnings = typeof result.user.winningsBalance === "number" ? result.user.winningsBalance : 0;
+      const bonus = typeof result.user.bonusBalance === "number" ? result.user.bonusBalance : 0;
+      localStorage.setItem("fc_user_wallet", JSON.stringify({ deposited, winnings, bonus }));
+      // Clear stale txs from previous user
+      localStorage.removeItem("fc_wallet_txs");
+    }
   }
   return result;
 }
@@ -51,6 +60,10 @@ export async function logoutUser() {
   } finally {
     if (typeof window !== "undefined") {
       localStorage.removeItem("accessToken");
+      // Clear all user-specific data so next login starts fresh
+      localStorage.removeItem("fc_user_wallet");
+      localStorage.removeItem("fc_wallet_txs");
+      localStorage.removeItem("fc_read_notification_ids");
       setCachedUser(null);
     }
   }

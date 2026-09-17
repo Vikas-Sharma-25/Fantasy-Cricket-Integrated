@@ -41,7 +41,6 @@ import type { User } from "@/lib/api-types";
 import { removeFlow, FLOW_KEYS } from "@/lib/flow";
 import { ThemeToggle } from "@/context/ThemeContext";
 import { AuthGuard } from "@/components/fc/AuthGuard";
-import { MarqueeTicker } from "./MarqueeTicker";
 
 interface NotificationItem {
   id: string;
@@ -137,7 +136,18 @@ export function AppShell({
         return (parsed.deposited || 0) + (parsed.winnings || 0) + (parsed.bonus || 0);
       }
     } catch {}
-    return 700;
+    // Fallback: compute from cached user's real DB values
+    try {
+      const raw = localStorage.getItem("cached_user");
+      if (raw) {
+        const u = JSON.parse(raw);
+        const dep = typeof u.depositedBalance === "number" ? u.depositedBalance : 0;
+        const win = typeof u.winningsBalance === "number" ? u.winningsBalance : 0;
+        const bon = typeof u.bonusBalance === "number" ? u.bonusBalance : 0;
+        return dep + win + bon;
+      }
+    } catch {}
+    return 0;
   });
 
   // Synchronize user profile, role & wallet balance across all tabs & events
@@ -553,17 +563,19 @@ export function AppShell({
                 </div>
               </div>
 
-              {/* Right Quick Actions (Theme Toggle, Wallet & Interactive Notifications) */}
-              <div className="flex items-center gap-2.5 sm:gap-3 relative" ref={notificationRef}>
-                {/* Theme Toggle (Dim Light / Dark) */}
+              {/* Right Quick Actions (Theme Toggle, Wallet & Notifications) */}
+              <div className="flex items-center gap-2 sm:gap-2.5 relative" ref={notificationRef}>
+
+                {/* Theme Toggle */}
                 <ThemeToggle />
 
+                {/* Wallet Balance Button */}
                 <Link
                   to="/wallet"
-                  className="flex items-center gap-2 rounded-full border border-border bg-surface-2/80 px-3 py-1.5 text-xs font-semibold hover:border-emerald-500/50 transition-colors cursor-pointer text-foreground shadow-xs"
+                  className="group flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-bold hover:border-emerald-400/70 hover:bg-emerald-500/20 transition-all cursor-pointer shadow-sm shadow-emerald-500/10"
                 >
-                  <Wallet className="h-3.5 w-3.5 text-emerald-600 dark:text-primary" />
-                  <span className="font-mono font-bold text-emerald-700 dark:text-primary">
+                  <Wallet className="h-3.5 w-3.5 text-emerald-500" />
+                  <span className="font-mono font-black text-emerald-500 tracking-tight">
                     ₹{walletTotal.toLocaleString("en-IN")}
                   </span>
                 </Link>
@@ -579,13 +591,13 @@ export function AppShell({
                 className={cn(
                   "relative flex h-9 w-9 items-center justify-center rounded-full border transition-all cursor-pointer",
                   showNotifications
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-surface hover:border-primary/40 text-muted-foreground hover:text-foreground"
+                    ? "border-primary bg-primary/15 text-primary shadow-sm shadow-primary/20"
+                    : "border-border bg-surface hover:border-emerald-500/40 hover:bg-emerald-500/5 text-muted-foreground hover:text-emerald-500"
                 )}
               >
-                <Bell className={cn("h-4 w-4", unreadCount > 0 ? "text-emerald-400 animate-pulse" : "text-muted-foreground")} />
+                <Bell className={cn("h-4 w-4", unreadCount > 0 ? "text-emerald-500" : "")} />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-black text-white shadow-md animate-bounce">
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-black text-white shadow-md ring-2 ring-surface">
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
@@ -606,25 +618,6 @@ export function AppShell({
                   <span>{user.role === "super_admin" ? "Super Admin" : "Admin"}</span>
                 </Link>
               )}
-
-              {/* Profile Avatar Quick Button */}
-              <Link
-                to="/profile"
-                aria-label="User Profile"
-                className="flex items-center rounded-full ring-2 ring-primary/30 hover:ring-primary/70 transition-all overflow-hidden"
-              >
-                {user?.profileImage ? (
-                  <img
-                    src={user.profileImage}
-                    alt={user.name || "User"}
-                    className="h-8 w-8 rounded-full object-cover border border-primary/40"
-                  />
-                ) : (
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary border border-primary/40">
-                    {user?.name ? user.name.slice(0, 2).toUpperCase() : "U"}
-                  </span>
-                )}
-              </Link>
 
               {/* Notifications Dropdown Popover */}
               {showNotifications && (
@@ -718,8 +711,7 @@ export function AppShell({
           </div>
         </header>
 
-        {/* Global Live Sports & Contests Marquee Ticker */}
-        <MarqueeTicker compact />
+
 
         {/* Floating Real-Time Toast Alert for Admin Announcements */}
         {toastAlert && (

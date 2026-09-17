@@ -48,10 +48,10 @@ const userSchema = new Schema<IUser>(
     isVerified: { type: Boolean, default: false },
     profileImage: { type: String },
     preferences: { type: Schema.Types.Mixed, default: {} },
-    walletBalance: { type: Number, default: 3000 },
-    depositedBalance: { type: Number, default: 1500 },
-    winningsBalance: { type: Number, default: 1000 },
-    bonusBalance: { type: Number, default: 500 }
+    walletBalance: { type: Number, default: 0 },
+    depositedBalance: { type: Number, default: 0 },
+    winningsBalance: { type: Number, default: 0 },
+    bonusBalance: { type: Number, default: 0 }
   },
   { timestamps: true }
 );

@@ -211,10 +211,10 @@ export function sanitizeUser(user: IUser) {
     isVerified: user.isVerified,
     profileImage: user.profileImage || "",
     preferences: user.preferences,
-    walletBalance: typeof user.walletBalance === "number" ? user.walletBalance : 3000,
-    depositedBalance: typeof user.depositedBalance === "number" ? user.depositedBalance : 1500,
-    winningsBalance: typeof user.winningsBalance === "number" ? user.winningsBalance : 1000,
-    bonusBalance: typeof user.bonusBalance === "number" ? user.bonusBalance : 500
+    walletBalance: typeof user.walletBalance === "number" ? user.walletBalance : 0,
+    depositedBalance: typeof user.depositedBalance === "number" ? user.depositedBalance : 0,
+    winningsBalance: typeof user.winningsBalance === "number" ? user.winningsBalance : 0,
+    bonusBalance: typeof user.bonusBalance === "number" ? user.bonusBalance : 0
   };
 }
 
