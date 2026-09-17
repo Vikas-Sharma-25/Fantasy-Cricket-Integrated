@@ -9,6 +9,12 @@ import { seedLiveAndWorldMatches, startLiveMatchSimulator } from "./services/mat
 async function bootstrap() {
   await connectDB();
 
+  // Ensure legacy TTL index on otps is dropped so OTP records are never auto-deleted
+  try {
+    const { Otp } = await import("./models/Otp");
+    await Otp.collection.dropIndex("expiresAt_1");
+  } catch {}
+
   const app = createApp();
   const httpServer = http.createServer(app);
 

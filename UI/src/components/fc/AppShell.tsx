@@ -744,10 +744,6 @@ export function AppShell({
           </div>
         </header>
 
-        {/* Global Live Sports & Contests Marquee Ticker */}
-        <MarqueeTicker compact />
-
-
         {/* Floating Real-Time Toast Alert for Admin Announcements */}
         {toastAlert && (
           <div className="fixed top-20 right-4 sm:right-6 z-50 flex items-start gap-3 rounded-2xl border border-emerald-500/50 bg-surface/98 p-4 shadow-2xl backdrop-blur-md max-w-sm sm:max-w-md animate-in slide-in-from-top-4 fade-in duration-300">
