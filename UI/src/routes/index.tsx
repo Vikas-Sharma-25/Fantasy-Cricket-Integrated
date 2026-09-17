@@ -416,11 +416,8 @@ function Landing() {
           </div>
         </section>
 
-        {/* ==================== MARQUEE TICKER (WHAT WE OFFER) ==================== */}
-        <MarqueeTicker className="mb-8 rounded-2xl shadow-sm" />
-
         {/* ==================== 3. STATS STRIP ==================== */}
-        <section className="mb-10 grid grid-cols-2 gap-y-4 rounded-2xl border border-border/80 bg-surface/80 px-6 py-4.5 backdrop-blur sm:grid-cols-3 lg:grid-cols-5 shadow-md">
+        <section className="mb-6 grid grid-cols-2 gap-y-4 rounded-2xl border border-border/80 bg-surface/80 px-6 py-4.5 backdrop-blur sm:grid-cols-3 lg:grid-cols-5 shadow-md">
           {stats.map(({ icon: Icon, value, label }, i) => (
             <div key={label} className="relative flex items-center justify-center gap-3 px-3">
               {i > 0 && <span className="absolute -left-0.5 hidden h-10 w-px bg-border/60 lg:block" />}
@@ -434,6 +431,9 @@ function Landing() {
             </div>
           ))}
         </section>
+
+        {/* ==================== MARQUEE TICKER (BELOW STATS STRIP - PIC 3) ==================== */}
+        <MarqueeTicker className="mb-10 rounded-2xl shadow-sm" />
 
         {/* ==================== 4. FEATURED MATCHES ==================== */}
         <section id="matches" className="mb-10 scroll-mt-24">
@@ -460,7 +460,7 @@ function Landing() {
             </Button>
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-5 overflow-hidden rounded-2xl border border-border/80 bg-border/80 shadow-md grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px">
             {(realMatches.length > 0 ? realMatches.slice(0, 3) : featuredMatches.slice(0, 3)).map((m: any, idx: number) => {
               const isReal = !!m.series;
               const title = isReal ? m.series : m.tournament;
@@ -478,7 +478,7 @@ function Landing() {
                   onClick={() =>
                     handleAction(`🏏 To enjoy live match score and fantasy betting for ${team1Code} vs ${team2Code}, please register and login yourself!`)
                   }
-                  className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border/80 bg-surface/90 p-5 transition-all duration-300 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/15"
+                  className="group relative flex flex-col justify-between cursor-pointer bg-surface p-5 transition-colors hover:bg-surface-2/60"
                 >
                   {/* Header tag & countdown */}
                   <div className="flex items-center justify-between border-b border-border/60 pb-3">

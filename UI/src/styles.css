@@ -205,7 +205,7 @@
 .animate-marquee-infinite {
   display: flex;
   width: max-content;
-  animation: marquee-scroll 42s linear infinite;
+  animation: marquee-scroll 28s linear infinite;
   will-change: transform;
 }
 
