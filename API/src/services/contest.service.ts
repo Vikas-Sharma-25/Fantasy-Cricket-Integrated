@@ -7,6 +7,7 @@ import { FantasyTeam } from "../models/FantasyTeam";
 import { Match } from "../models/Match";
 import { Leaderboard } from "../models/Leaderboard";
 import { User } from "../models/User";
+import { recordContestEntryTransaction } from "./wallet.service";
 
 import { ApiError } from "../utils/apiError";
 
@@ -605,7 +606,7 @@ export async function joinContest(
    */
   const rules = (contest.rules || {}) as any;
   const entryFee = typeof contest.entryFee === "number" && contest.entryFee > 0 ? contest.entryFee : (typeof rules.entryFee === "number" ? rules.entryFee : 0);
-  let userWalletBalance = 3000;
+  let userWalletBalance = 0;
 
   if (entryFee > 0) {
     const user = await User.findById(userId);
@@ -613,7 +614,7 @@ export async function joinContest(
       throw ApiError.notFound("User not found");
     }
 
-    const currentBalance = typeof user.walletBalance === "number" ? user.walletBalance : 3000;
+    const currentBalance = typeof user.walletBalance === "number" ? user.walletBalance : 0;
     const usableBalance = Math.max(0, currentBalance - 100);
     if (usableBalance < entryFee) {
       throw ApiError.badRequest(
@@ -638,15 +639,14 @@ export async function joinContest(
     }
 
     if (rem > 0) {
-      const dep = typeof user.depositedBalance === "number" ? user.depositedBalance : 100;
+      const dep = typeof user.depositedBalance === "number" ? user.depositedBalance : 0;
       const excessDep = Math.max(0, dep - 100);
       const deductDep = Math.min(excessDep, rem);
       user.depositedBalance = 100 + (excessDep - deductDep);
-    } else {
-      user.depositedBalance = Math.max(100, typeof user.depositedBalance === "number" ? user.depositedBalance : 100);
     }
 
     await user.save();
+    await recordContestEntryTransaction(user._id, contest.name, entryFee, user.walletBalance);
   }
 
   /*

@@ -3,8 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/fc/AppShell";
 import { Card } from "@/components/fc/bits";
 import { Button } from "@/components/ui/button";
-import { getCachedUser } from "@/lib/api-services";
-import type { User } from "@/lib/api-types";
+import { getCachedUser, getWalletApi, addCashApi, withdrawApi } from "@/lib/api-services";
+import type { User, WalletTransaction } from "@/lib/api-types";
 import {
   Wallet,
   ArrowUpRight,
@@ -18,6 +18,7 @@ import {
   X,
   Building,
   Award,
+  Loader2,
 } from "lucide-react";
 
 export const Route = createFileRoute("/wallet")({
@@ -30,16 +31,6 @@ export const Route = createFileRoute("/wallet")({
   component: WalletPage,
 });
 
-interface Transaction {
-  id: string;
-  type: "DEPOSIT" | "WITHDRAWAL" | "CONTEST_WINNING" | "ENTRY_FEE" | "BONUS";
-  title: string;
-  amount: number;
-  date: string;
-  status: "SUCCESS" | "PENDING" | "FAILED";
-  refId: string;
-}
-
 function WalletPage() {
   const [user, setUser] = useState<User | null>(() => getCachedUser());
   const [wallet, setWallet] = useState(() => {
@@ -47,116 +38,73 @@ function WalletPage() {
       const saved = localStorage.getItem("fc_user_wallet");
       if (saved) {
         const parsed = JSON.parse(saved);
-        const initWinnings = typeof parsed.winnings === "number" ? parsed.winnings : 0;
-        const currentBonus = typeof parsed.bonus === "number" ? parsed.bonus : 100;
         return {
-          deposited: 100,
-          winnings: initWinnings,
-          bonus: currentBonus,
+          deposited: typeof parsed.deposited === "number" ? parsed.deposited : 0,
+          winnings: typeof parsed.winnings === "number" ? parsed.winnings : 0,
+          bonus: typeof parsed.bonus === "number" ? parsed.bonus : 0,
         };
       }
     } catch {}
+    const cached = getCachedUser();
     return {
-      deposited: 100,
-      winnings: 0,
-      bonus: 100,
+      deposited: typeof cached?.depositedBalance === "number" ? cached.depositedBalance : 0,
+      winnings: typeof cached?.winningsBalance === "number" ? cached.winningsBalance : 0,
+      bonus: typeof cached?.bonusBalance === "number" ? cached.bonusBalance : 0,
     };
   });
 
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+  const [transactions, setTransactions] = useState<WalletTransaction[]>(() => {
     try {
       const saved = localStorage.getItem("fc_wallet_txs");
       if (saved) return JSON.parse(saved);
     } catch {}
-    return [
-      {
-        id: "tx-101",
-        type: "CONTEST_WINNING",
-        title: "Mega Contest Rank #3 Prize",
-        amount: 500,
-        date: "Today, 02:45 PM",
-        status: "SUCCESS",
-        refId: "WIN-98231",
-      },
-      {
-        id: "tx-102",
-        type: "DEPOSIT",
-        title: "Added Cash via UPI (GPay)",
-        amount: 200,
-        date: "Yesterday, 07:15 PM",
-        status: "SUCCESS",
-        refId: "UPI-48190",
-      },
-      {
-        id: "tx-103",
-        type: "ENTRY_FEE",
-        title: "Entry Fee: IND vs AUS Mega Contest",
-        amount: -49,
-        date: "Sep 10, 06:30 PM",
-        status: "SUCCESS",
-        refId: "FEE-77123",
-      },
-      {
-        id: "tx-104",
-        type: "BONUS",
-        title: "Sign-Up Cash Bonus Credited",
-        amount: 100,
-        date: "Sep 08, 11:00 AM",
-        status: "SUCCESS",
-        refId: "BNS-00192",
-      },
-    ];
+    return [];
   });
 
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [addAmountInput, setAddAmountInput] = useState<string>("200");
   const [withdrawAmount, setWithdrawAmount] = useState<string>("");
   const [feedback, setFeedback] = useState<string | null>(null);
 
-  // Sync wallet to localStorage
+  // Fetch real persistent wallet data from backend for this user
   useEffect(() => {
-    try {
-      localStorage.setItem("fc_user_wallet", JSON.stringify(wallet));
-    } catch {}
-  }, [wallet]);
+    let isMounted = true;
+    getWalletApi()
+      .then((data) => {
+        if (!isMounted || !data) return;
+        setWallet({
+          deposited: data.depositedBalance,
+          winnings: data.winningsBalance,
+          bonus: data.bonusBalance,
+        });
+        setTransactions(data.transactions || []);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
 
-  useEffect(() => {
-    try {
-      localStorage.setItem("fc_wallet_txs", JSON.stringify(transactions));
-    } catch {}
-  }, [transactions]);
-
-  // Listen to external wallet updates
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      function handleWalletSync() {
-        try {
-          const saved = localStorage.getItem("fc_user_wallet");
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            const syncWinnings = typeof parsed.winnings === "number" ? parsed.winnings : 0;
-            const currentBonus = typeof parsed.bonus === "number" ? parsed.bonus : 100;
-            setWallet({
-              deposited: 100,
-              winnings: syncWinnings,
-              bonus: currentBonus,
-            });
-          }
-        } catch {}
-        try {
-          const txs = localStorage.getItem("fc_wallet_txs");
-          if (txs) setTransactions(JSON.parse(txs));
-        } catch {}
+    const handleWalletUpdated = (e: any) => {
+      if (e.detail) {
+        setWallet({
+          deposited: e.detail.depositedBalance ?? 0,
+          winnings: e.detail.winningsBalance ?? 0,
+          bonus: e.detail.bonusBalance ?? 0,
+        });
+        if (Array.isArray(e.detail.transactions)) {
+          setTransactions(e.detail.transactions);
+        }
       }
+    };
 
-      window.addEventListener("storage", handleWalletSync);
-      window.addEventListener("user-profile-updated", handleWalletSync);
-      return () => {
-        window.removeEventListener("storage", handleWalletSync);
-        window.removeEventListener("user-profile-updated", handleWalletSync);
-      };
-    }
+    window.addEventListener("wallet-updated", handleWalletUpdated);
+    return () => {
+      isMounted = false;
+      window.removeEventListener("wallet-updated", handleWalletUpdated);
+    };
   }, []);
 
   const totalBalance = wallet.deposited + wallet.winnings + (wallet.bonus || 0);
@@ -164,40 +112,28 @@ function WalletPage() {
   const maxAllowedWithdrawal = Math.max(0, totalBalance - 100);
   const numWithdraw = parseFloat(withdrawAmount) || 0;
 
-  function handleAddCash(amount: number) {
+  async function handleAddCash(amount: number) {
     if (amount < 10 || amount > 50000) return;
-    const currentBonus = typeof wallet.bonus === "number" ? wallet.bonus : 100;
-    const updatedWallet = { deposited: 100, winnings: wallet.winnings + amount, bonus: currentBonus };
-    setWallet(updatedWallet);
+    setActionLoading(true);
     try {
-      localStorage.setItem("fc_user_wallet", JSON.stringify(updatedWallet));
-      const total = 100 + updatedWallet.winnings + currentBonus;
-      const cached = getCachedUser();
-      if (cached) {
-        cached.walletBalance = total;
-        cached.winningsBalance = updatedWallet.winnings;
-        cached.depositedBalance = 100;
-        localStorage.setItem("user", JSON.stringify(cached));
-      }
-      window.dispatchEvent(new CustomEvent("user-profile-updated", { detail: cached }));
-      window.dispatchEvent(new Event("storage"));
-    } catch {}
-    const newTx: Transaction = {
-      id: `tx-${Date.now()}`,
-      type: "DEPOSIT",
-      title: `Added Cash via Instant UPI`,
-      amount: amount,
-      date: "Just now",
-      status: "SUCCESS",
-      refId: `UPI-${Math.floor(10000 + Math.random() * 90000)}`,
-    };
-    setTransactions((prev) => [newTx, ...prev]);
-    setShowAddModal(false);
-    setFeedback(`₹${amount.toLocaleString("en-IN")} added successfully to your wallet!`);
-    setTimeout(() => setFeedback(null), 4000);
+      const updated = await addCashApi(amount);
+      setWallet({
+        deposited: updated.depositedBalance,
+        winnings: updated.winningsBalance,
+        bonus: updated.bonusBalance,
+      });
+      setTransactions(updated.transactions || []);
+      setShowAddModal(false);
+      setFeedback(`₹${amount.toLocaleString("en-IN")} added successfully to your wallet!`);
+      setTimeout(() => setFeedback(null), 4000);
+    } catch (err: any) {
+      alert(err?.message || "Failed to add cash. Please try again.");
+    } finally {
+      setActionLoading(false);
+    }
   }
 
-  function handleWithdraw() {
+  async function handleWithdraw() {
     const amt = parseFloat(withdrawAmount);
     if (isNaN(amt) || amt <= 0) return;
     if (amt > maxAllowedWithdrawal) {
@@ -205,44 +141,24 @@ function WalletPage() {
       return;
     }
 
-    let rem = amt;
-    const deductWinnings = Math.min(wallet.winnings, rem);
-    const newWinnings = wallet.winnings - deductWinnings;
-    rem -= deductWinnings;
-
-    const currentBonus = typeof wallet.bonus === "number" ? wallet.bonus : 100;
-    const deductBonus = Math.min(currentBonus, rem);
-    const newBonus = Math.max(0, currentBonus - deductBonus);
-
-    const updatedWallet = { deposited: 100, winnings: newWinnings, bonus: newBonus };
-    setWallet(updatedWallet);
+    setActionLoading(true);
     try {
-      localStorage.setItem("fc_user_wallet", JSON.stringify(updatedWallet));
-      const total = 100 + newWinnings + newBonus;
-      const cached = getCachedUser();
-      if (cached) {
-        cached.walletBalance = total;
-        cached.winningsBalance = newWinnings;
-        cached.depositedBalance = 100;
-        localStorage.setItem("user", JSON.stringify(cached));
-      }
-      window.dispatchEvent(new CustomEvent("user-profile-updated", { detail: cached }));
-      window.dispatchEvent(new Event("storage"));
-    } catch {}
-    const newTx: Transaction = {
-      id: `tx-${Date.now()}`,
-      type: "WITHDRAWAL",
-      title: `Instant Bank/UPI Withdrawal`,
-      amount: -amt,
-      date: "Just now",
-      status: "SUCCESS",
-      refId: `WDL-${Math.floor(10000 + Math.random() * 90000)}`,
-    };
-    setTransactions((prev) => [newTx, ...prev]);
-    setShowWithdrawModal(false);
-    setWithdrawAmount("");
-    setFeedback(`Withdrawal of ₹${amt.toLocaleString("en-IN")} sent instantly! ₹100 remained deposited for maintenance.`);
-    setTimeout(() => setFeedback(null), 4000);
+      const updated = await withdrawApi(amt);
+      setWallet({
+        deposited: updated.depositedBalance,
+        winnings: updated.winningsBalance,
+        bonus: updated.bonusBalance,
+      });
+      setTransactions(updated.transactions || []);
+      setShowWithdrawModal(false);
+      setWithdrawAmount("");
+      setFeedback(`Withdrawal of ₹${amt.toLocaleString("en-IN")} sent successfully! ₹100 remained deposited for maintenance.`);
+      setTimeout(() => setFeedback(null), 4000);
+    } catch (err: any) {
+      alert(err?.message || "Failed to process withdrawal. Please try again.");
+    } finally {
+      setActionLoading(false);
+    }
   }
 
   return (
@@ -346,7 +262,7 @@ function WalletPage() {
                 <Sparkles className="h-4 w-4 text-amber-500 dark:text-amber-400" />
               </div>
               <p className="font-mono text-xl sm:text-2xl font-black text-foreground">
-                ₹100.00
+                ₹{(wallet.bonus || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
               <p className="text-[10px] text-muted-foreground font-medium">Discount applied on entry fees</p>
             </div>
@@ -386,45 +302,61 @@ function WalletPage() {
             <h3 className="text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
               <Clock className="h-4 w-4 text-emerald-600 dark:text-primary" /> Passbook / Recent Transactions
             </h3>
-            <span className="text-xs text-muted-foreground font-mono font-medium">{transactions.length} entries</span>
+            <span className="text-xs text-muted-foreground font-mono font-medium">
+              {transactions.length} {transactions.length === 1 ? "entry" : "entries"}
+            </span>
           </div>
 
-          <div className="divide-y divide-border/60">
-            {transactions.map((tx) => (
-              <div key={tx.id} className="py-3 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`flex h-9 w-9 items-center justify-center rounded-xl text-xs font-bold ${
-                      tx.amount > 0
-                        ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"
-                        : "bg-surface-2 text-muted-foreground border border-border"
-                    }`}
-                  >
-                    {tx.amount > 0 ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+          {loading ? (
+            <div className="py-8 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" /> Loading passbook...
+            </div>
+          ) : transactions.length === 0 ? (
+            <div className="py-8 text-center space-y-2">
+              <Clock className="h-8 w-8 text-muted-foreground/40 mx-auto" />
+              <p className="text-xs font-bold text-muted-foreground">No transactions yet</p>
+              <p className="text-[11px] text-muted-foreground">
+                Add cash or join matches to view your deposit and contest history here.
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/60">
+              {transactions.map((tx) => (
+                <div key={tx.id || tx.refId} className="py-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`flex h-9 w-9 items-center justify-center rounded-xl text-xs font-bold ${
+                        tx.amount > 0
+                          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"
+                          : "bg-surface-2 text-muted-foreground border border-border"
+                      }`}
+                    >
+                      {tx.amount > 0 ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">{tx.title}</p>
+                      <p className="text-[10px] text-muted-foreground font-mono font-medium">
+                        {tx.date} • Ref: {tx.refId}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-bold text-foreground">{tx.title}</p>
-                    <p className="text-[10px] text-muted-foreground font-mono font-medium">
-                      {tx.date} • Ref: {tx.refId}
+
+                  <div className="text-right">
+                    <p
+                      className={`font-mono text-sm font-bold ${
+                        tx.amount > 0 ? "text-emerald-700 dark:text-emerald-400" : "text-foreground"
+                      }`}
+                    >
+                      {tx.amount > 0 ? `+₹${tx.amount}` : `-₹${Math.abs(tx.amount)}`}
                     </p>
+                    <span className="text-[9.5px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                      {tx.status}
+                    </span>
                   </div>
                 </div>
-
-                <div className="text-right">
-                  <p
-                    className={`font-mono text-sm font-bold ${
-                      tx.amount > 0 ? "text-emerald-700 dark:text-emerald-400" : "text-foreground"
-                    }`}
-                  >
-                    {tx.amount > 0 ? `+₹${tx.amount}` : `-₹${Math.abs(tx.amount)}`}
-                  </p>
-                  <span className="text-[9.5px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                    {tx.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Card>
 
         {/* Add Cash Modal */}
@@ -499,10 +431,11 @@ function WalletPage() {
                   type="button"
                   variant="hero"
                   size="xl"
-                  disabled={numAdd < 10 || numAdd > 50000}
+                  disabled={actionLoading || numAdd < 10 || numAdd > 50000}
                   onClick={() => handleAddCash(numAdd)}
-                  className="w-full font-bold shadow-lg shadow-primary/20 cursor-pointer"
+                  className="w-full font-bold shadow-lg shadow-primary/20 cursor-pointer flex items-center justify-center gap-2"
                 >
+                  {actionLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                   PROCEED TO PAY ₹{numAdd > 0 ? numAdd.toLocaleString("en-IN") : 0}
                 </Button>
               </div>
@@ -589,7 +522,6 @@ function WalletPage() {
                 </p>
               </div>
 
-
               <div className="space-y-2">
                 <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                   <Zap className="h-3.5 w-3.5 text-emerald-500" /> Funds transferred directly to your verified UPI / Bank
@@ -599,13 +531,15 @@ function WalletPage() {
                   variant="hero"
                   size="xl"
                   disabled={
+                    actionLoading ||
                     maxAllowedWithdrawal <= 0 ||
                     numWithdraw <= 0 ||
                     numWithdraw > maxAllowedWithdrawal
                   }
                   onClick={handleWithdraw}
-                  className="w-full font-bold shadow-lg shadow-primary/20 cursor-pointer"
+                  className="w-full font-bold shadow-lg shadow-primary/20 cursor-pointer flex items-center justify-center gap-2"
                 >
+                  {actionLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                   WITHDRAW INSTANTLY
                 </Button>
               </div>

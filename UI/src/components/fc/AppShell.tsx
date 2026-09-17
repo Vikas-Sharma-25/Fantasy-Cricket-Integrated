@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import {
   getMe,
   getCachedUser,
+  getWalletApi,
   getUserNotifications,
   markNotificationAsRead,
   markAllNotificationsAsRead,
@@ -135,20 +136,25 @@ export function AppShell({
         const parsed = JSON.parse(saved);
         return (parsed.deposited || 0) + (parsed.winnings || 0) + (parsed.bonus || 0);
       }
-    } catch {}
-    // Fallback: compute from cached user's real DB values
-    try {
       const raw = localStorage.getItem("cached_user");
       if (raw) {
         const u = JSON.parse(raw);
-        const dep = typeof u.depositedBalance === "number" ? u.depositedBalance : 0;
-        const win = typeof u.winningsBalance === "number" ? u.winningsBalance : 0;
-        const bon = typeof u.bonusBalance === "number" ? u.bonusBalance : 0;
-        return dep + win + bon;
+        return typeof u.walletBalance === "number" ? u.walletBalance : 0;
       }
     } catch {}
     return 0;
   });
+
+  // Always fetch fresh real wallet balance from backend for the authenticated user
+  useEffect(() => {
+    getWalletApi()
+      .then((data) => {
+        if (data && typeof data.walletBalance === "number") {
+          setWalletTotal(data.walletBalance);
+        }
+      })
+      .catch(() => {});
+  }, [pathname]);
 
   // Synchronize user profile, role & wallet balance across all tabs & events
   useEffect(() => {
@@ -158,6 +164,11 @@ export function AppShell({
         if (saved) {
           const parsed = JSON.parse(saved);
           setWalletTotal((parsed.deposited || 0) + (parsed.winnings || 0) + (parsed.bonus || 0));
+          return;
+        }
+        const cached = getCachedUser();
+        if (cached && typeof cached.walletBalance === "number") {
+          setWalletTotal(cached.walletBalance);
         }
       } catch {}
     };
@@ -165,34 +176,37 @@ export function AppShell({
     const handleProfileUpdated = (e: any) => {
       if (e.detail) {
         setUser(e.detail);
+        if (typeof e.detail.walletBalance === "number") {
+          setWalletTotal(e.detail.walletBalance);
+        }
       } else {
         setUser(getCachedUser());
       }
       syncWallet();
     };
+
+    const handleWalletUpdated = (e: any) => {
+      if (e.detail && typeof e.detail.walletBalance === "number") {
+        setWalletTotal(e.detail.walletBalance);
+      } else {
+        syncWallet();
+      }
+    };
+
     const handleStorage = () => {
       setUser(getCachedUser());
       syncWallet();
     };
+
     window.addEventListener("user-profile-updated", handleProfileUpdated);
+    window.addEventListener("wallet-updated", handleWalletUpdated);
     window.addEventListener("storage", handleStorage);
     return () => {
       window.removeEventListener("user-profile-updated", handleProfileUpdated);
+      window.removeEventListener("wallet-updated", handleWalletUpdated);
       window.removeEventListener("storage", handleStorage);
     };
   }, []);
-
-  // Also sync user and wallet when route pathname changes
-  useEffect(() => {
-    setUser(getCachedUser());
-    try {
-      const saved = localStorage.getItem("fc_user_wallet");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setWalletTotal((parsed.deposited || 0) + (parsed.winnings || 0) + (parsed.bonus || 0));
-      }
-    } catch {}
-  }, [pathname]);
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -580,28 +594,28 @@ export function AppShell({
                   </span>
                 </Link>
 
-              {/* Notification Bell Button */}
-              <button
-                type="button"
-                aria-label="Notifications"
-                onClick={() => {
-                  setShowNotifications((prev) => !prev);
-                  if (toastAlert) setToastAlert(null);
-                }}
-                className={cn(
-                  "relative flex h-9 w-9 items-center justify-center rounded-full border transition-all cursor-pointer",
-                  showNotifications
-                    ? "border-primary bg-primary/15 text-primary shadow-sm shadow-primary/20"
-                    : "border-border bg-surface hover:border-emerald-500/40 hover:bg-emerald-500/5 text-muted-foreground hover:text-emerald-500"
-                )}
-              >
-                <Bell className={cn("h-4 w-4", unreadCount > 0 ? "text-emerald-500" : "")} />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-black text-white shadow-md ring-2 ring-surface">
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </span>
-                )}
-              </button>
+                {/* Notification Bell Button */}
+                <button
+                  type="button"
+                  aria-label="Notifications"
+                  onClick={() => {
+                    setShowNotifications((prev) => !prev);
+                    if (toastAlert) setToastAlert(null);
+                  }}
+                  className={cn(
+                    "relative flex h-9 w-9 items-center justify-center rounded-full border transition-all cursor-pointer",
+                    showNotifications
+                      ? "border-primary bg-primary/15 text-primary shadow-sm shadow-primary/20"
+                      : "border-border bg-surface hover:border-emerald-500/40 hover:bg-emerald-500/5 text-muted-foreground hover:text-emerald-500"
+                  )}
+                >
+                  <Bell className={cn("h-4 w-4", unreadCount > 0 ? "text-emerald-500" : "")} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-black text-white shadow-md ring-2 ring-surface">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </button>
 
               {/* Admin / Super Admin Console Quick Nav Button */}
               {(user?.role === "admin" || user?.role === "super_admin") && (
@@ -618,6 +632,25 @@ export function AppShell({
                   <span>{user.role === "super_admin" ? "Super Admin" : "Admin"}</span>
                 </Link>
               )}
+
+              {/* Profile Avatar Quick Button */}
+              <Link
+                to="/profile"
+                aria-label="User Profile"
+                className="flex items-center rounded-full ring-2 ring-primary/30 hover:ring-primary/70 transition-all overflow-hidden"
+              >
+                {user?.profileImage ? (
+                  <img
+                    src={user.profileImage}
+                    alt={user.name || "User"}
+                    className="h-8 w-8 rounded-full object-cover border border-primary/40"
+                  />
+                ) : (
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary border border-primary/40">
+                    {user?.name ? user.name.slice(0, 2).toUpperCase() : "U"}
+                  </span>
+                )}
+              </Link>
 
               {/* Notifications Dropdown Popover */}
               {showNotifications && (
@@ -711,6 +744,8 @@ export function AppShell({
           </div>
         </header>
 
+        {/* Global Live Sports & Contests Marquee Ticker */}
+        <MarqueeTicker compact />
 
 
         {/* Floating Real-Time Toast Alert for Admin Announcements */}

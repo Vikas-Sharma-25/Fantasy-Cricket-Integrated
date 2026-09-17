@@ -15,3 +15,4 @@ export * from "./Notification";
 export * from "./SupportTicket";
 export * from "./AuditLog";
 export * from "./SystemConfig";
+export * from "./WalletTransaction";

@@ -51,6 +51,6 @@ const otpSchema = new Schema<IOtp>(
 );
 
 otpSchema.index({ userId: 1, purpose: 1, isUsed: 1 });
-otpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+otpSchema.index({ destination: 1, purpose: 1, createdAt: -1 });
 
-export const Otp = model<IOtp>("Otp", otpSchema);
+export const Otp = model<IOtp>("Otp", otpSchema, "otps");

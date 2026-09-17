@@ -7,6 +7,30 @@ export interface User {
   status?: string;
   isVerified?: boolean;
   profileImage?: string;
+  walletBalance?: number;
+  depositedBalance?: number;
+  winningsBalance?: number;
+  bonusBalance?: number;
+}
+
+export interface WalletTransaction {
+  id: string;
+  type: "DEPOSIT" | "WITHDRAWAL" | "CONTEST_ENTRY" | "CONTEST_WINNING" | "BONUS";
+  title: string;
+  amount: number;
+  balanceAfter: number;
+  date: string;
+  status: "SUCCESS" | "PENDING" | "FAILED";
+  refId: string;
+  createdAt?: string;
+}
+
+export interface WalletData {
+  walletBalance: number;
+  depositedBalance: number;
+  winningsBalance: number;
+  bonusBalance: number;
+  transactions: WalletTransaction[];
 }
 
 export interface Match {

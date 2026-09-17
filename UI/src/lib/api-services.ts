@@ -1,5 +1,5 @@
 import { api } from "./api";
-import type { Contest, FantasyTeam, Match, MatchPlayer, User } from "./api-types";
+import type { Contest, FantasyTeam, Match, MatchPlayer, User, WalletData } from "./api-types";
 
 export async function registerUser(input: { name: string; email: string; mobile?: string; password: string }) {
   return api.post<{ email: string; otpToken?: string }>("/auth/register", input);
@@ -246,6 +246,84 @@ export async function markAllNotificationsAsRead(): Promise<void> {
   try {
     await api.patch("/users/me/notifications/read-all");
   } catch {}
+}
+
+export async function getWalletApi(): Promise<WalletData> {
+  const data = await api.get<WalletData>("/wallet");
+  if (typeof window !== "undefined" && data) {
+    const cached = getCachedUser();
+    if (cached) {
+      cached.walletBalance = data.walletBalance;
+      cached.depositedBalance = data.depositedBalance;
+      cached.winningsBalance = data.winningsBalance;
+      cached.bonusBalance = data.bonusBalance;
+      setCachedUser(cached);
+    }
+    localStorage.setItem(
+      "fc_user_wallet",
+      JSON.stringify({
+        deposited: data.depositedBalance,
+        winnings: data.winningsBalance,
+        bonus: data.bonusBalance
+      })
+    );
+    localStorage.setItem("fc_wallet_txs", JSON.stringify(data.transactions));
+  }
+  return data;
+}
+
+export async function addCashApi(amount: number, paymentMethod?: string): Promise<WalletData> {
+  const data = await api.post<WalletData>("/wallet/add-cash", { amount, paymentMethod });
+  if (typeof window !== "undefined" && data) {
+    const cached = getCachedUser();
+    if (cached) {
+      cached.walletBalance = data.walletBalance;
+      cached.depositedBalance = data.depositedBalance;
+      cached.winningsBalance = data.winningsBalance;
+      cached.bonusBalance = data.bonusBalance;
+      setCachedUser(cached);
+      window.dispatchEvent(new CustomEvent("user-profile-updated", { detail: cached }));
+    }
+    localStorage.setItem(
+      "fc_user_wallet",
+      JSON.stringify({
+        deposited: data.depositedBalance,
+        winnings: data.winningsBalance,
+        bonus: data.bonusBalance
+      })
+    );
+    localStorage.setItem("fc_wallet_txs", JSON.stringify(data.transactions));
+    window.dispatchEvent(new CustomEvent("wallet-updated", { detail: data }));
+    window.dispatchEvent(new Event("storage"));
+  }
+  return data;
+}
+
+export async function withdrawApi(amount: number, withdrawTo?: string): Promise<WalletData> {
+  const data = await api.post<WalletData>("/wallet/withdraw", { amount, withdrawTo });
+  if (typeof window !== "undefined" && data) {
+    const cached = getCachedUser();
+    if (cached) {
+      cached.walletBalance = data.walletBalance;
+      cached.depositedBalance = data.depositedBalance;
+      cached.winningsBalance = data.winningsBalance;
+      cached.bonusBalance = data.bonusBalance;
+      setCachedUser(cached);
+      window.dispatchEvent(new CustomEvent("user-profile-updated", { detail: cached }));
+    }
+    localStorage.setItem(
+      "fc_user_wallet",
+      JSON.stringify({
+        deposited: data.depositedBalance,
+        winnings: data.winningsBalance,
+        bonus: data.bonusBalance
+      })
+    );
+    localStorage.setItem("fc_wallet_txs", JSON.stringify(data.transactions));
+    window.dispatchEvent(new CustomEvent("wallet-updated", { detail: data }));
+    window.dispatchEvent(new Event("storage"));
+  }
+  return data;
 }
 
 export function getLocalWalletBalance(): number {
