@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Trophy, Zap, Radio, Gift, Award, Flame, ShieldCheck } from "lucide-react";
+import { Trophy, Zap, Gift, Users, ShieldCheck, Target, Activity, Flame, Headphones, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MarqueeTickerProps {
@@ -9,67 +9,84 @@ interface MarqueeTickerProps {
 
 const TICKER_ITEMS = [
   {
-    id: "t-1",
+    id: "f-1",
     icon: Trophy,
     iconColor: "text-amber-500 dark:text-amber-400",
-    badge: "MEGA POOL",
+    badge: "FANTASY CRICKET",
     badgeBg: "bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-300",
-    text: "₹10+ CRORE Daily Prize Pool • IND vs AUS Mega Contest Filling Fast!",
-    highlight: "₹10+ CRORE",
+    text: "Build Your Dream 11: Select Batsmen, Bowlers, WK & All-Rounders and Score with Real Cricket",
   },
   {
-    id: "t-2",
-    icon: Zap,
-    iconColor: "text-emerald-600 dark:text-emerald-400",
-    badge: "INSTANT UPI",
-    badgeBg: "bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-300",
-    text: "Rahul S. (Delhi) withdrew ₹1,25,000 via UPI in 38 seconds!",
-    highlight: "₹1,25,000 in 38s",
-  },
-  {
-    id: "t-3",
-    icon: Radio,
-    iconColor: "text-red-500 animate-pulse",
-    badge: "LIVE MATCH",
-    badgeBg: "bg-red-500/15 border-red-500/30 text-red-700 dark:text-red-300",
-    text: "EZONE 708 vs SZONE 176/5 (56 ov) • Duleep Trophy Final Day 3",
-    highlight: "LIVE SCORES",
-  },
-  {
-    id: "t-4",
-    icon: Award,
-    iconColor: "text-yellow-500 dark:text-yellow-400",
-    badge: "TOP WINNER",
-    badgeBg: "bg-yellow-500/15 border-yellow-500/30 text-yellow-800 dark:text-yellow-300",
-    text: "Priya Patel from Pune won ₹10,50,000 in Grand Mega T20 League!",
-    highlight: "₹10,50,000 Winner",
-  },
-  {
-    id: "t-5",
-    icon: Gift,
-    iconColor: "text-emerald-600 dark:text-emerald-400",
-    badge: "BONUS ALERT",
-    badgeBg: "bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-300",
-    text: "Register now & get ₹100 Welcome Bonus Cash directly in your wallet!",
-    highlight: "₹100 Bonus",
-  },
-  {
-    id: "t-6",
+    id: "f-2",
     icon: Flame,
     iconColor: "text-orange-500 dark:text-orange-400",
-    badge: "HOT CONTEST",
+    badge: "WIN REAL CASH",
     badgeBg: "bg-orange-500/15 border-orange-500/30 text-orange-700 dark:text-orange-300",
-    text: "CSK vs MI Mega Clash • ₹50 Lakhs First Prize • 85% Spots Reserved!",
-    highlight: "₹50 Lakhs First Prize",
+    text: "Turn Your Cricket Knowledge Into Real Money with ₹10+ Crore Guaranteed Daily Prize Pools",
   },
   {
-    id: "t-7",
-    icon: ShieldCheck,
+    id: "f-3",
+    icon: Zap,
+    iconColor: "text-emerald-600 dark:text-emerald-400",
+    badge: "INSTANT WITHDRAWAL",
+    badgeBg: "bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-300",
+    text: "Instant 60-Second Cashouts Straight to Your Bank Account or UPI (GPay, PhonePe, Paytm)",
+  },
+  {
+    id: "f-4",
+    icon: Gift,
+    iconColor: "text-emerald-600 dark:text-emerald-400",
+    badge: "100% BONUS",
+    badgeBg: "bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-300",
+    text: "Register Now & Claim 100% Cash Bonus on Your First Deposit Directly in Your Wallet",
+  },
+  {
+    id: "f-5",
+    icon: Target,
+    iconColor: "text-purple-500 dark:text-purple-400",
+    badge: "CONTEST FORMATS",
+    badgeBg: "bg-purple-500/15 border-purple-500/30 text-purple-700 dark:text-purple-300",
+    text: "Play Mega Jackpots, Head-to-Head (1v1 Duels), Winner-Takes-All & 100% Free Practice Leagues",
+  },
+  {
+    id: "f-6",
+    icon: Users,
     iconColor: "text-blue-500 dark:text-blue-400",
-    badge: "100% LEGAL",
+    badge: "PRIVATE CONTESTS",
     badgeBg: "bg-blue-500/15 border-blue-500/30 text-blue-700 dark:text-blue-300",
-    text: "Recognized Skill Game by Supreme Court of India • 256-Bit Bank Security",
-    highlight: "Certified Fair Play",
+    text: "Create Custom Private Leagues, Set Custom Entry Fees, and Challenge Friends & Family",
+  },
+  {
+    id: "f-7",
+    icon: Activity,
+    iconColor: "text-red-500 dark:text-red-400",
+    badge: "LIVE SCORING",
+    badgeBg: "bg-red-500/15 border-red-500/30 text-red-700 dark:text-red-300",
+    text: "Ultra-Fast Ball-by-Ball Fantasy Points & Real-Time Dynamic Leaderboard Tracking with Zero Latency",
+  },
+  {
+    id: "f-8",
+    icon: ShieldCheck,
+    iconColor: "text-emerald-600 dark:text-emerald-400",
+    badge: "100% LEGAL & SECURE",
+    badgeBg: "bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-300",
+    text: "Officially Recognized Game of Skill by Supreme Court • 256-Bit Bank-Grade SSL Encryption",
+  },
+  {
+    id: "f-9",
+    icon: CheckCircle2,
+    iconColor: "text-cyan-500 dark:text-cyan-400",
+    badge: "FAIR PLAY GUARANTEE",
+    badgeBg: "bg-cyan-500/15 border-cyan-500/30 text-cyan-700 dark:text-cyan-300",
+    text: "Zero-Bot Policy & Advanced Anti-Fraud Algorithms Ensure Transparent and Fair Competition",
+  },
+  {
+    id: "f-10",
+    icon: Headphones,
+    iconColor: "text-amber-500 dark:text-amber-400",
+    badge: "24/7 SUPPORT",
+    badgeBg: "bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-300",
+    text: "Round-the-Clock VIP Customer Assistance via Live In-App Chat and WhatsApp Helpline",
   },
 ];
 
@@ -89,7 +106,7 @@ export const MarqueeTicker = memo(function MarqueeTicker({
           : "h-11 bg-surface/95 backdrop-blur shadow-sm",
         className
       )}
-      aria-label="Live Cricket & Contest Updates Ticker"
+      aria-label="Platform Highlights & Features Ticker"
     >
       {/* Left Static Indicator Badge */}
       <div
@@ -104,8 +121,8 @@ export const MarqueeTicker = memo(function MarqueeTicker({
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
         </span>
-        <span className="hidden sm:inline">LIVE UPDATES</span>
-        <span className="sm:hidden">LIVE</span>
+        <span className="hidden sm:inline">WHAT WE OFFER</span>
+        <span className="sm:hidden">OFFERS</span>
       </div>
 
       {/* Left Edge Gradient Blur */}
