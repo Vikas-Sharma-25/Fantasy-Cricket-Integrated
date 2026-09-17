@@ -121,27 +121,27 @@
 :root[data-theme="light"],
 .theme-light {
   color-scheme: light;
-  /* Eye-Comfort, Anti-Glare Soft Slate Dashboard Palette */
-  --background: oklch(0.955 0.008 250); /* #f1f5f9 soft soothing cool slate - zero blinding glare */
-  --foreground: oklch(0.15 0.025 260); /* #0f172a deep crisp slate-900 text - maximum clarity */
-  --surface: oklch(1 0 0); /* #ffffff pure crisp card surface with distinct boundaries */
-  --surface-2: oklch(0.935 0.01 250); /* #e2e8f0 subtle slate-200 container backgrounds & inputs */
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0.025 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0.025 260);
-  --secondary: oklch(0.935 0.01 250);
-  --secondary-foreground: oklch(0.15 0.025 260);
-  --muted: oklch(0.935 0.01 250);
-  --muted-foreground: oklch(0.44 0.025 260); /* #475569 rich, high-legibility slate-600 secondary text */
-  --border: oklch(0.86 0.015 250); /* #cbd5e1 distinct, crisp slate-300 card & divider borders */
-  --input: oklch(0.86 0.015 250);
-  --ring: oklch(0.48 0.165 148);
-  --primary: oklch(0.48 0.165 148); /* Rich royal tournament emerald green (>5.5:1 contrast) */
-  --primary-foreground: oklch(1 0 0);
-  --primary-dim: oklch(0.40 0.15 148);
-  --accent: oklch(0.68 0.18 75);
-  --accent-foreground: oklch(0.15 0.025 260);
+  /* Eye-Comfort, Luxury Warm Cream Aesthetic Palette (#FFF8E1 from Pic 2) */
+  --background: #FFF8E1; /* #FFF8E1 warm cream from Pic 2 */
+  --foreground: #0f172a; /* deep crisp slate-900 text - maximum clarity */
+  --surface: #ffffff; /* pure crisp elevated card surface */
+  --surface-2: #faedd0; /* warm cream container backgrounds & inputs */
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --secondary: #faedd0;
+  --secondary-foreground: #0f172a;
+  --muted: #faedd0;
+  --muted-foreground: #64748b; /* rich, high-legibility slate-600 secondary text */
+  --border: #ebd9b3; /* distinct warm beige-cream card & divider borders */
+  --input: #ebd9b3;
+  --ring: #047857;
+  --primary: #047857; /* Rich royal tournament emerald green (>5.5:1 contrast) */
+  --primary-foreground: #ffffff;
+  --primary-dim: #065f46;
+  --accent: #d97706;
+  --accent-foreground: #0f172a;
 
   /* Sidebar Tokens (Permanent dark navigation identity) */
   --sidebar: oklch(0.19 0.019 265);
@@ -153,43 +153,64 @@
   --sidebar-border: oklch(0.3 0.02 264);
   --sidebar-ring: oklch(0.63 0.176 148);
 
-  --gradient-primary: linear-gradient(135deg, oklch(0.42 0.15 148), oklch(0.48 0.165 148));
+  --gradient-primary: linear-gradient(135deg, #059669, #047857);
   --gradient-hero: linear-gradient(
     90deg,
-    oklch(0.955 0.008 250) 0%,
-    oklch(0.955 0.008 250 / 0.95) 35%,
-    oklch(0.955 0.008 250 / 0.35) 100%
+    #fff8e1 0%,
+    rgba(255, 248, 225, 0.95) 35%,
+    rgba(255, 248, 225, 0.35) 100%
   );
   --gradient-video-overlay: linear-gradient(
     90deg,
-    oklch(0.955 0.008 250) 0%,
-    oklch(0.955 0.008 250 / 0.96) 28%,
-    oklch(0.955 0.008 250 / 0.65) 60%,
-    oklch(0.955 0.008 250 / 0.25) 100%
+    #fff8e1 0%,
+    rgba(255, 248, 225, 0.96) 28%,
+    rgba(255, 248, 225, 0.65) 60%,
+    rgba(255, 248, 225, 0.25) 100%
   );
-  --shadow-card: 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04), 0 0 0 1px rgba(15, 23, 42, 0.03);
-  --shadow-glow: 0 0 0 1px oklch(0.48 0.165 148 / 0.25), 0 8px 24px -6px oklch(0.48 0.165 148 / 0.3);
+  --shadow-card: 0 4px 16px -2px rgba(120, 53, 15, 0.06), 0 2px 6px -1px rgba(120, 53, 15, 0.04), 0 0 0 1px rgba(235, 217, 179, 0.6);
+  --shadow-glow: 0 0 0 1px rgba(4, 120, 87, 0.25), 0 8px 24px -6px rgba(4, 120, 87, 0.3);
 }
 
 /* Eye-comfort readability enhancements in light theme */
 .theme-light .text-emerald-400:not(aside *, .dark *) {
-  color: oklch(0.48 0.165 148) !important;
+  color: #047857 !important;
 }
 
 .theme-light .text-emerald-300:not(aside *, .dark *) {
-  color: oklch(0.42 0.15 148) !important;
+  color: #065f46 !important;
 }
 
 .theme-light .bg-emerald-950\/20:not(aside *, .dark *) {
-  background-color: oklch(0.96 0.03 150) !important;
+  background-color: #ecfdf5 !important;
 }
 
 .theme-light .bg-emerald-950\/40:not(aside *, .dark *) {
-  background-color: oklch(0.93 0.045 150) !important;
+  background-color: #d1fae5 !important;
 }
 
 .theme-light .border-emerald-500\/40:not(aside *, .dark *) {
-  border-color: oklch(0.72 0.12 148) !important;
+  border-color: #6ee7b7 !important;
+}
+
+/* Continuous Seamless Marquee Keyframes & Utilities */
+@keyframes marquee-scroll {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee-infinite {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll 42s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee-infinite:hover {
+  animation-play-state: paused;
 }
 
 .dark {

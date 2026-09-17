@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/accordion";
 import { setFlow, FLOW_KEYS } from "@/lib/flow";
 import { ThemeToggle } from "@/context/ThemeContext";
+import { MarqueeTicker } from "@/components/fc/MarqueeTicker";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -406,8 +407,11 @@ function Landing() {
           </div>
         </header>
 
+        {/* ==================== MARQUEE TICKER ==================== */}
+        <MarqueeTicker className="my-4 rounded-2xl shadow-xs" />
+
         {/* ==================== 2. HERO SECTION ==================== */}
-        <section className="max-w-2xl pb-16 pt-10 lg:pt-16">
+        <section className="max-w-2xl pb-8 pt-5 lg:pt-8">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-2">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
@@ -418,7 +422,7 @@ function Landing() {
             </span>
           </div>
 
-          <h1 className="mt-7 font-display text-5xl font-black uppercase leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
+          <h1 className="mt-6 font-display text-5xl font-black uppercase leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
             Play Cricket.
             <br />
             <span className="text-primary">Predict Winners.</span>
@@ -426,12 +430,12 @@ function Landing() {
             Win Real Cash.
           </h1>
 
-          <p className="mt-6 max-w-lg text-lg leading-relaxed text-foreground/80 sm:text-xl font-medium">
+          <p className="mt-5 max-w-lg text-lg leading-relaxed text-foreground/80 sm:text-xl font-medium">
             Build your dream XI, join high-stakes mega contests, and withdraw real cash winnings instantly into your bank
             account.
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-4">
+          <div className="mt-7 flex flex-wrap items-center gap-x-8 gap-y-3">
             {trust.map(({ icon: Icon, title, sub }, i) => (
               <div key={title} className="flex items-center gap-3">
                 {i > 0 && <span className="-ml-4 mr-1 hidden h-8 w-px bg-border sm:block" />}
@@ -446,7 +450,7 @@ function Landing() {
             ))}
           </div>
 
-          <div className="mt-9 flex flex-wrap gap-4">
+          <div className="mt-8 flex flex-wrap gap-3.5">
             <Button
               type="button"
               onClick={() =>
@@ -481,7 +485,7 @@ function Landing() {
         </section>
 
         {/* ==================== 3. STATS STRIP ==================== */}
-        <section className="mb-20 grid grid-cols-2 gap-y-6 rounded-2xl border border-border/80 bg-surface/80 px-6 py-6 backdrop-blur sm:grid-cols-3 lg:grid-cols-5 shadow-xl">
+        <section className="mb-10 grid grid-cols-2 gap-y-4 rounded-2xl border border-border/80 bg-surface/80 px-6 py-4.5 backdrop-blur sm:grid-cols-3 lg:grid-cols-5 shadow-md">
           {stats.map(({ icon: Icon, value, label }, i) => (
             <div key={label} className="relative flex items-center justify-center gap-3 px-3">
               {i > 0 && <span className="absolute -left-0.5 hidden h-10 w-px bg-border/60 lg:block" />}
@@ -497,16 +501,16 @@ function Landing() {
         </section>
 
         {/* ==================== 4. FEATURED MATCHES ==================== */}
-        <section id="matches" className="mb-24 scroll-mt-24">
+        <section id="matches" className="mb-10 scroll-mt-24">
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
               <div className="inline-flex items-center gap-2 rounded-md bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-400">
                 <Flame className="h-3.5 w-3.5" /> MEGA CONTESTS LIVE
               </div>
-              <h2 className="mt-3 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
+              <h2 className="mt-2.5 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
                 Featured Upcoming Matches
               </h2>
-              <p className="mt-2 text-sm text-muted-foreground">
+              <p className="mt-1.5 text-sm text-muted-foreground">
                 Pick an active fixture, build your fantasy team, and grab your share of the prize pool.
               </p>
             </div>
@@ -521,7 +525,7 @@ function Landing() {
             </Button>
           </div>
 
-          <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {(realMatches.length > 0 ? realMatches.slice(0, 3) : featuredMatches.slice(0, 3)).map((m: any, idx: number) => {
               const isReal = !!m.series;
               const title = isReal ? m.series : m.tournament;
@@ -539,7 +543,7 @@ function Landing() {
                   onClick={() =>
                     handleAction(`🏏 To enjoy live match score and fantasy betting for ${team1Code} vs ${team2Code}, please register and login yourself!`)
                   }
-                  className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border/80 bg-surface/90 p-6 transition-all duration-300 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/15"
+                  className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border/80 bg-surface/90 p-5 transition-all duration-300 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/15"
                 >
                   {/* Header tag & countdown */}
                   <div className="flex items-center justify-between border-b border-border/60 pb-3">
@@ -630,24 +634,24 @@ function Landing() {
         </section>
 
         {/* ==================== 5. HOW TO PLAY ==================== */}
-        <section id="how-to-play" className="mb-24 scroll-mt-24 rounded-3xl border border-border/80 bg-surface/50 p-8 lg:p-12">
+        <section id="how-to-play" className="mb-10 scroll-mt-24 rounded-3xl border border-border/80 bg-surface/50 p-6 lg:p-8">
           <div className="text-center max-w-2xl mx-auto">
             <div className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
               <Play className="h-3.5 w-3.5" /> 4 SIMPLE STEPS
             </div>
-            <h2 className="mt-3 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
+            <h2 className="mt-2.5 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
               How To Play & Win Cash
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-1.5 text-sm text-muted-foreground">
               Turn your cricket insight into real cash earnings in just four simple moves.
             </p>
           </div>
 
-          <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {howToPlaySteps.map((s, idx) => (
               <div
                 key={s.step}
-                className="relative flex flex-col justify-between rounded-2xl border border-border/80 bg-surface p-6 shadow-lg transition-transform hover:-translate-y-1"
+                className="relative flex flex-col justify-between rounded-2xl border border-border/80 bg-surface p-5 shadow-md transition-transform hover:-translate-y-1"
               >
                 <div>
                   <div className="flex items-center justify-between">
@@ -656,17 +660,17 @@ function Landing() {
                       {s.badge}
                     </Badge>
                   </div>
-                  <h3 className="mt-4 font-display text-xl font-bold tracking-tight">{s.title}</h3>
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{s.desc}</p>
+                  <h3 className="mt-3 font-display text-xl font-bold tracking-tight">{s.title}</h3>
+                  <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{s.desc}</p>
                 </div>
-                <div className="mt-6 flex items-center gap-2 text-xs font-semibold text-primary">
+                <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-primary">
                   <Check className="h-4 w-4" /> Step {idx + 1} of 4
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="mt-10 flex justify-center">
+          <div className="mt-6 flex justify-center">
             <Button
               type="button"
               onClick={() => handleAction("🏏 Ready to create your Dream XI? Register now to get started!")}
@@ -680,15 +684,15 @@ function Landing() {
         </section>
 
         {/* ==================== 6. CONTEST TYPES ==================== */}
-        <section id="contests" className="mb-24 scroll-mt-24">
+        <section id="contests" className="mb-10 scroll-mt-24">
           <div className="text-center max-w-2xl mx-auto">
             <div className="inline-flex items-center gap-2 rounded-md bg-purple-500/10 px-3 py-1 text-xs font-bold text-purple-400">
               <Trophy className="h-3.5 w-3.5" /> GAME FORMATS
             </div>
-            <h2 className="mt-3 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
+            <h2 className="mt-2.5 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
               A Contest For Every Strategy
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-1.5 text-sm text-muted-foreground">
               Whether you prefer massive multi-crore tournaments or high-odds head-to-head duels, we have it all.
             </p>
           </div>
@@ -699,21 +703,21 @@ function Landing() {
               return (
                 <div
                   key={c.title}
-                  className="flex flex-col justify-between rounded-2xl border border-border/80 bg-surface/90 p-6 transition-all hover:border-primary/50 hover:shadow-xl"
+                  className="flex flex-col justify-between rounded-2xl border border-border/80 bg-surface/90 p-5 transition-all hover:border-primary/50 hover:shadow-lg"
                 >
                   <div>
                     <div className="flex items-center justify-between">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                        <Icon className="h-6 w-6" />
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <Icon className="h-5 w-5" />
                       </div>
                       <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${c.tagColor}`}>
                         {c.tag}
                       </span>
                     </div>
 
-                    <h3 className="mt-5 font-display text-xl font-bold tracking-tight">{c.title}</h3>
+                    <h3 className="mt-4 font-display text-xl font-bold tracking-tight">{c.title}</h3>
                     <p className="text-xs font-semibold text-primary mt-0.5">{c.subtitle}</p>
-                    <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{c.desc}</p>
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{c.desc}</p>
                   </div>
 
                   <Button
@@ -721,7 +725,7 @@ function Landing() {
                     onClick={() => handleAction(`🏏 Register to play in ${c.title}!`)}
                     variant="outline"
                     size="sm"
-                    className="mt-6 w-full font-bold border-border/80 hover:border-primary"
+                    className="mt-4 w-full font-bold border-border/80 hover:border-primary"
                   >
                     ENTER CONTEST
                   </Button>
@@ -732,15 +736,15 @@ function Landing() {
         </section>
 
         {/* ==================== 7. WHY CHOOSE US ==================== */}
-        <section id="why-us" className="mb-24 scroll-mt-24">
+        <section id="why-us" className="mb-10 scroll-mt-24">
           <div className="text-center max-w-2xl mx-auto">
             <div className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
               <ShieldCheck className="h-3.5 w-3.5" /> THE PLATFORM ADVANTAGE
             </div>
-            <h2 className="mt-3 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
+            <h2 className="mt-2.5 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
               Why 4 Crore+ Players Trust Us
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-1.5 text-sm text-muted-foreground">
               Built with bank-grade security, instantaneous payouts, and unmatched cricket gameplay.
             </p>
           </div>
@@ -751,13 +755,13 @@ function Landing() {
               return (
                 <div
                   key={adv.title}
-                  className="rounded-2xl border border-border/80 bg-surface/80 p-6 transition-all hover:border-primary/40 hover:bg-surface"
+                  className="rounded-2xl border border-border/80 bg-surface/80 p-5 transition-all hover:border-primary/40 hover:bg-surface"
                 >
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <Icon className="h-6 w-6" />
                   </div>
-                  <h3 className="mt-5 font-display text-lg font-bold">{adv.title}</h3>
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{adv.desc}</p>
+                  <h3 className="mt-4 font-display text-lg font-bold">{adv.title}</h3>
+                  <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{adv.desc}</p>
                 </div>
               );
             })}
@@ -765,24 +769,24 @@ function Landing() {
         </section>
 
         {/* ==================== 8. CHAMPIONS WALL ==================== */}
-        <section id="winners" className="mb-24 scroll-mt-24 rounded-3xl border border-border/80 bg-surface/60 p-8 lg:p-12">
+        <section id="winners" className="mb-10 scroll-mt-24 rounded-3xl border border-border/80 bg-surface/60 p-6 lg:p-8">
           <div className="text-center max-w-2xl mx-auto">
             <div className="inline-flex items-center gap-2 rounded-md bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-400">
               <Award className="h-3.5 w-3.5" /> HALL OF FAME
             </div>
-            <h2 className="mt-3 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
+            <h2 className="mt-2.5 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
               Real Players. Real Winnings.
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-1.5 text-sm text-muted-foreground">
               See what our recent champions have to say about their tournament triumphs.
             </p>
           </div>
 
-          <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
+          <div className="mt-6 sm:mt-7 grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-3">
             {winners.map((w) => (
               <div
                 key={w.name}
-                className="flex flex-col justify-between rounded-2xl border border-border/80 bg-surface p-6 shadow-lg"
+                className="flex flex-col justify-between rounded-2xl border border-border/80 bg-surface p-5 shadow-md"
               >
                 <div>
                   <div className="flex items-center justify-between">
@@ -802,7 +806,7 @@ function Landing() {
                     </div>
                   </div>
 
-                  <div className="my-4 rounded-lg bg-surface-2 p-3">
+                  <div className="my-3 rounded-xl bg-surface-2 p-3">
                     <p className="text-[11px] text-muted-foreground font-medium">Won in {w.contest}</p>
                     <p className="font-display text-2xl font-black text-primary">{w.won}</p>
                   </div>
@@ -810,7 +814,7 @@ function Landing() {
                   <p className="text-xs italic leading-relaxed text-muted-foreground">"{w.quote}"</p>
                 </div>
 
-                <div className="mt-5 flex items-center gap-1.5 text-[11px] font-semibold text-primary">
+                <div className="mt-4 flex items-center gap-1.5 text-[11px] font-semibold text-primary">
                   <CheckCircle2 className="h-3.5 w-3.5" /> Verified Winner
                 </div>
               </div>
@@ -819,20 +823,20 @@ function Landing() {
         </section>
 
         {/* ==================== 9. FAQ ACCORDION ==================== */}
-        <section id="faq" className="mb-24 scroll-mt-24 max-w-3xl mx-auto">
+        <section id="faq" className="mb-10 scroll-mt-24 max-w-3xl mx-auto">
           <div className="text-center">
             <div className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
               <HelpCircle className="h-3.5 w-3.5" /> FREQUENTLY ASKED QUESTIONS
             </div>
-            <h2 className="mt-3 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
+            <h2 className="mt-2.5 font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">
               Got Questions? We Have Answers.
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-1.5 text-sm text-muted-foreground">
               Everything you need to know about deposits, legality, withdrawals, and scoring rules.
             </p>
           </div>
 
-          <div className="mt-10 rounded-2xl border border-border/80 bg-surface/80 p-6 backdrop-blur shadow-xl">
+          <div className="mt-6 rounded-2xl border border-border/80 bg-surface/80 p-5 backdrop-blur shadow-md">
             <Accordion type="single" collapsible className="w-full space-y-2">
               {faqs.map((faq, index) => (
                 <AccordionItem key={index} value={`item-${index}`} className="border-b border-border/60 last:border-none">
@@ -849,7 +853,7 @@ function Landing() {
         </section>
 
         {/* ==================== 10. RESPONSIBLE PLAY & 18+ ADVISORY ==================== */}
-        <section className="mb-20 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-6 sm:p-8">
+        <section className="mb-8 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
               <AlertTriangle className="h-6 w-6" />
@@ -874,7 +878,7 @@ function Landing() {
         </section>
 
         {/* ==================== 11. FOOTER ==================== */}
-        <footer className="border-t border-border/60 pt-12 pb-16">
+        <footer className="border-t border-border/60 pt-8 pb-10">
           <div className="grid grid-cols-1 gap-10 md:grid-cols-4">
             {/* Col 1: Brand */}
             <div className="space-y-4 md:col-span-1">
@@ -963,7 +967,7 @@ function Landing() {
             </div>
           </div>
 
-          <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border/40 pt-8 text-center text-xs text-muted-foreground md:flex-row">
+          <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-border/40 pt-6 text-center text-xs text-muted-foreground md:flex-row">
             <p>© 2026 Fantasy Cricket Inc. All Rights Reserved.</p>
             <p className="text-[11px]">Designed for Sports Champions across India. Play Responsibly.</p>
           </div>

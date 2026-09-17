@@ -41,6 +41,7 @@ import type { User } from "@/lib/api-types";
 import { removeFlow, FLOW_KEYS } from "@/lib/flow";
 import { ThemeToggle } from "@/context/ThemeContext";
 import { AuthGuard } from "@/components/fc/AuthGuard";
+import { MarqueeTicker } from "./MarqueeTicker";
 
 interface NotificationItem {
   id: string;
@@ -716,6 +717,9 @@ export function AppShell({
             </div>
           </div>
         </header>
+
+        {/* Global Live Sports & Contests Marquee Ticker */}
+        <MarqueeTicker compact />
 
         {/* Floating Real-Time Toast Alert for Admin Announcements */}
         {toastAlert && (
