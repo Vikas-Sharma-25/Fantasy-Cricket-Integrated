@@ -9,6 +9,7 @@ router.use(requireAuth);
 router.get("/", walletController.getWallet);
 router.post("/add-cash", walletController.addCash);
 router.post("/withdraw", walletController.withdraw);
+router.post("/claim-bonus", walletController.claimBonus);
 
 export default router;
 

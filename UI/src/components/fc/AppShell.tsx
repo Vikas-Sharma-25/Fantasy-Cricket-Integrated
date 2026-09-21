@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
-import { AppShellModals, type NavModalType } from "./AppShellModals";
+import { AppShellSectionView, type NavSectionType } from "./AppShellSections";
 import {
   getMe,
   getCachedUser,
@@ -110,7 +110,7 @@ export interface SidebarNavItem {
   label: string;
   icon: any;
   to?: string;
-  modal?: NavModalType;
+  section?: NavSectionType;
   badge?: string;
   badgeType?: "live" | "hot" | "emerald" | "amber" | "purple" | "neutral";
   isLive?: boolean;
@@ -123,23 +123,23 @@ const fantasyArenaNavItems: SidebarNavItem[] = [
   { key: "my-teams", to: "/my-teams", label: "My Teams", icon: Users },
   { key: "leaderboard", to: "/leaderboard", label: "Leaderboard", icon: Award },
   { key: "wallet", to: "/wallet", label: "Wallet", icon: Wallet },
-  { key: "rewards", modal: "rewards", label: "Rewards & Bonuses", icon: Gift, badge: "FREE", badgeType: "emerald" },
-  { key: "transactions", modal: "transactions", label: "My Transactions", icon: FileText },
+  { key: "rewards", section: "rewards", label: "Rewards & Bonuses", icon: Gift, badge: "FREE", badgeType: "emerald" },
+  { key: "transactions", section: "transactions", label: "My Transactions", icon: FileText },
 ];
 
 const cricketDeskNavItems: SidebarNavItem[] = [
-  { key: "fixtures", modal: "fixtures", label: "Series & Fixtures", icon: CalendarDays, badge: "2026", badgeType: "emerald" },
+  { key: "fixtures", section: "fixtures", label: "Series & Fixtures", icon: CalendarDays, badge: "2026", badgeType: "emerald" },
   { key: "live-match", to: "/live-match", label: "Live Match Center", icon: Radio, isLive: true },
-  { key: "stats", modal: "stats", label: "Match Statistics", icon: BarChart3, badge: "STATS", badgeType: "purple" },
+  { key: "stats", section: "stats", label: "Match Statistics", icon: BarChart3, badge: "STATS", badgeType: "purple" },
   { key: "players", to: "/players", label: "Teams & Players", icon: Users2 },
   { key: "rules", to: "/rules", label: "Fantasy Point Rules", icon: HelpCircle },
 ];
 
 const accountNavItems: SidebarNavItem[] = [
-  { key: "notifications", modal: "notifications", label: "Notifications", icon: Bell },
-  { key: "kyc", modal: "kyc", label: "KYC / Verification", icon: ShieldCheck, badge: "VERIFIED", badgeType: "emerald" },
-  { key: "settings", modal: "settings", label: "Settings", icon: SettingsIcon },
-  { key: "support", modal: "support", label: "Help & Support", icon: LifeBuoy, badge: "24x7", badgeType: "neutral" },
+  { key: "notifications", section: "notifications", label: "Notifications", icon: Bell },
+  { key: "kyc", section: "kyc", label: "KYC / Verification", icon: ShieldCheck, badge: "VERIFIED", badgeType: "emerald" },
+  { key: "settings", section: "settings", label: "Settings", icon: SettingsIcon },
+  { key: "support", section: "support", label: "Help & Support", icon: LifeBuoy, badge: "24x7", badgeType: "neutral" },
 ];
 
 const mobileNavItems = [
@@ -436,29 +436,6 @@ export function Pic2HeaderBar({
           </Link>
         )}
 
-        {/* Profile Avatar Quick Button with Online Status Dots */}
-        <Link
-          to="/profile"
-          aria-label="User Profile"
-          className="relative flex items-center rounded-full transition-all hover:scale-105 cursor-pointer group shrink-0"
-        >
-          <div className="relative h-8 w-8 sm:h-9 sm:w-9 rounded-full overflow-hidden border border-white/20 bg-slate-800">
-            {user?.profileImage ? (
-              <img
-                src={user.profileImage}
-                alt={user.name || "User"}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <span className="flex h-full w-full items-center justify-center bg-gradient-to-tr from-emerald-600 to-emerald-400 text-xs font-bold text-white">
-                {user?.name ? user.name.slice(0, 2).toUpperCase() : "VS"}
-              </span>
-            )}
-          </div>
-          <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[#121417]" />
-          <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[#121417]" />
-        </Link>
-
         {/* Notifications Dropdown Popover */}
         {showNotifications && (
           <div className="absolute right-0 top-12 sm:top-14 z-50 w-80 sm:w-96 rounded-2xl border border-border/80 bg-surface/98 p-4 shadow-2xl backdrop-blur-md animate-in fade-in-50 zoom-in-95 text-left">
@@ -578,7 +555,12 @@ export function AppShell({
     } catch {}
     return 0;
   });
-  const [activeNavModal, setActiveNavModal] = useState<NavModalType>(null);
+
+  const [activeNavSection, setActiveNavSection] = useState<NavSectionType>(null);
+
+  useEffect(() => {
+    setActiveNavSection(null);
+  }, [pathname]);
 
   // Always fetch fresh real wallet balance from backend for the authenticated user
   useEffect(() => {
@@ -802,7 +784,7 @@ export function AppShell({
   };
 
   const renderSidebarItem = (item: SidebarNavItem) => {
-    const active = item.to ? pathname === item.to : activeNavModal === item.modal;
+    const active = item.to ? (pathname === item.to && !activeNavSection) : activeNavSection === item.section;
     const Icon = item.icon;
 
     const content = (
@@ -866,6 +848,7 @@ export function AppShell({
           key={item.key}
           to={item.to}
           onClick={() => {
+            setActiveNavSection(null);
             if (item.to === "/matches") {
               removeFlow(FLOW_KEYS.selectedMatchId);
               removeFlow("RETURN_TO_MATCH_CENTER");
@@ -895,8 +878,8 @@ export function AppShell({
         key={item.key}
         type="button"
         onClick={() => {
-          if (item.modal) {
-            setActiveNavModal(item.modal);
+          if (item.section) {
+            setActiveNavSection(item.section);
           }
         }}
         className={baseClass}
@@ -1080,7 +1063,19 @@ export function AppShell({
 
         {/* Main Content */}
         <main className={cn("mx-auto w-full flex-1 px-4 sm:px-6 pb-12 pt-6", maxWidth)}>
-          {children}
+          {activeNavSection ? (
+            <AppShellSectionView
+              section={activeNavSection}
+              onBack={() => setActiveNavSection(null)}
+              walletBalance={walletTotal}
+              user={user}
+              onWalletUpdated={(nb) => setWalletTotal(nb)}
+              notifications={notifications}
+              onNotificationUpdate={(newNotifs) => setNotifications(newNotifs)}
+            />
+          ) : (
+            children
+          )}
         </main>
 
         {/* Bottom Mobile Navigation (on small screens < md) */}
@@ -1093,6 +1088,7 @@ export function AppShell({
                   key={to}
                   to={to}
                   onClick={() => {
+                    setActiveNavSection(null);
                     if (to === "/matches") {
                       removeFlow(FLOW_KEYS.selectedMatchId);
                       removeFlow("RETURN_TO_MATCH_CENTER");
@@ -1132,15 +1128,6 @@ export function AppShell({
             )}
           </div>
         </nav>
-
-        {/* Interactive AppShell Navigation Modals */}
-        <AppShellModals
-          activeModal={activeNavModal}
-          onClose={() => setActiveNavModal(null)}
-          walletBalance={walletTotal}
-          user={user}
-          onWalletUpdated={(nb) => setWalletTotal(nb)}
-        />
       </div>
     </div>
     </AuthGuard>

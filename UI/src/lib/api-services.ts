@@ -326,6 +326,33 @@ export async function withdrawApi(amount: number, withdrawTo?: string): Promise<
   return data;
 }
 
+export async function claimBonusApi(amount: number, title?: string): Promise<WalletData> {
+  const data = await api.post<WalletData>("/wallet/claim-bonus", { amount, title });
+  if (typeof window !== "undefined" && data) {
+    const cached = getCachedUser();
+    if (cached) {
+      cached.walletBalance = data.walletBalance;
+      cached.depositedBalance = data.depositedBalance;
+      cached.winningsBalance = data.winningsBalance;
+      cached.bonusBalance = data.bonusBalance;
+      setCachedUser(cached);
+      window.dispatchEvent(new CustomEvent("user-profile-updated", { detail: cached }));
+    }
+    localStorage.setItem(
+      "fc_user_wallet",
+      JSON.stringify({
+        deposited: data.depositedBalance,
+        winnings: data.winningsBalance,
+        bonus: data.bonusBalance
+      })
+    );
+    localStorage.setItem("fc_wallet_txs", JSON.stringify(data.transactions));
+    window.dispatchEvent(new CustomEvent("wallet-updated", { detail: data }));
+    window.dispatchEvent(new Event("storage"));
+  }
+  return data;
+}
+
 export function getLocalWalletBalance(): number {
   try {
     const saved = localStorage.getItem("fc_user_wallet");

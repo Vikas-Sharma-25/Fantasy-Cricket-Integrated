@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { getMatchPlayers } from "@/lib/api-services";
 import type { MatchPlayer } from "@/lib/api-types";
 import { getFlow, setFlow, FLOW_KEYS } from "@/lib/flow";
+import { TeamsPlayersSection } from "@/components/fc/AppShellSections";
 
 export const Route = createFileRoute("/players")({ component: Players });
 
@@ -83,7 +84,6 @@ function Players() {
       return;
     }
 
-    // Role-specific max limits
     if (player.role === "Wicket-Keeper" && wkCount >= 4) {
       setError("Maximum 4 Wicket-Keepers allowed.");
       return;
@@ -129,6 +129,16 @@ function Players() {
     setFlow(FLOW_KEYS.selectedPlayerIds, picked);
     setFlow(FLOW_KEYS.selectedMatchId, matchId);
     navigate({ to: "/captain" });
+  }
+
+  // If no matchId is selected (e.g. user visited /players from sidebar or direct URL),
+  // show the Teams & Players Directory instead of the empty match picker section (Pic 3)
+  if (!matchId) {
+    return (
+      <AppShell>
+        <TeamsPlayersSection />
+      </AppShell>
+    );
   }
 
   return (

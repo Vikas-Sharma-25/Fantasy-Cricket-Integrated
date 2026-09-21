@@ -97,6 +97,44 @@ export async function addCash(userId: string, amount: number, paymentMethod = "U
   return getWallet(userId);
 }
 
+export async function claimBonus(userId: string, amount: number, title = "Daily Streak Reward") {
+  if (!Types.ObjectId.isValid(userId)) {
+    throw ApiError.badRequest("Invalid user id");
+  }
+
+  const numAmount = Number(amount);
+  if (isNaN(numAmount) || numAmount <= 0) {
+    throw ApiError.badRequest("Invalid bonus amount");
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    throw ApiError.notFound("User not found");
+  }
+
+  const currentDep = typeof user.depositedBalance === "number" ? user.depositedBalance : 0;
+  const currentWin = typeof user.winningsBalance === "number" ? user.winningsBalance : 0;
+  const currentBon = typeof user.bonusBalance === "number" ? user.bonusBalance : 0;
+
+  user.bonusBalance = currentBon + numAmount;
+  user.walletBalance = currentDep + currentWin + user.bonusBalance;
+  await user.save();
+
+  const refId = `BONUS-${Math.floor(10000 + Math.random() * 90000)}`;
+  await WalletTransaction.create({
+    userId: user._id,
+    type: "BONUS",
+    title: title || "Daily Bonus Cash Claimed",
+    amount: numAmount,
+    balanceAfter: user.walletBalance,
+    status: "SUCCESS",
+    refId,
+    paymentMethod: "BONUS_REWARD"
+  });
+
+  return getWallet(userId);
+}
+
 export async function withdraw(userId: string, amount: number, withdrawTo = "Bank/UPI") {
   if (!Types.ObjectId.isValid(userId)) {
     throw ApiError.badRequest("Invalid user id");

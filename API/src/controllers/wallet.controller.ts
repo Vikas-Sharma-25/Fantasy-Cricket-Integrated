@@ -24,3 +24,11 @@ export const withdraw = asyncHandler(async (req: Request, res: Response) => {
   return sendSuccess(res, updatedWallet, "Withdrawal processed successfully");
 });
 
+export const claimBonus = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw ApiError.unauthorized();
+  const { amount, title } = req.body;
+  const updatedWallet = await walletService.claimBonus(req.user.userId, amount, title);
+  return sendSuccess(res, updatedWallet, "Bonus claimed successfully");
+});
+
+
