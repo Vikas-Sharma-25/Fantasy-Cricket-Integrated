@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { AppShell } from "@/components/fc/AppShell";
+import { AppShell, Pic2HeaderBar } from "@/components/fc/AppShell";
 import { Card } from "@/components/fc/bits";
 import { Button } from "@/components/ui/button";
 import { getMatches, getContests, getMyTeams, joinContest, getMyContests, getLeaderboard, getMatchPlayers, deleteTeam, getLocalWalletBalance, deductLocalWallet } from "@/lib/api-services";
@@ -1473,7 +1473,7 @@ function Matches() {
   const [matchTab, setMatchTab] = useState<string>(() => {
     return getFlow<string | null>("OPEN_MATCH_TAB", null) || "Live";
   });
-  const [arenaTab, setArenaTab] = useState<"UPCOMING" | "LIVE" | "COMPLETED">("UPCOMING");
+  const [arenaTab, setArenaTab] = useState<"ALL" | "LIVE" | "COMPLETED" | "UPCOMING">("ALL");
 
   // Highlights state (Pic 4)
   const [highlightsInnings, setHighlightsInnings] = useState<string>("EZONE 1st Innings");
@@ -1691,19 +1691,31 @@ function Matches() {
     return matchPlayer?.name ?? playerIdOrObj?.name ?? "Player";
   }
 
+  // Helper to determine match order: LIVE -> COMPLETED -> UPCOMING
+  function getMatchPriority(status?: string): number {
+    const s = String(status || "").toUpperCase().trim();
+    if (s === "LIVE" || s === "IN_PROGRESS" || s === "INPLAY") return 1;
+    if (s === "COMPLETED" || s === "RESULT" || s === "FINISHED" || s === "ENDED") return 2;
+    if (s === "UPCOMING" || s === "SCHEDULED" || s === "PREVIEW" || s === "NOT_STARTED") return 3;
+    return 4;
+  }
+
   // Sort matches: LIVE first, then COMPLETED, then UPCOMING
   const sortedMatches = useMemo(() => {
     return [...worldMatches].sort((a, b) => {
-      const order: Record<string, number> = { LIVE: 1, COMPLETED: 2, UPCOMING: 3 };
-      const statusA = (a.status || "UPCOMING").toUpperCase();
-      const statusB = (b.status || "UPCOMING").toUpperCase();
-      return (order[statusA] || 99) - (order[order[statusB] || 99] || 99);
+      const pA = getMatchPriority(a.status);
+      const pB = getMatchPriority(b.status);
+      return pA - pB;
     });
   }, [worldMatches]);
 
   const arenaMatches = useMemo(() => {
+    if (arenaTab === "ALL") return sortedMatches;
     return sortedMatches.filter((m) => {
-      const s = (m.status || "UPCOMING").toUpperCase();
+      const s = (m.status || "UPCOMING").toUpperCase().trim();
+      if (arenaTab === "LIVE") return s === "LIVE" || s === "IN_PROGRESS" || s === "INPLAY";
+      if (arenaTab === "COMPLETED") return s === "COMPLETED" || s === "RESULT" || s === "FINISHED" || s === "ENDED";
+      if (arenaTab === "UPCOMING") return s === "UPCOMING" || s === "SCHEDULED" || s === "PREVIEW" || s === "NOT_STARTED";
       return s === arenaTab;
     });
   }, [sortedMatches, arenaTab]);
@@ -2151,15 +2163,22 @@ function Matches() {
   const venue = selectedHomeMatch?.venue || "MA Chidambaram Stadium, Chennai";
 
   return (
-    <AppShell maxWidth="max-w-[1520px]">
+    <AppShell maxWidth="max-w-[1520px]" hideHeader={true}>
       <div className="space-y-6 pb-12">
         {/* ============================================================= */}
-        {/* 1. CRICBUZZ TOP MATCHES TICKER STRIP (3 Per View + Controls)   */}
-        {/* Point 5: ONLY visible on Home feed; hidden when match clicked! */}
+        {/* 1. TOP UNIFIED SECTION: PIC 2 HEADER + CRICBUZZ MATCH TICKER */}
+        {/* Both header and ticker are housed in ONE cohesive container!  */}
         {/* ============================================================= */}
-        {!selectedHomeMatch && (
-          <div className="rounded-2xl bg-gradient-to-r from-[#072d20] via-[#0b3d2b] to-[#072d20] border border-emerald-600/30 p-2.5 shadow-xl">
-            <div className="flex items-center gap-2">
+        <div className="rounded-3xl bg-[#121519] border border-emerald-500/30 p-3 sm:p-4 shadow-2xl space-y-3.5">
+          {/* Header Bar styled like Pic 2 */}
+          <Pic2HeaderBar />
+
+          {/* Cricbuzz Top Matches Ticker Strip (3 Per View + Controls) */}
+          {!selectedHomeMatch && (
+            <>
+              <div className="h-px bg-gradient-to-r from-transparent via-emerald-500/25 to-transparent my-1" />
+
+              <div className="flex items-center gap-2">
               {/* Left Arrow Button */}
               <button
                 type="button"
@@ -2292,8 +2311,9 @@ function Matches() {
                 {tickerPage + 1}/{totalPages}
               </span>
             </div>
-          </div>
+          </>
         )}
+      </div>
 
         {/* ========================================================================= */}
         {/* VIEW A: FULL-PAGE MATCH SUITE (Rendered ONLY when a match is clicked!)     */}
@@ -4223,19 +4243,19 @@ function Matches() {
                       </div>
                     </div>
 
-                    {/* Arena Tabs: Upcoming / Live / Completed */}
-                    <div className="inline-flex rounded-xl bg-surface-2 p-1 border border-border">
+                    {/* Arena Tabs: All / Live / Completed / Upcoming */}
+                    <div className="inline-flex flex-wrap rounded-xl bg-surface-2 p-1 border border-border gap-1">
                       <button
                         type="button"
-                        onClick={() => setArenaTab("UPCOMING")}
+                        onClick={() => setArenaTab("ALL")}
                         className={cn(
                           "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                          arenaTab === "UPCOMING"
+                          arenaTab === "ALL"
                             ? "bg-emerald-500 text-slate-950 shadow-sm"
                             : "text-muted-foreground hover:text-foreground"
                         )}
                       >
-                        Upcoming ({worldMatches.filter((m) => (m.status || "UPCOMING").toUpperCase() === "UPCOMING").length})
+                        All ({worldMatches.length})
                       </button>
                       <button
                         type="button"
@@ -4248,7 +4268,10 @@ function Matches() {
                         )}
                       >
                         <span className="h-2 w-2 rounded-full bg-red-400 animate-pulse" />
-                        Live ({worldMatches.filter((m) => (m.status || "").toUpperCase() === "LIVE").length})
+                        Live ({worldMatches.filter((m) => {
+                          const s = String(m.status || "").toUpperCase().trim();
+                          return s === "LIVE" || s === "IN_PROGRESS" || s === "INPLAY";
+                        }).length})
                       </button>
                       <button
                         type="button"
@@ -4260,7 +4283,25 @@ function Matches() {
                             : "text-muted-foreground hover:text-foreground"
                         )}
                       >
-                        Completed ({worldMatches.filter((m) => (m.status || "").toUpperCase() === "COMPLETED").length})
+                        Completed ({worldMatches.filter((m) => {
+                          const s = String(m.status || "").toUpperCase().trim();
+                          return s === "COMPLETED" || s === "RESULT" || s === "FINISHED" || s === "ENDED";
+                        }).length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setArenaTab("UPCOMING")}
+                        className={cn(
+                          "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                          arenaTab === "UPCOMING"
+                            ? "bg-emerald-600 text-white shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        Upcoming ({worldMatches.filter((m) => {
+                          const s = String(m.status || "UPCOMING").toUpperCase().trim();
+                          return s === "UPCOMING" || s === "SCHEDULED" || s === "PREVIEW" || s === "NOT_STARTED";
+                        }).length})
                       </button>
                     </div>
                   </div>
@@ -4362,7 +4403,7 @@ function Matches() {
                       })
                     ) : (
                       <div className="text-center py-8 text-xs text-muted-foreground border border-dashed border-border rounded-xl">
-                        No {arenaTab.toLowerCase()} matches at the moment.
+                        {arenaTab === "ALL" ? "No cricket matches currently scheduled." : `No ${arenaTab.toLowerCase()} matches at the moment.`}
                       </div>
                     )}
                   </div>

@@ -36,11 +36,25 @@ export const listMatches = async ({ status, page, limit }: ListMatchesParams) =>
 
   const skip = (page - 1) * limit;
 
-  const [items, total] = await Promise.all([
-    Match.find(filter).sort({ startTime: 1 }).skip(skip).limit(limit),
+  let [rawItems, total] = await Promise.all([
+    Match.find(filter).sort({ startTime: 1 }),
     Match.countDocuments(filter),
   ]);
 
+  if (!status) {
+    const statusPriority: Record<string, number> = {
+      LIVE: 1,
+      COMPLETED: 2,
+      UPCOMING: 3,
+    };
+    rawItems = rawItems.sort((a, b) => {
+      const pA = statusPriority[String(a.status || "").toUpperCase().trim()] || 4;
+      const pB = statusPriority[String(b.status || "").toUpperCase().trim()] || 4;
+      return pA - pB;
+    });
+  }
+
+  const items = rawItems.slice(skip, skip + limit);
   return { items, total };
 };
 

@@ -23,3 +23,4 @@ export const withdraw = asyncHandler(async (req: Request, res: Response) => {
   const updatedWallet = await walletService.withdraw(req.user.userId, amount, withdrawTo);
   return sendSuccess(res, updatedWallet, "Withdrawal processed successfully");
 });
+

@@ -19,15 +19,23 @@ import {
   ShieldCheck,
   CalendarDays,
   BarChart2,
+  BarChart3,
   HelpCircle,
   LayoutDashboard,
   ShieldAlert,
   Megaphone,
   AlertCircle,
   LogOut,
+  Moon,
+  Sun,
+  FileText,
+  LifeBuoy,
+  Users2,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
+import { AppShellModals, type NavModalType } from "./AppShellModals";
 import {
   getMe,
   getCachedUser,
@@ -40,7 +48,7 @@ import {
 import { getSocket } from "@/lib/socket";
 import type { User } from "@/lib/api-types";
 import { removeFlow, FLOW_KEYS } from "@/lib/flow";
-import { ThemeToggle } from "@/context/ThemeContext";
+import { ThemeToggle, useTheme } from "@/context/ThemeContext";
 import { AuthGuard } from "@/components/fc/AuthGuard";
 
 interface NotificationItem {
@@ -97,19 +105,41 @@ const initialNotifications: NotificationItem[] = [
   },
 ];
 
-const sidebarNavItems = [
-  { to: "/matches", label: "Home", icon: Home },
-  { to: "/contests", label: "Mega Contests", icon: Trophy },
-  { to: "/my-matches", label: "My Matches", icon: ClipboardList },
-  { to: "/my-teams", label: "My Teams", icon: Users },
-  { to: "/leaderboard", label: "Leaderboard", icon: Award },
-  { to: "/wallet", label: "Wallet", icon: Wallet },
+export interface SidebarNavItem {
+  key: string;
+  label: string;
+  icon: any;
+  to?: string;
+  modal?: NavModalType;
+  badge?: string;
+  badgeType?: "live" | "hot" | "emerald" | "amber" | "purple" | "neutral";
+  isLive?: boolean;
+}
+
+const fantasyArenaNavItems: SidebarNavItem[] = [
+  { key: "home", to: "/matches", label: "Home", icon: Home },
+  { key: "contests", to: "/contests", label: "Mega Contests", icon: Trophy, badge: "HOT", badgeType: "amber" },
+  { key: "my-matches", to: "/my-matches", label: "My Matches", icon: ClipboardList },
+  { key: "my-teams", to: "/my-teams", label: "My Teams", icon: Users },
+  { key: "leaderboard", to: "/leaderboard", label: "Leaderboard", icon: Award },
+  { key: "wallet", to: "/wallet", label: "Wallet", icon: Wallet },
+  { key: "rewards", modal: "rewards", label: "Rewards & Bonuses", icon: Gift, badge: "FREE", badgeType: "emerald" },
+  { key: "transactions", modal: "transactions", label: "My Transactions", icon: FileText },
 ];
 
-const cricketNavItems = [
-  { to: "/matches", label: "Series & Fixtures", icon: CalendarDays, action: "upcoming" },
-  { to: "/live-match", label: "Live Match Center", icon: Radio, isLive: true },
-  { to: "/rules", label: "Fantasy Point Rules", icon: HelpCircle },
+const cricketDeskNavItems: SidebarNavItem[] = [
+  { key: "fixtures", modal: "fixtures", label: "Series & Fixtures", icon: CalendarDays, badge: "2026", badgeType: "emerald" },
+  { key: "live-match", to: "/live-match", label: "Live Match Center", icon: Radio, isLive: true },
+  { key: "stats", modal: "stats", label: "Match Statistics", icon: BarChart3, badge: "STATS", badgeType: "purple" },
+  { key: "players", to: "/players", label: "Teams & Players", icon: Users2 },
+  { key: "rules", to: "/rules", label: "Fantasy Point Rules", icon: HelpCircle },
+];
+
+const accountNavItems: SidebarNavItem[] = [
+  { key: "notifications", modal: "notifications", label: "Notifications", icon: Bell },
+  { key: "kyc", modal: "kyc", label: "KYC / Verification", icon: ShieldCheck, badge: "VERIFIED", badgeType: "emerald" },
+  { key: "settings", modal: "settings", label: "Settings", icon: SettingsIcon },
+  { key: "support", modal: "support", label: "Help & Support", icon: LifeBuoy, badge: "24x7", badgeType: "neutral" },
 ];
 
 const mobileNavItems = [
@@ -120,12 +150,416 @@ const mobileNavItems = [
   { to: "/profile", label: "Profile", icon: UserIcon },
 ];
 
+export function Pic2HeaderBar({
+  className,
+}: {
+  className?: string;
+}) {
+  const { theme, toggleTheme } = useTheme();
+  const [user, setUser] = useState<User | null>(() => getCachedUser());
+  const [walletTotal, setWalletTotal] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem("fc_user_wallet");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return (parsed.deposited || 0) + (parsed.winnings || 0) + (parsed.bonus || 0);
+      }
+      const raw = localStorage.getItem("cached_user");
+      if (raw) {
+        const u = JSON.parse(raw);
+        return typeof u.walletBalance === "number" ? u.walletBalance : 0;
+      }
+    } catch {}
+    return 100;
+  });
+
+  // Always fetch fresh real wallet balance from backend for the authenticated user
+  useEffect(() => {
+    getWalletApi()
+      .then((data) => {
+        if (data && typeof data.walletBalance === "number") {
+          setWalletTotal(data.walletBalance);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Synchronize user profile, role & wallet balance across all tabs & events
+  useEffect(() => {
+    const syncWallet = () => {
+      try {
+        const saved = localStorage.getItem("fc_user_wallet");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setWalletTotal((parsed.deposited || 0) + (parsed.winnings || 0) + (parsed.bonus || 0));
+          return;
+        }
+        const cached = getCachedUser();
+        if (cached && typeof cached.walletBalance === "number") {
+          setWalletTotal(cached.walletBalance);
+        }
+      } catch {}
+    };
+
+    const handleProfileUpdated = (e: any) => {
+      if (e.detail) {
+        setUser(e.detail);
+        if (typeof e.detail.walletBalance === "number") {
+          setWalletTotal(e.detail.walletBalance);
+        }
+      } else {
+        setUser(getCachedUser());
+      }
+      syncWallet();
+    };
+
+    const handleWalletUpdated = (e: any) => {
+      if (e.detail && typeof e.detail.walletBalance === "number") {
+        setWalletTotal(e.detail.walletBalance);
+      } else {
+        syncWallet();
+      }
+    };
+
+    const handleStorage = () => {
+      setUser(getCachedUser());
+      syncWallet();
+    };
+
+    window.addEventListener("user-profile-updated", handleProfileUpdated);
+    window.addEventListener("wallet-updated", handleWalletUpdated);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("user-profile-updated", handleProfileUpdated);
+      window.removeEventListener("wallet-updated", handleWalletUpdated);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
+
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const notificationRef = useRef<HTMLDivElement>(null);
+
+  // Load live notifications from backend API
+  const loadLiveNotifications = async () => {
+    try {
+      const items = await getUserNotifications();
+      let readSet = new Set<string>();
+      try {
+        const savedRead = localStorage.getItem("fc_read_notification_ids");
+        if (savedRead) readSet = new Set(JSON.parse(savedRead));
+      } catch {}
+
+      if (Array.isArray(items) && items.length > 0) {
+        const mapped: NotificationItem[] = items.map((item: any) => {
+          const id = String(item._id || item.id || `notif-${Date.now()}`);
+          const isRead = Boolean(item.isRead) || readSet.has(id);
+          const typeLower = (item.type || "system").toLowerCase();
+          return {
+            id,
+            title: item.title,
+            description: item.message || item.description || "",
+            time: formatRelativeTime(item.createdAt),
+            read: isRead,
+            type: typeLower.includes("contest")
+              ? "contest"
+              : typeLower.includes("wallet")
+              ? "wallet"
+              : typeLower.includes("live")
+              ? "live"
+              : "promo",
+            createdAt: item.createdAt,
+          };
+        });
+        setNotifications(mapped);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    loadLiveNotifications();
+    const interval = setInterval(loadLiveNotifications, 20000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Click outside listener to close notifications dropdown
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (notificationRef.current && !notificationRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+    if (showNotifications) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showNotifications]);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+  const displayBadgeCount = unreadCount > 0 ? unreadCount : 2;
+
+  const markAllAsRead = async () => {
+    try {
+      await markAllNotificationsAsRead();
+      const allIds = notifications.map((n) => n.id);
+      localStorage.setItem("fc_read_notification_ids", JSON.stringify(allIds));
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch {}
+  };
+
+  const clearNotification = async (id: string) => {
+    try {
+      await markNotificationAsRead(id);
+      let readSet = new Set<string>();
+      try {
+        const savedRead = localStorage.getItem("fc_read_notification_ids");
+        if (savedRead) readSet = new Set(JSON.parse(savedRead));
+      } catch {}
+      readSet.add(id);
+      localStorage.setItem("fc_read_notification_ids", JSON.stringify(Array.from(readSet)));
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      );
+    } catch {}
+  };
+
+  return (
+    <div className={cn("flex items-center justify-between gap-3 w-full", className)}>
+      {/* Brand Logo matching Pic 2 */}
+      <Link
+        to="/matches"
+        onClick={() => {
+          removeFlow(FLOW_KEYS.selectedMatchId);
+          removeFlow("RETURN_TO_MATCH_CENTER");
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("reset-home-match"));
+          }
+        }}
+        className="flex items-center gap-2.5 sm:gap-3 group cursor-pointer select-none"
+      >
+        <div className="relative flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-[#0d2218] border border-emerald-500/40 shadow-md group-hover:border-emerald-400 group-hover:scale-105 transition-all">
+          <svg viewBox="0 0 48 48" className="h-6 w-6 sm:h-7 sm:w-7" fill="none">
+            <circle cx="20" cy="12" r="3.5" fill="#f8fafc" />
+            <path
+              d="M17 17.5 L23 18.5 L26 25 L21 33 L18 41 M22 25 L27 34 L31 41 M18 20 L25 21 L31 16"
+              stroke="#f8fafc"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M29 14 L37 6 L40 9 L32 17 Z"
+              fill="#f8fafc"
+              stroke="#e2e8f0"
+              strokeWidth="0.8"
+            />
+            <path
+              d="M7 36 C 8 46, 28 46, 38 33 C 44 25, 43 14, 39 9"
+              stroke="#10b981"
+              strokeWidth="2.8"
+              strokeLinecap="round"
+              className="drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]"
+            />
+            <circle
+              cx="38.5"
+              cy="9.5"
+              r="3.2"
+              fill="#22c55e"
+              className="drop-shadow-[0_0_10px_rgba(34,197,94,1)]"
+            />
+          </svg>
+        </div>
+
+        <div className="flex flex-col justify-center">
+          <span className="font-display text-[12px] sm:text-[13px] font-black tracking-wider text-white leading-tight uppercase group-hover:text-slate-100 transition-colors">
+            FANTASY CRICKET
+          </span>
+          <span className="font-display text-[11px] sm:text-[12px] font-black tracking-widest text-[#10b981] leading-tight uppercase flex items-center gap-1.5">
+            <span>ARENA</span>
+            <span className="h-1.5 w-1.5 rounded-full bg-[#10b981] animate-pulse" />
+          </span>
+        </div>
+      </Link>
+
+      {/* Right Quick Actions matching Pic 2 */}
+      <div className="flex items-center gap-2 sm:gap-3.5 relative" ref={notificationRef}>
+        {/* Glowing Neon Green Wallet Pill Button */}
+        <Link
+          to="/wallet"
+          title="Open Wallet"
+          className="group flex items-center gap-2 rounded-xl sm:rounded-2xl border-2 border-emerald-400 bg-[#0d281e]/90 hover:bg-[#103a2b] px-3 sm:px-4 py-1.5 text-xs font-bold transition-all cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.45)] hover:shadow-[0_0_22px_rgba(16,185,129,0.7)] hover:scale-105 active:scale-95"
+        >
+          <Wallet className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-white group-hover:text-emerald-300 transition-colors" />
+          <span className="font-mono font-black text-white text-xs sm:text-sm tracking-tight">
+            ₹{walletTotal.toLocaleString("en-IN")}
+          </span>
+        </Link>
+
+        {/* Crescent Moon Theme Toggle */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          title={theme === "light" ? "Switch to Dark mode" : "Switch to Light mode"}
+          aria-label="Toggle theme"
+          className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+        >
+          {theme === "light" ? (
+            <Sun className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-amber-400" />
+          ) : (
+            <Moon className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-slate-200" />
+          )}
+        </button>
+
+        {/* Notification Bell Button */}
+        <button
+          type="button"
+          aria-label="Notifications"
+          onClick={() => setShowNotifications((prev) => !prev)}
+          className={cn(
+            "relative flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-all cursor-pointer text-slate-300 hover:text-white hover:bg-white/10",
+            showNotifications && "text-emerald-400 bg-white/10"
+          )}
+        >
+          <Bell className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-slate-200" />
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-black text-white shadow-md">
+            {displayBadgeCount > 9 ? "9+" : displayBadgeCount}
+          </span>
+        </button>
+
+        {/* Admin / Super Admin Solid Purple Pill Button */}
+        {(user?.role === "admin" || user?.role === "super_admin" || !user) && (
+          <Link
+            to="/admin"
+            className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full text-[11px] sm:text-xs font-bold text-white bg-[#9333ea] hover:bg-[#a855f7] transition-all shadow-md shadow-purple-900/30 hover:scale-105 active:scale-95 cursor-pointer shrink-0"
+          >
+            <span>{user?.role === "admin" ? "Admin" : "Super Admin"}</span>
+          </Link>
+        )}
+
+        {/* Profile Avatar Quick Button with Online Status Dots */}
+        <Link
+          to="/profile"
+          aria-label="User Profile"
+          className="relative flex items-center rounded-full transition-all hover:scale-105 cursor-pointer group shrink-0"
+        >
+          <div className="relative h-8 w-8 sm:h-9 sm:w-9 rounded-full overflow-hidden border border-white/20 bg-slate-800">
+            {user?.profileImage ? (
+              <img
+                src={user.profileImage}
+                alt={user.name || "User"}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center bg-gradient-to-tr from-emerald-600 to-emerald-400 text-xs font-bold text-white">
+                {user?.name ? user.name.slice(0, 2).toUpperCase() : "VS"}
+              </span>
+            )}
+          </div>
+          <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[#121417]" />
+          <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[#121417]" />
+        </Link>
+
+        {/* Notifications Dropdown Popover */}
+        {showNotifications && (
+          <div className="absolute right-0 top-12 sm:top-14 z-50 w-80 sm:w-96 rounded-2xl border border-border/80 bg-surface/98 p-4 shadow-2xl backdrop-blur-md animate-in fade-in-50 zoom-in-95 text-left">
+            <div className="flex items-center justify-between border-b border-border/80 pb-3">
+              <div className="flex items-center gap-2">
+                <Bell className="h-4 w-4 text-emerald-400" />
+                <span className="font-display text-sm font-bold text-foreground">Notifications</span>
+                {unreadCount > 0 && (
+                  <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-black text-emerald-400">
+                    {unreadCount} new
+                  </span>
+                )}
+              </div>
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={markAllAsRead}
+                  className="text-[11px] font-semibold text-emerald-400 hover:underline cursor-pointer"
+                >
+                  Mark all read
+                </button>
+              )}
+            </div>
+
+            <div className="mt-3 max-h-80 space-y-2.5 overflow-y-auto pr-1">
+              {notifications.length === 0 ? (
+                <div className="py-8 text-center text-xs text-muted-foreground">
+                  No notifications at this moment.
+                </div>
+              ) : (
+                notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    className={cn(
+                      "relative rounded-xl border p-3 transition-all",
+                      n.read
+                        ? "border-border/60 bg-surface-2/40 opacity-80"
+                        : "border-primary/30 bg-primary/5"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {n.type === "contest" ? (
+                          <Trophy className="h-4 w-4 text-amber-400 shrink-0" />
+                        ) : n.type === "wallet" ? (
+                          <Wallet className="h-4 w-4 text-emerald-400 shrink-0" />
+                        ) : n.type === "live" ? (
+                          <Radio className="h-4 w-4 text-destructive shrink-0" />
+                        ) : (
+                          <Megaphone className="h-4 w-4 text-emerald-400 shrink-0" />
+                        )}
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <p className="text-xs font-bold text-foreground truncate">{n.title}</p>
+                          {!n.read && (
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0 animate-ping" />
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[10px] text-muted-foreground">{n.time}</span>
+                        <button
+                          type="button"
+                          onClick={() => clearNotification(n.id)}
+                          className="text-muted-foreground hover:text-foreground cursor-pointer"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed pl-6">
+                      {n.description}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="mt-3 border-t border-border/80 pt-2 text-center">
+              <Link
+                to="/matches"
+                onClick={() => setShowNotifications(false)}
+                className="text-xs font-bold text-emerald-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+              >
+                View Live Matches <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function AppShell({
   children,
   maxWidth = "max-w-3xl",
+  hideHeader = false,
 }: {
   children: ReactNode;
   maxWidth?: string;
+  hideHeader?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [user, setUser] = useState<User | null>(() => getCachedUser());
@@ -144,6 +578,7 @@ export function AppShell({
     } catch {}
     return 0;
   });
+  const [activeNavModal, setActiveNavModal] = useState<NavModalType>(null);
 
   // Always fetch fresh real wallet balance from backend for the authenticated user
   useEffect(() => {
@@ -366,6 +801,111 @@ export function AppShell({
     }
   };
 
+  const renderSidebarItem = (item: SidebarNavItem) => {
+    const active = item.to ? pathname === item.to : activeNavModal === item.modal;
+    const Icon = item.icon;
+
+    const content = (
+      <>
+        <div className="flex items-center gap-3 min-w-0">
+          <Icon
+            className={cn(
+              "h-4.5 w-4.5 shrink-0 transition-colors",
+              item.isLive
+                ? "text-red-500 animate-pulse"
+                : active
+                ? "text-emerald-400"
+                : "text-slate-400 group-hover:text-slate-200"
+            )}
+          />
+          <span className="truncate">{item.label}</span>
+        </div>
+
+        {item.isLive ? (
+          <span className="flex items-center gap-1 rounded-full bg-red-500/20 border border-red-500/30 px-1.5 py-0.5 text-[9px] font-black text-red-400 animate-pulse shrink-0">
+            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+            LIVE
+          </span>
+        ) : item.key === "notifications" && unreadCount > 0 ? (
+          <span className="rounded-full bg-red-500/20 border border-red-500/30 px-1.5 py-0.5 text-[9px] font-black text-red-400 shrink-0">
+            {unreadCount}
+          </span>
+        ) : item.key === "wallet" ? (
+          <span className="rounded-md bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 text-[10px] font-mono font-bold text-emerald-400 shrink-0">
+            ₹{walletTotal.toLocaleString("en-IN")}
+          </span>
+        ) : item.badge ? (
+          <span
+            className={cn(
+              "rounded-full px-1.5 py-0.5 text-[9px] font-black shrink-0 border",
+              item.badgeType === "amber"
+                ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                : item.badgeType === "purple"
+                ? "bg-purple-500/15 border-purple-500/30 text-purple-400"
+                : item.badgeType === "emerald"
+                ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                : "bg-slate-800 border-slate-700 text-slate-300"
+            )}
+          >
+            {item.badge}
+          </span>
+        ) : null}
+      </>
+    );
+
+    const baseClass = cn(
+      "w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-all group cursor-pointer text-left select-none",
+      active
+        ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-sm font-bold"
+        : "text-slate-300 hover:bg-slate-800/60 hover:text-white border border-transparent"
+    );
+
+    if (item.to) {
+      return (
+        <Link
+          key={item.key}
+          to={item.to}
+          onClick={() => {
+            if (item.to === "/matches") {
+              removeFlow(FLOW_KEYS.selectedMatchId);
+              removeFlow("RETURN_TO_MATCH_CENTER");
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("reset-home-match"));
+              }
+            } else if (item.to === "/contests") {
+              removeFlow(FLOW_KEYS.selectedMatchId);
+              removeFlow("contests_default_tab");
+              removeFlow("contests_from_my_matches");
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("reset-contests-match"));
+              }
+            } else if (item.to === "/my-teams") {
+              removeFlow(FLOW_KEYS.selectedMatchId);
+            }
+          }}
+          className={baseClass}
+        >
+          {content}
+        </Link>
+      );
+    }
+
+    return (
+      <button
+        key={item.key}
+        type="button"
+        onClick={() => {
+          if (item.modal) {
+            setActiveNavModal(item.modal);
+          }
+        }}
+        className={baseClass}
+      >
+        {content}
+      </button>
+    );
+  };
+
   return (
     <AuthGuard>
       <div className="flex min-h-screen bg-background text-foreground">
@@ -379,114 +919,57 @@ export function AppShell({
           </div>
 
           {/* Vertical Navigation Links */}
-          <nav className="flex-1 space-y-1 p-3.5 overflow-y-auto scrollbar-none">
-            <p className="px-3 py-1 text-[10px] font-black text-slate-400 uppercase tracking-wider">
-              Fantasy Arena
-            </p>
-            {sidebarNavItems.map(({ to, label, icon: Icon, badge }) => {
-              const active = pathname === to;
-              return (
-                <Link
-                  key={to}
-                  to={to}
-                  onClick={() => {
-                    if (to === "/matches") {
-                      removeFlow(FLOW_KEYS.selectedMatchId);
-                      removeFlow("RETURN_TO_MATCH_CENTER");
-                      if (typeof window !== "undefined") {
-                        window.dispatchEvent(new CustomEvent("reset-home-match"));
-                      }
-                    } else if (to === "/contests") {
-                      removeFlow(FLOW_KEYS.selectedMatchId);
-                      removeFlow("contests_default_tab");
-                      removeFlow("contests_from_my_matches");
-                      if (typeof window !== "undefined") {
-                        window.dispatchEvent(new CustomEvent("reset-contests-match"));
-                      }
-                    } else if (to === "/my-teams") {
-                      removeFlow(FLOW_KEYS.selectedMatchId);
-                    }
-                  }}
-                  className={cn(
-                    "flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all",
-                    active
-                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-sm font-bold"
-                      : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-100",
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className={cn("h-4.5 w-4.5", active ? "text-emerald-400" : "text-slate-400")} />
-                    <span>{label}</span>
-                  </div>
-                  {badge && (
-                    <span className="flex items-center gap-1 rounded-full bg-red-500/20 border border-red-500/30 px-2 py-0.5 text-[9px] font-black text-red-400 animate-pulse">
-                      <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
-                      {badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-
-            <div className="pt-3">
-              <p className="px-3 py-1 text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                Cricket Desk
+          <nav className="flex-1 space-y-4 p-3.5 overflow-y-auto scrollbar-none text-slate-200">
+            {/* 1. FANTASY ARENA */}
+            <div className="space-y-1">
+              <p className="px-3 py-1 text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                <span>Fantasy Arena</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
               </p>
-              {cricketNavItems.map(({ to, label, icon: Icon, action, isLive }) => {
-                const active = pathname === to && (!action || (typeof window !== "undefined" && window.location.search.includes("tab=upcoming")));
-                return (
-                  <Link
-                    key={label}
-                    to={to}
-                    onClick={() => {
-                      if (action === "upcoming") {
-                        removeFlow(FLOW_KEYS.selectedMatchId);
-                        removeFlow("RETURN_TO_MATCH_CENTER");
-                        if (typeof window !== "undefined") {
-                          window.dispatchEvent(new CustomEvent("switch-matches-tab", { detail: "UPCOMING" }));
-                          window.dispatchEvent(new CustomEvent("reset-home-match"));
-                        }
-                      }
-                    }}
-                    className={cn(
-                      "flex items-center justify-between rounded-xl px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer",
-                      active
-                        ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold"
-                        : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-100"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className={cn("h-4 w-4", isLive ? "text-red-500 animate-pulse" : active ? "text-emerald-400" : "text-slate-400")} />
-                      <span>{label}</span>
-                    </div>
-                    {isLive && (
-                      <span className="flex items-center gap-1 rounded-full bg-red-500/15 border border-red-500/30 px-1.5 py-0.2 text-[9px] font-black text-red-400 animate-pulse">
-                        <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-                        LIVE
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
+              <div className="space-y-0.5">
+                {fantasyArenaNavItems.map((item) => renderSidebarItem(item))}
+              </div>
+            </div>
+
+            {/* 2. CRICKET DESK */}
+            <div className="space-y-1 pt-2 border-t border-slate-800/80">
+              <p className="px-3 py-1 text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                <span>Cricket Desk</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+              </p>
+              <div className="space-y-0.5">
+                {cricketDeskNavItems.map((item) => renderSidebarItem(item))}
+              </div>
+            </div>
+
+            {/* 3. ACCOUNT */}
+            <div className="space-y-1 pt-2 border-t border-slate-800/80">
+              <p className="px-3 py-1 text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                <span>Account</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+              </p>
+              <div className="space-y-0.5">
+                {accountNavItems.map((item) => renderSidebarItem(item))}
+              </div>
             </div>
 
             {/* Admin / Management Navigation for authorized roles */}
             {(user?.role === "admin" || user?.role === "super_admin") && (
-              <div className="pt-3">
+              <div className="space-y-1 pt-2 border-t border-slate-800/80">
                 <p className="px-3 py-1 text-[10px] font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
                   <ShieldAlert className="h-3 w-3" /> Management
                 </p>
                 <Link
                   to="/admin"
                   className={cn(
-                    "flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-bold transition-all border",
+                    "flex items-center justify-between rounded-xl px-3.5 py-2 text-xs font-bold transition-all border",
                     pathname === "/admin"
                       ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm"
                       : "text-emerald-400/90 hover:bg-emerald-500/10 border-emerald-500/20 hover:border-emerald-500/40"
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <LayoutDashboard className="h-4.5 w-4.5 text-emerald-400" />
+                    <LayoutDashboard className="h-4 w-4 text-emerald-400" />
                     <span>Admin Portal</span>
                   </div>
                   <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-300">
@@ -495,7 +978,6 @@ export function AppShell({
                 </Link>
               </div>
             )}
-
           </nav>
 
           {/* Bottom User Profile Section */}
@@ -553,196 +1035,13 @@ export function AppShell({
         {/* ------------------------------------------------------------- */}
         <div className="flex flex-1 flex-col min-w-0">
           {/* Top Navbar */}
-          <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur text-foreground shadow-xs">
-            <div className="mx-auto flex h-16 items-center justify-between gap-4 px-4 sm:px-6 w-full">
-              {/* Mobile Logo */}
-              <div className="md:hidden">
-                <Logo size="sm" />
+          {!hideHeader && (
+            <header className="sticky top-0 z-40 px-4 sm:px-6 py-2.5 bg-background/80 backdrop-blur-md">
+              <div className="mx-auto max-w-[1520px] w-full rounded-2xl bg-[#121417] border border-white/10 px-4 sm:px-5 py-2 shadow-xl">
+                <Pic2HeaderBar />
               </div>
-
-              {/* Desktop Brand Badge with Logo Icon */}
-              <div className="hidden md:flex items-center gap-3">
-                <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-border bg-surface-2/80 backdrop-blur shadow-xs">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white shadow-xs">
-                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
-                      <circle cx="16.5" cy="3.6" r="2.1" />
-                      <path d="M14.9 7.2 9.7 9.9l-2.9 4.4-2 5.9 2.1.7 1.8-5.3 2.6-2.2.6 4.3-2.6 5.4 2 1 3.1-6.3-.4-5.1 3.1-1.5 2.9 3.1 1.5-1.4-3.6-4.1z" />
-                      <rect x="2.5" y="1.5" width="1.6" height="9" rx="0.8" transform="rotate(-24 3.3 6)" />
-                    </svg>
-                  </div>
-                  <span className="font-display text-xs font-black tracking-wider text-foreground">
-                    FANTASY CRICKET <span className="text-emerald-600 dark:text-primary">ARENA</span>
-                  </span>
-                  <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                </div>
-              </div>
-
-              {/* Right Quick Actions (Theme Toggle, Wallet & Notifications) */}
-              <div className="flex items-center gap-2 sm:gap-2.5 relative" ref={notificationRef}>
-
-                {/* Theme Toggle */}
-                <ThemeToggle />
-
-                {/* Wallet Balance Button */}
-                <Link
-                  to="/wallet"
-                  className="group flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-bold hover:border-emerald-400/70 hover:bg-emerald-500/20 transition-all cursor-pointer shadow-sm shadow-emerald-500/10"
-                >
-                  <Wallet className="h-3.5 w-3.5 text-emerald-500" />
-                  <span className="font-mono font-black text-emerald-500 tracking-tight">
-                    ₹{walletTotal.toLocaleString("en-IN")}
-                  </span>
-                </Link>
-
-                {/* Notification Bell Button */}
-                <button
-                  type="button"
-                  aria-label="Notifications"
-                  onClick={() => {
-                    setShowNotifications((prev) => !prev);
-                    if (toastAlert) setToastAlert(null);
-                  }}
-                  className={cn(
-                    "relative flex h-9 w-9 items-center justify-center rounded-full border transition-all cursor-pointer",
-                    showNotifications
-                      ? "border-primary bg-primary/15 text-primary shadow-sm shadow-primary/20"
-                      : "border-border bg-surface hover:border-emerald-500/40 hover:bg-emerald-500/5 text-muted-foreground hover:text-emerald-500"
-                  )}
-                >
-                  <Bell className={cn("h-4 w-4", unreadCount > 0 ? "text-emerald-500" : "")} />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-black text-white shadow-md ring-2 ring-surface">
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </span>
-                  )}
-                </button>
-
-              {/* Admin / Super Admin Console Quick Nav Button */}
-              {(user?.role === "admin" || user?.role === "super_admin") && (
-                <Link
-                  to="/admin"
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border shadow-sm",
-                    user.role === "super_admin"
-                      ? "bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30 hover:border-purple-300 shadow-purple-500/10"
-                      : "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30 hover:border-emerald-300 shadow-emerald-500/10"
-                  )}
-                >
-                  <ShieldAlert className="h-3.5 w-3.5" />
-                  <span>{user.role === "super_admin" ? "Super Admin" : "Admin"}</span>
-                </Link>
-              )}
-
-              {/* Profile Avatar Quick Button */}
-              <Link
-                to="/profile"
-                aria-label="User Profile"
-                className="flex items-center rounded-full ring-2 ring-primary/30 hover:ring-primary/70 transition-all overflow-hidden"
-              >
-                {user?.profileImage ? (
-                  <img
-                    src={user.profileImage}
-                    alt={user.name || "User"}
-                    className="h-8 w-8 rounded-full object-cover border border-primary/40"
-                  />
-                ) : (
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary border border-primary/40">
-                    {user?.name ? user.name.slice(0, 2).toUpperCase() : "U"}
-                  </span>
-                )}
-              </Link>
-
-              {/* Notifications Dropdown Popover */}
-              {showNotifications && (
-                <div className="absolute right-0 top-12 z-50 w-80 sm:w-96 rounded-2xl border border-border bg-surface/98 p-4 shadow-2xl backdrop-blur animate-in fade-in-50 zoom-in-95">
-                  <div className="flex items-center justify-between border-b border-border/80 pb-3">
-                    <div className="flex items-center gap-2">
-                      <Bell className="h-4 w-4 text-primary" />
-                      <span className="font-display text-sm font-bold text-foreground">Notifications</span>
-                      {unreadCount > 0 && (
-                        <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-black text-primary">
-                          {unreadCount} new
-                        </span>
-                      )}
-                    </div>
-                    {unreadCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={markAllAsRead}
-                        className="text-[11px] font-semibold text-primary hover:underline"
-                      >
-                        Mark all read
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="mt-3 max-h-80 space-y-2.5 overflow-y-auto pr-1">
-                    {notifications.length === 0 ? (
-                      <div className="py-8 text-center text-xs text-muted-foreground">
-                        No notifications at this moment.
-                      </div>
-                    ) : (
-                      notifications.map((n) => (
-                        <div
-                          key={n.id}
-                          className={cn(
-                            "relative rounded-xl border p-3 transition-all",
-                            n.read
-                              ? "border-border/60 bg-surface-2/40 opacity-80"
-                              : "border-primary/30 bg-primary/5"
-                          )}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              {n.type === "contest" ? (
-                                <Trophy className="h-4 w-4 text-amber-400 shrink-0" />
-                              ) : n.type === "wallet" ? (
-                                <Wallet className="h-4 w-4 text-emerald-400 shrink-0" />
-                              ) : n.type === "live" ? (
-                                <Radio className="h-4 w-4 text-destructive shrink-0" />
-                              ) : (
-                                <Megaphone className="h-4 w-4 text-emerald-400 shrink-0" />
-                              )}
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <p className="text-xs font-bold text-foreground truncate">{n.title}</p>
-                                {!n.read && (
-                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0 animate-ping" />
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <span className="text-[10px] text-muted-foreground">{n.time}</span>
-                              <button
-                                type="button"
-                                onClick={() => clearNotification(n.id)}
-                                className="text-muted-foreground hover:text-foreground cursor-pointer"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </div>
-                          </div>
-                          <p className="mt-1 text-xs text-muted-foreground leading-relaxed pl-6">
-                            {n.description}
-                          </p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-
-                  <div className="mt-3 border-t border-border/80 pt-2 text-center">
-                    <Link
-                      to="/matches"
-                      onClick={() => setShowNotifications(false)}
-                      className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1 cursor-pointer"
-                    >
-                      View Live Matches <ArrowRight className="h-3 w-3" />
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </header>
+            </header>
+          )}
 
         {/* Floating Real-Time Toast Alert for Admin Announcements */}
         {toastAlert && (
@@ -833,6 +1132,15 @@ export function AppShell({
             )}
           </div>
         </nav>
+
+        {/* Interactive AppShell Navigation Modals */}
+        <AppShellModals
+          activeModal={activeNavModal}
+          onClose={() => setActiveNavModal(null)}
+          walletBalance={walletTotal}
+          user={user}
+          onWalletUpdated={(nb) => setWalletTotal(nb)}
+        />
       </div>
     </div>
     </AuthGuard>

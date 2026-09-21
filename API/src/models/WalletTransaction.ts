@@ -52,3 +52,4 @@ export const WalletTransaction = model<IWalletTransaction>(
   walletTransactionSchema,
   "wallettransactions"
 );
+
